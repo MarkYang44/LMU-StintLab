@@ -50,10 +50,10 @@ jobs:
         with:
           name: LMU-StintLab-windows-x64
           path: dist
-      - name: Create draft Release for a version tag
+      - name: Publish verified Release for a version tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match VERSION' }
-          gh release create $env:GITHUB_REF_NAME "dist/LMU-StintLab-v$version-windows-x64.zip" "dist/LMU-StintLab-v$version-windows-x64.zip.sha256" --draft --verify-tag --title "LMU StintLab v$version" --notes-file docs/RELEASE_NOTES.md
+          gh release create $env:GITHUB_REF_NAME "dist/LMU-StintLab-v$version-windows-x64.zip" "dist/LMU-StintLab-v$version-windows-x64.zip.sha256" --verify-tag --latest --title "LMU StintLab v$version" --notes-file docs/RELEASE_NOTES.md

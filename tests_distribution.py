@@ -12,7 +12,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parent;sys.path.insert(0,str(ROOT/'src'))
 from tools.audit_publication import audit,allowed,git_command
 from tools.install_dependencies import choose_wheel
-from tools.migrate_inputscope import migrate,digest
+from tools.migrate_inputscope import migrate,digest,rewrite_local_paths
 from build import bundle_audit,ASSET_NAMES
 import paths
 
@@ -117,6 +117,22 @@ class DistributionTests(unittest.TestCase):
             self.assertEqual((target/'FastestLapCompare.html').read_text(),'<html>legacy fixture</html>')
             self.assertTrue((target/'assets'/'tracks'/'catalog.json').exists())
             self.assertEqual(before,{p.relative_to(source):digest(p) for p in source.rglob('*') if p.is_file()})
+
+    def test_reference_rewrite_resolves_windows_short_or_linked_aliases(self):
+        with tempfile.TemporaryDirectory(dir=ROOT) as directory:
+            root=Path(directory).resolve();source=root/'Long Source';target=root/'new'/'data'
+            reference=source/'Logs'/'fixture'/'Fastest.lap.json';reference.parent.mkdir(parents=True);reference.write_text('{}')
+            alias=root/'SHORT~1'/'Logs'/'fixture'/'Fastest.lap.json'
+            external=root/'external.lap.json';external.write_text('{}')
+            original_resolve=Path.resolve
+            def resolve(path,*args,**kwargs):
+                return reference if path==alias else original_resolve(path,*args,**kwargs)
+            value=dict(path=str(alias),nested=[str(external),'fastest','relative/file.json'])
+            with patch.object(Path,'resolve',autospec=True,side_effect=resolve):
+                updated=rewrite_local_paths(value,source,target)
+            self.assertEqual(updated['path'],str(target/'Logs'/'fixture'/'Fastest.lap.json'))
+            self.assertEqual(updated['nested'],value['nested'])
+            self.assertEqual(value['path'],str(alias))
 
     def test_migration_collision_stops_before_copying_or_overwriting(self):
         with tempfile.TemporaryDirectory() as directory:

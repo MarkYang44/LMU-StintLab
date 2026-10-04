@@ -26,7 +26,11 @@ def rewrite_local_paths(value,source,target):
     if isinstance(value,str):
         try:
             candidate=Path(value)
-            if candidate.is_absolute() and candidate.is_relative_to(source):return str(target/candidate.relative_to(source))
+            if candidate.is_absolute():
+                # Windows TEMP and old shortcuts can use 8.3 names such as
+                # RUNNER~1 while the migration roots have resolved long names.
+                candidate=candidate.resolve()
+                if candidate.is_relative_to(source):return str(target/candidate.relative_to(source))
         except (OSError,ValueError):pass
     return value
 

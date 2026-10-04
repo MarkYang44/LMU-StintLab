@@ -44,7 +44,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 .venv\Scripts\python.exe tools/audit_publication.py
 ```
 
-Windows CI 检查公开文件、运行隔离测试并构建便携 ZIP；推送 `v*` 标签会生成带二进制附件的 **草稿 Release**，由维护者检查后发布。发布步骤见 [维护说明](docs/RELEASE.md)。
+Windows CI 检查公开文件、运行隔离测试并构建便携 ZIP；推送与 VERSION 一致的 `v*` 标签，在全部验证通过后自动发布带 ZIP 和 SHA256 附件的 **公开 Release**。发布步骤见 [维护说明](docs/RELEASE.md)。
 
 ## English quick start
 
