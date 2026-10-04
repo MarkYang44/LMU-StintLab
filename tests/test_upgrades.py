@@ -11,12 +11,12 @@ import threading
 import time
 import unittest
 from unittest.mock import patch
-ROOT=Path(__file__).parent
+ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 import inputscope as app
 import sessionlab,storage,diagnostics,library
 from reference import ReferenceLap,DistanceAligner,best_reference
-import tests as base_tests
+from tests import test_core as base_tests
 fixture=base_tests.fixture
 
 
@@ -165,7 +165,43 @@ class Upgrades(unittest.TestCase):
             self.assertEqual(stats['source_sha256'],hashlib.sha256((folder/'inputs.csv').read_bytes()).hexdigest())
             library.save_note(root,str(folder.relative_to(root)),'练习',True);v=library.inventory(root)[0]
             self.assertEqual(v['note'],'练习');self.assertTrue(v['traffic']);self.assertEqual((folder/'session.json').read_bytes(),before)
+            self.assertEqual(v['session_type'],'Race')
+            native=root/'ImportedLogs'/'Native_without_phase';native.mkdir(parents=True)
+            storage.atomic_json(native/'session.json',dict(session='native_import',status='finished'))
+            native_before=(native/'session.json').read_bytes()
+            items={v['key']:v for v in library.inventory(root)}
+            self.assertEqual(items[str(native.relative_to(root))]['session_type'],'Unknown')
+            self.assertEqual((native/'session.json').read_bytes(),native_before)
+            self.assertEqual((folder/'session.json').read_bytes(),before)
             with self.assertRaises(ValueError):library.save_note(root,'../escape','bad')
+
+    def test_session_transitions_record_separate_phase_labels_and_keep_stage_codes(self):
+        sample=app.extract(fixture());phase=[0]
+        class Feed:
+            def read(self):return dict(sample,session=phase[0],et=time.monotonic())
+            def close(self):pass
+        with tempfile.TemporaryDirectory(dir=ROOT) as t,patch.object(app,'make_report'):
+            root=Path(t);engine=app.Engine(output=root/'Logs',reader_factory=Feed)
+            try:
+                for code in (0,8,9,13):
+                    phase[0]=code;deadline=time.monotonic()+3
+                    while engine.recorder.meta.get('session')!=code or not engine.recorder.samples:
+                        if time.monotonic()>deadline:self.fail('Recorder did not enter session '+str(code))
+                        time.sleep(.01)
+            finally:
+                engine.stop.set();engine.wake.set();engine.thread.join(3)
+                for worker in engine.recorder.pending_reports:worker.join(3)
+            self.assertFalse(engine.thread.is_alive())
+            items=library.inventory(root)
+            self.assertEqual(len(items),4)
+            actual={}
+            for item in items:
+                folder=Path(item['folder']);meta=json.loads((folder/'session.json').read_text(encoding='utf-8'))
+                actual[meta['session']]=item['session_type']
+                self.assertIn('_'+item['session_type']+'_Test Track',folder.name)
+                self.assertEqual(meta['status'],'complete')
+                self.assertGreater(meta['samples'],0)
+            self.assertEqual(actual,{0:'Practice',8:'Qualify',9:'Warmup',13:'Race'})
 
     def test_latency_counts_each_unique_sample_once(self):
         d=diagnostics.Diagnostics();sample=dict(et=1,_received_perf=time.perf_counter())

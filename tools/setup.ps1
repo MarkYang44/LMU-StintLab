@@ -61,6 +61,6 @@ if ($GameDirectory) {
 # Local paths are private. Never copy settings or modify the game installation.
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 [IO.File]::WriteAllText($configFile, ($config | ConvertTo-Json -Depth 5), $utf8)
-& $venvPython (Join-Path $projectRoot 'src\inputscope.py') --doctor
+& $venvPython (Join-Path $projectRoot 'tools\doctor.py')
 if ($LASTEXITCODE -ne 0) { throw 'Environment check failed; see the checks above.' }
 Write-Host 'Ready. Double-click Start.cmd. Demo.cmd runs synthetic telemetry. No game files were changed.' -ForegroundColor Green

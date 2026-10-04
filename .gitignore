@@ -15,11 +15,8 @@
 !/Start Clean Controls.cmd
 !/Start Demo.cmd
 !/Demo.cmd
-!/Build.cmd
-!/Check.cmd
-!/Publish.cmd
-!/build.py
-!/tests*.py
+!/tests/
+!/tests/**
 !/src/
 !/src/**
 !/tools/

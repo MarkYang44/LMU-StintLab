@@ -8,7 +8,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 ROOT_FILES={'.gitignore','.gitattributes','README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION',
-    'requirements.txt','requirements-build.txt','requirements-lock.txt','Setup.cmd','Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd','Build.cmd','Check.cmd','Publish.cmd','build.py'}
+    'requirements.txt','requirements-build.txt','requirements-lock.txt','Setup.cmd','Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd'}
 PRIVATE_PARTS={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','_local','_backup','_verification','__pycache__','.venv','vendor','runtime'}
 PRIVATE_NAMES={'local_settings.json','settings.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json','session.json','recording_checkpoint.json','vehicle_checkpoint.json'}
 DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.exe','.dll','.pyd','.pyc','.pdf','.png','.jpg','.svg'}
@@ -23,8 +23,8 @@ def allowed(name):
     path=PurePosixPath(name);parts=[p.casefold() for p in path.parts]
     if any(p in PRIVATE_PARTS for p in parts) or path.name.casefold() in PRIVATE_NAMES:return False
     if path.suffix.casefold() in DENIED_SUFFIXES or name.endswith('.lap.json'):return False
-    if len(path.parts)==1:return name in ROOT_FILES or bool(re.fullmatch(r'tests(?:_[a-z_]+)?\.py',name))
-    return (path.parts[0]=='src' and path.suffix in ('.py','.js','.html','.json','.txt')) or (path.parts[0]=='tools' and path.suffix in ('.py','.ps1')) or (path.parts[0]=='docs' and path.suffix=='.md') or (path.parts[0]=='.github' and path.suffix in ('.yml','.yaml','.md'))
+    if len(path.parts)==1:return name in ROOT_FILES
+    return (path.parts[0]=='src' and path.suffix in ('.py','.js','.html','.json','.txt')) or (path.parts[0]=='tools' and path.suffix in ('.py','.ps1','.cmd')) or (path.parts[0]=='tests' and path.suffix=='.py') or (path.parts[0]=='docs' and path.suffix=='.md') or (path.parts[0]=='.github' and path.suffix in ('.yml','.yaml','.md'))
 
 def audit(files,read):
     failures=[];total=0

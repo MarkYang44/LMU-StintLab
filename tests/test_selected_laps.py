@@ -2,9 +2,9 @@
 import csv,json,math,base64,gzip,re
 from pathlib import Path
 import shutil,sys,tempfile,unittest
-ROOT=Path(__file__).parent;sys.path.insert(0,str(ROOT/'src'))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 import laps
-import tests as base_tests
+from tests import test_core as base_tests
 from reference import ReferenceLap
 TEMPLATE=ROOT/'src'/'compare.html'
 
@@ -128,7 +128,7 @@ class SelectedLapTests(unittest.TestCase):
 
     def test_native_context_and_coordinates_are_preserved(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as t:
-            from tests_laplab import fixture
+            from tests.test_laplab import fixture
             from telemetry_import import import_recording
             database=Path(t)/'synthetic.duckdb';fixture(database)
             original=import_recording(database,Path(t)/'generated')

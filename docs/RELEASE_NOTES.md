@@ -1,13 +1,13 @@
-## LMU StintLab v0.1.1 · Windows x64 便携版
+## LMU StintLab v0.1.2 · Windows x64 精简便携版
 
-下载下方 `LMU-StintLab-v0.1.1-windows-x64.zip`，完整解压到可写目录，双击 **Start.cmd** 即可启动。无需安装 Python，也无需改动 LMU 游戏文件；保留 EXE 旁的 `_internal` 文件夹。**Demo.cmd** 可在不开游戏时演示，**Check.cmd** 可检查环境。
+下载下方 `LMU-StintLab-v0.1.2-windows-x64.zip`，完整解压到可写目录，双击 **Start.cmd** 即可启动。无需安装 Python，无需改动 LMU 游戏文件；保留 EXE 旁的 `_internal` 文件夹。**Demo.cmd** 可在不开游戏时演示。
 
-包含油门 / 刹车 / 转向曲线、原始 / 游戏过滤后输入切换、柱形图及转向显示、多种纯净 HUD、动态采样、自动录制、最快圈、同场圈 A / B 与跨比赛比较、赛道轨迹回放、轮胎 / 燃油 / 耐力赛分析。
+- 精简便携包：移除自检入口、测试代码、构建发布脚本与开发文档，只保留运行文件、原有启动方式、使用说明和必要许可证。
+- 整理源码仓库：回归测试集中在 `tests/`，维护工具集中在 `tools/`。GitHub Actions 继续验证，但测试程序不再打进发布 EXE。
+- 新记录文件夹和导出比赛包自动包含 `Practice / Qualify / Race` 标签，比赛记录管理新增阶段列，可按标签搜索。旧文件夹保留原名，已有阶段信息直接显示。
 
-使用紧凑缓存和压缩离线报告降低内存，保留全量采样；支持每场一个 ZIP 的比赛包批量导出和导入。已有 InputScope 用户可按 README 中的迁移说明保留记录、偏好及私有底图。
+保留现有油刹 / 转向 HUD、过滤后输入切换、纯净模式、自动记录、完整圈比较、赛道轨迹回放和轮胎 / 燃油 / 耐力赛分析。比赛包仍保留完整遥测、离线报告、圈文件和备注。
 
-修复 Windows 8.3 短路径下参考圈迁移的路径重定位，并覆盖 GitHub Windows 构建机上的短 / 长路径一致性检查。
+更新时保留自己的 `data/` 和 `local_settings.json`；发布包不包含个人记录、设置或授权不明的预置底图。ZIP 旁的 `.zip.sha256` 用于校验下载完整性。
 
-发布包不包含个人记录、设置或授权不明的预置底图；具备世界坐标 / GPS 的记录可直接显示实测轨迹。项目为独立社区工具，许可及第三方声明见随包文档。旁边的 `.zip.sha256` 文件用于校验下载完整性。
-
-**English:** Download and fully extract the Windows x64 portable ZIP, then run **Start.cmd**. Python is bundled; no game files are modified. Keep `_internal` next to the executable. Includes telemetry HUD, full-resolution recording, offline lap analysis and session ZIP transfer. Private records and settings are excluded.
+**English:** Fully extract the Windows x64 portable ZIP and run **Start.cmd**. The lean package excludes developer tests, standalone environment-check tools and build tools while keeping all telemetry features and launch modes. Recordings and session archives now carry Practice / Qualify / Race labels. Existing private data stays local.

@@ -7,9 +7,9 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-ROOT=Path(__file__).parent;sys.path.insert(0,str(ROOT/'src'))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 import endurance as e,vehiclelab as v,inputscope as app,laps
-from tests import fixture
+from tests.test_core import fixture
 
 def sample(t,inside=False,speed=150,fuel=40,**changes):
     values=dict(speed_kmh=speed,fuel_l=fuel,virtual_energy_pct=80,track_length_m=1000,

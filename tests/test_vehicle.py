@@ -11,10 +11,10 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch,Mock
-ROOT=Path(__file__).parent;sys.path.insert(0,str(ROOT/'src'))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 import vehiclelab as v,inputscope as app,laps,storage,sessionlab
-from tests import fixture
-import tests as base_tests
+from tests.test_core import fixture
+from tests import test_core as base_tests
 
 
 def sample(t,fuel=None,**changes):
@@ -236,7 +236,7 @@ class VehicleTests(unittest.TestCase):
         self.assertTrue(summary['fuel_l_used']['reset']);self.assertIsNone(summary['fuel_l_used']['value'])
 
     def test_stable_reference_keeps_same_telemetry_as_selected_export(self):
-        from tests_upgrades import clean_session
+        from tests.test_upgrades import clean_session
         with tempfile.TemporaryDirectory(dir=ROOT) as t:
             folder=clean_session(Path(t)/'session');self.write_vehicle(folder)
             analysis=sessionlab.analyze_session(folder);record=json.loads((folder/analysis['stable_reference_file']).read_text(encoding='utf-8'))

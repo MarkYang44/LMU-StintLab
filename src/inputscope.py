@@ -25,6 +25,7 @@ import reporting
 import vehiclelab
 import endurance
 from paths import ASSETS,data_directory,telemetry_directory
+from library import session_label
 
 ROOT = data_directory()
 ROOT.mkdir(parents=True,exist_ok=True)
@@ -354,7 +355,8 @@ class Recorder:
         self.batch=None
         self.vehicle_batch=None;self.vehicle_last=None;self.vehicle_last_sample=None
         safe = ''.join('_' if c in '<>:"/\\|?*' else c for c in sample['track'])[:60]
-        self.folder = self.output / (datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f') + '_' + safe)
+        self.folder = self.output / (datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f') + '_'
+                                     + session_label(sample.get('session')) + '_' + safe)
         self.folder.mkdir(parents=True)
         self.meta = {k: sample[k] for k in ('track', 'driver', 'vehicle', 'session', 'player_id')}
         self.meta.update(started_utc=datetime.now(timezone.utc).isoformat(), status='recording',
@@ -1548,19 +1550,8 @@ class App:
 
 
 def main():
-    if '--release-smoke' in sys.argv:
-        from release_smoke import run
-        run();return
-    if '--doctor' in sys.argv:
-        from doctor import check
-        result=check();print(json.dumps(result,ensure_ascii=False,indent=2))
-        if '--doctor-output' in sys.argv:
-            target=Path(sys.argv[sys.argv.index('--doctor-output')+1])
-            target.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
-        if not result['ok']:raise SystemExit(1)
-        return
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.1');return
+        print('LMU StintLab 0.1.2');return
     if '--import-duckdb' in sys.argv:
         index=sys.argv.index('--import-duckdb')
         if index+1>=len(sys.argv):raise ValueError('--import-duckdb 后需要已结束的 .duckdb 文件路径')

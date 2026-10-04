@@ -10,8 +10,11 @@ import sys
 import uuid
 import zipfile
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parents[1]
 ASSET_NAMES=('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','tracks/catalog.json')
+STARTERS=('Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd')
+PORTABLE_DOCS=('USAGE.md','PRIVACY.md')
+PORTABLE_ROOT_FILES={'LMU-StintLab.exe','README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION','build-manifest.json',*STARTERS}
 
 def bundle_audit(folder):
     private={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','.venv','_local','_backup','_verification'}
@@ -19,13 +22,17 @@ def bundle_audit(folder):
     for file in Path(folder).rglob('*'):
         if not file.is_file():continue
         rel=file.relative_to(folder)
+        if rel.parts[0] not in {'_internal','licenses','docs'} and rel.as_posix() not in PORTABLE_ROOT_FILES:
+            raise ValueError('Development or unexpected file in bundle: '+rel.as_posix())
+        if rel.parts[0]=='docs' and rel.as_posix() not in {'docs/'+name for name in PORTABLE_DOCS}:
+            raise ValueError('Development document in bundle: '+rel.as_posix())
         if any(p.casefold() in private for p in rel.parts) or file.name.casefold() in denied or file.name.endswith('.lap.json') or file.suffix.lower() in ('.csv','.duckdb','.db','.log','.gz'):
             raise ValueError('Private output in bundle: '+rel.as_posix())
     return True
 
 def main():
     if sys.platform!='win32' or sys.version_info[:2]!=(3,13) or struct.calcsize('P')!=8:
-        raise SystemExit('Build requires Windows x64 and CPython 3.13. Run Build.cmd.')
+        raise SystemExit('Build requires Windows x64 and CPython 3.13. Run tools/Build.cmd.')
     subprocess.run([sys.executable,str(ROOT/'tools'/'audit_publication.py'),'--working-tree'],cwd=ROOT,check=True)
     version=(ROOT/'VERSION').read_text(encoding='utf-8').strip()
     build_id=uuid.uuid4().hex[:12]
@@ -34,17 +41,20 @@ def main():
     args=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--onedir','--windowed',
         '--noupx','--name','LMU-StintLab','--paths',str(ROOT/'src'),
         '--workpath',str(work/'work'),'--specpath',str(work),'--distpath',str(stage),
-        '--hidden-import','pyLMUSharedMemory.lmu_data','--hidden-import','doctor',
-        '--hidden-import','release_smoke','--collect-all','duckdb']
+        '--hidden-import','pyLMUSharedMemory.lmu_data','--collect-all','duckdb',
+        '--exclude-module','doctor','--exclude-module','release_smoke',
+        '--exclude-module','tests','--exclude-module','tools']
     for name in ASSET_NAMES:
         relative=Path(name)
         args.extend(['--add-data',str(ROOT/'src'/relative)+';'+(Path('src')/relative.parent).as_posix()])
     args.append(str(ROOT/'src'/'inputscope.py'))
     subprocess.run(args,cwd=ROOT,check=True)
     bundle=stage/'LMU-StintLab'
-    for name in ('README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION','Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd','Check.cmd'):
+    for name in ('LICENSE','THIRD_PARTY_NOTICES.md','VERSION',*STARTERS):
         shutil.copy2(ROOT/name,bundle/name)
-    shutil.copytree(ROOT/'docs',bundle/'docs')
+    shutil.copy2(ROOT/'docs'/'PORTABLE.md',bundle/'README.md')
+    (bundle/'docs').mkdir()
+    for name in PORTABLE_DOCS:shutil.copy2(ROOT/'docs'/name,bundle/'docs'/name)
     licenses=bundle/'licenses';licenses.mkdir()
     shutil.copy2(ROOT/'src'/'pyLMUSharedMemory'/'License.txt',licenses/'pyLMUSharedMemory-MIT.txt')
     for file in (ROOT/'src'/'licenses').glob('*.txt'):shutil.copy2(file,licenses/file.name)

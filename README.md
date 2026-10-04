@@ -24,6 +24,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 - 赛道轨迹播放、位置对比、缩放和拖拽；胎温 / 胎压 / 磨损、燃油 / 能量及耐力赛相关面板与日志分析。部分通道需要导入原生遥测文件。
 - 只读导入 LMU `.duckdb` 记录、会话库、恢复与压缩。不会上传遥测，也不会连接外部 AI 服务。
 - 会话库支持多选导出 / 导入比赛包：每场一个校验 ZIP，保留完整遥测、离线复盘、圈文件和备注，可手动上传网盘。
+- 新记录文件夹、比赛包与会话库带 `Practice / Qualify / Race` 阶段标签；旧记录无需改名。
 
 游戏 HUD 建议使用窗口 / 无边框窗口模式。它是 Windows 置顶窗口；独占全屏可能不显示。右键打开菜单，拖动移动；快捷键与工作流见 [使用说明](docs/USAGE.md)。
 
@@ -37,7 +38,9 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 ## 开发与发布
 
-双击 `Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.1-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
+开发测试集中在 `tests/`，自检、构建与发布工具集中在 `tools/`；根目录只保留日常启动与源码安装入口。便携 ZIP 不包含这些开发文件或开发文档，保留原有各个启动模式、操作说明和必要许可证。
+
+双击 `tools/Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.2-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
 
 ```powershell
 .venv\Scripts\python.exe tools/run_tests.py

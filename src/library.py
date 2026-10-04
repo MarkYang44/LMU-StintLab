@@ -4,6 +4,19 @@ from pathlib import Path
 from storage import atomic_json
 
 
+def session_label(value):
+    """LMU mSession: testday/practice 0-4, qualifying 5-8, warmup 9, race 10-13."""
+    if isinstance(value,str):
+        try:value=int(value.strip())
+        except ValueError:return 'Unknown'
+    if not isinstance(value,int) or isinstance(value,bool):return 'Unknown'
+    if 0<=value<=4:return 'Practice'
+    if 5<=value<=8:return 'Qualify'
+    if value==9:return 'Warmup'
+    if 10<=value<=13:return 'Race'
+    return 'Unknown'
+
+
 def inventory(root):
     root=Path(root).resolve();out=[]
     try:notes=json.loads((root/'library_notes.json').read_text(encoding='utf-8'))
@@ -24,6 +37,7 @@ def inventory(root):
                 lap=summary.get('lap',{});stable=analysis.get('recent_stability',{})
                 out.append(dict(key=key,folder=str(folder),track=meta.get('track',''),vehicle=meta.get('vehicle',''),
                     date=meta.get('started_utc',''),driver=meta.get('driver',''),status=meta.get('status',''),source=name,
+                    session_type=session_label(meta.get('session')),
                     lap=lap.get('number'),time_s=lap.get('time_s'),fastest_file=summary.get('file'),
                     stable_file=analysis.get('stable_reference_file'),stability_s=stable.get('std'),
                     note=str(note.get('text','')),traffic=bool(note.get('traffic',False)),

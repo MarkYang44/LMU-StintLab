@@ -2,9 +2,9 @@
 import base64,csv,gzip,json,math,re,struct,sys,tempfile,unittest
 from collections import deque
 from pathlib import Path
-ROOT=Path(__file__).parent;sys.path.insert(0,str(ROOT/'src'))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 import buffers,inputscope,reporting,storage,vehiclelab
-import tests as fixtures
+from tests import test_core as fixtures
 
 def block(path,identifier):
     html=Path(path).read_text(encoding='utf-8')

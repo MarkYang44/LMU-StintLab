@@ -1,31 +1,49 @@
 """Extract a fresh portable ZIP and verify it without the source virtualenv."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
-import subprocess
+import sys
 import uuid
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'src'))
+from tools.build import bundle_audit
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--smoke',action='store_true');args=parser.parse_args()
-    version=(ROOT/'VERSION').read_text().strip();archive=ROOT/'dist'/f'LMU-StintLab-v{version}-windows-x64.zip'
+    parser=argparse.ArgumentParser();parser.add_argument('--smoke',action='store_true')
+    parser.add_argument('--archive',type=Path);args=parser.parse_args()
+    version=(ROOT/'VERSION').read_text().strip()
+    archive=args.archive or ROOT/'dist'/f'LMU-StintLab-v{version}-windows-x64.zip'
     target=ROOT/'_local'/'validation'/uuid.uuid4().hex[:12];target.mkdir(parents=True)
     with zipfile.ZipFile(archive) as source:
         for name in source.namelist():
             resolved=(target/name).resolve()
             if not resolved.is_relative_to(target.resolve()):raise ValueError('Unsafe ZIP member')
         source.extractall(target)
-    bundle=target/'LMU-StintLab';exe=bundle/'LMU-StintLab.exe';report=target/'doctor.json'
-    subprocess.run([str(exe),'--doctor','--doctor-output',str(report)],cwd=bundle,check=True,timeout=60)
-    result=json.loads(report.read_text(encoding='utf-8'));assert result['ok'],result
-    print('Independent portable environment: PASS',flush=True)
+    bundle=target/'LMU-StintLab';bundle_audit(bundle)
+    manifest=json.loads((bundle/'build-manifest.json').read_text(encoding='utf-8'))
+    assert manifest['version']==version
+    actual={p.relative_to(bundle).as_posix() for p in bundle.rglob('*') if p.is_file() and p.name!='build-manifest.json'}
+    assert actual==set(manifest['files'])
+    for name,digest in manifest['files'].items():
+        h=hashlib.sha256()
+        with (bundle/name).open('rb') as stream:
+            for block in iter(lambda:stream.read(1048576),b''):h.update(block)
+        assert h.hexdigest()==digest,name
+    from PyInstaller.archive.readers import CArchiveReader
+    archive=CArchiveReader(str(bundle/'LMU-StintLab.exe'))
+    modules=set()
+    for name in archive.toc:
+        if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
+    assert {'library','laps','session_archive'}<=modules
+    assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
+    print('Portable manifest, privacy and development-code exclusion: PASS',flush=True)
     if args.smoke:
-        subprocess.run([str(exe),'--release-smoke'],cwd=bundle,check=True,timeout=180)
-        result=json.loads((bundle/'data'/'release-smoke.json').read_text(encoding='utf-8'))
-        assert result['ok'],result
-        print('Synthetic complete-lap recording and offline exports: PASS',flush=True)
+        from tests.portable_smoke import run
+        run(bundle,target/'synthetic-data')
+        print('Shipping EXE, normal shutdown, complete-lap reports and archive roundtrip: PASS',flush=True)
     print('Validation folder: '+str(bundle))
 
 if __name__=='__main__':main()

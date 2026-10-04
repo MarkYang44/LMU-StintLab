@@ -9,7 +9,7 @@ import tempfile
 import time
 import unittest
 
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import inputscope as app
 import laps as lap_export
 from pyLMUSharedMemory.lmu_data import LMUObjectOut
@@ -82,7 +82,7 @@ class Tests(unittest.TestCase):
         return folder
 
     def test_fastest_lap_excludes_partial_invalid_pit_and_gapped_laps(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             folder = self.lap_csv(Path(temp)/'session')
             result,summary = lap_export.export_fastest(folder,app.ASSETS/'compare.html')
             self.assertEqual(result['lap']['number'],4)
@@ -123,7 +123,7 @@ class Tests(unittest.TestCase):
             self.assertFalse((invalid/'fastest_lap.csv').exists())
 
     def test_legacy_fastest_lap_marks_unknown_validity_and_escapes_metadata(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             folder = self.lap_csv(Path(temp)/'legacy',legacy=True)
             meta = json.loads((folder/'session.json').read_text())
             meta['driver'] = '</script><script>danger()</script>'
@@ -140,7 +140,7 @@ class Tests(unittest.TestCase):
                 self.assertEqual(list(csv.DictReader(stream))[0]['lap'],'0')
 
     def test_fastest_library_uses_only_compatible_previous_session(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             first = self.lap_csv(Path(temp)/'first')
             one,_ = lap_export.export_fastest(first,app.ASSETS/'compare.html')
             second = self.lap_csv(Path(temp)/'second')
@@ -154,7 +154,7 @@ class Tests(unittest.TestCase):
             self.assertEqual([v['id'] for v in lap_export.library_laps(temp)],[other['id']])
 
     def test_recorder_finish_automatically_exports_fastest_lap(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             source = self.lap_csv(Path(temp)/'source')
             recorder = app.Recorder(Path(temp)/'output')
             for row in lap_export.read_rows(source/'inputs.csv'):
@@ -329,7 +329,7 @@ class Tests(unittest.TestCase):
             app.validate_settings(dict(input_channel='invalid'))
         with self.assertRaises(ValueError):
             app.validate_settings(dict(min_hz=200,max_hz=100))
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             path = Path(temp)/'settings.json'
             app.save_settings(path,dict(app.DEFAULTS,mode='dynamic',min_hz=1,max_hz=4000,
                                         input_channel='filtered'))
@@ -433,7 +433,7 @@ class Tests(unittest.TestCase):
         hud.drawing = False
         hud.draw_job = 'pending'
         hud.trace_key = 'cached'
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp, patch.object(app,'ROOT',Path(temp)):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp, patch.object(app,'ROOT',Path(temp)):
             hud.toggle_input_channel()
             checked = app.load_settings(Path(temp)/'settings.json')
             self.assertEqual(checked['input_channel'],'filtered')
@@ -528,7 +528,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(all(21-p[0]<=20 for p in engine.points))
 
     def test_reconfiguration_wakes_one_hz_sampler_without_splitting_log(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             engine = app.Engine(demo=True,output=temp,settings=dict(fixed_hz=1))
             time.sleep(0.05)
             engine.update_settings(dict(fixed_hz=200))
@@ -555,7 +555,7 @@ class Tests(unittest.TestCase):
                 return dict(self.base,et=int((time.monotonic()-self.start)*100)/100)
             def close(self):
                 pass
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             engine = app.Engine(output=temp,reader_factory=Feed,settings=dict(fixed_hz=4000))
             time.sleep(0.25)
             engine.stop.set()
@@ -617,7 +617,7 @@ class Tests(unittest.TestCase):
         sample = app.extract(data)
         self.assertIsNotNone(sample)
         self.assertIsNone(sample['position'])
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             recorder = app.Recorder(temp)
             recorder.start(sample)
             recorder.add(sample)
@@ -648,7 +648,7 @@ class Tests(unittest.TestCase):
         self.assertIsNone(lap_export.trajectory_data(missing,data))
 
     def test_review_and_compare_embed_local_map_assets(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             folder = self.lap_csv(Path(temp)/'session')
             before = (folder/'inputs.csv').read_bytes()
             app.make_report(folder)
@@ -689,7 +689,7 @@ class Tests(unittest.TestCase):
                 reader.close()
 
     def test_log_preserves_all_unique_frames_and_report_escapes_markup(self):
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             recorder = app.Recorder(temp)
             sample = app.extract(fixture())
             sample['driver'] = '</script><script>danger()</script>'
@@ -723,7 +723,7 @@ class Tests(unittest.TestCase):
                                            1 if self.index >= 12 else 0))
             def close(self):
                 pass
-        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temp:
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp:
             engine = app.Engine(output=temp, reader_factory=Feed)
             time.sleep(0.4)
             engine.stop.set()

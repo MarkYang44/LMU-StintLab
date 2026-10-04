@@ -5,6 +5,9 @@ import json
 import struct
 import sys
 import tempfile
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'src'))
 from paths import ASSETS,data_directory,discover_game
 
 def check():
@@ -31,4 +34,8 @@ def check():
     game=discover_game()
     return dict(ok=all(tests.values()),checks=tests,game_detected=game is not None,
         note='Game detection is optional; LMU_Data is read only. No game files were modified.',
-        python=sys.version.split()[0],data_directory=str(root),version='0.1.1')
+        python=sys.version.split()[0],data_directory=str(root),version=(ROOT/'VERSION').read_text().strip())
+
+if __name__=='__main__':
+    result=check();print(json.dumps(result,ensure_ascii=False,indent=2))
+    raise SystemExit(0 if result['ok'] else 1)

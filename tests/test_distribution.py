@@ -9,11 +9,11 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-ROOT=Path(__file__).resolve().parent;sys.path.insert(0,str(ROOT/'src'))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 from tools.audit_publication import audit,allowed,git_command
 from tools.install_dependencies import choose_wheel
 from tools.migrate_inputscope import migrate,digest,rewrite_local_paths
-from build import bundle_audit,ASSET_NAMES
+from tools.build import bundle_audit,ASSET_NAMES
 import paths
 
 class DistributionTests(unittest.TestCase):
@@ -183,5 +183,25 @@ class DistributionTests(unittest.TestCase):
             self.assertTrue(bundle_audit(root))
             (root/'session.json').write_text('{}')
             with self.assertRaises(ValueError):bundle_audit(root)
+
+    def test_portable_bundle_rejects_developer_files_but_keeps_user_documents(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'docs').mkdir()
+            (root/'Start.cmd').write_text('start')
+            (root/'docs'/'USAGE.md').write_text('usage')
+            self.assertTrue(bundle_audit(root))
+            for name in ('Check.cmd','Build.cmd','Publish.cmd','tests/test_core.py',
+                         'tools/doctor.py','docs/RELEASE.md','docs/PERFORMANCE.md'):
+                with self.subTest(name=name):
+                    file=root/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_text('developer')
+                    try:
+                        with self.assertRaisesRegex(ValueError,'Development'):bundle_audit(root)
+                    finally:file.unlink()
+
+    def test_publication_keeps_development_files_in_their_own_directories(self):
+        for name in ('tests/test_core.py','tests/portable_smoke.py','tools/Build.cmd','tools/doctor.py'):
+            with self.subTest(name=name):self.assertTrue(allowed(name))
+        for name in ('tests.py','tests_distribution.py','Build.cmd','Check.cmd','Publish.cmd','build.py'):
+            with self.subTest(name=name):self.assertFalse(allowed(name))
 
 if __name__=='__main__':unittest.main()

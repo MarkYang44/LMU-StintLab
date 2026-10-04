@@ -1,6 +1,6 @@
 @echo off
 setlocal
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\publish.ps1" %*
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0publish.ps1" %*
 if errorlevel 1 (
   echo Publication stopped. Review the message above; local data is untouched.
   pause

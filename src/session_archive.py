@@ -10,7 +10,7 @@ import stat
 import tempfile
 import uuid
 import zipfile
-from library import inventory
+from library import inventory,session_label
 from laps import safe_name
 
 FORMAT='stintlab.session-archive'
@@ -101,7 +101,8 @@ def export_session(root,key,destination):
         with zipfile.ZipFile(pending) as archive:
             _validate(archive)
             for name,entry in entries.items():_verify_member(archive,'session/'+name,entry)
-        label='_'.join((safe_name(meta.get('started_utc','')[:19]),safe_name(meta.get('track','')),safe_name(meta.get('vehicle',''))))
+        label='_'.join((safe_name(meta.get('started_utc','')[:19]),session_label(meta.get('session')),
+                        safe_name(meta.get('track','')),safe_name(meta.get('vehicle',''))))
         target=destination/(label+'_'+manifest['archive_id'][:12]+'.stintlab.zip')
         # Unique existing exports are kept. A rename is atomic and fails if the target exists on Windows.
         if target.exists():target=target.with_name(target.stem+'_'+uuid.uuid4().hex[:8]+'.zip')

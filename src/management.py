@@ -62,15 +62,15 @@ def show_library(app,root,render_review,make_report):
     state={'items':[],'busy':False};status=tk.StringVar(value='扫描记录中…')
     filterbar=tk.Frame(window,bg='#101a28');filterbar.pack(fill='x',padx=15,pady=12)
     search=tk.StringVar();track=tk.StringVar(value='全部赛道');car=tk.StringVar(value='全部车辆');source=tk.StringVar(value='全部来源')
-    tk.Label(filterbar,text='搜索日期 / 车手 / 备注',bg='#101a28',fg='#c4d7ef').pack(side='left')
+    tk.Label(filterbar,text='搜索阶段 / 日期 / 车手 / 备注',bg='#101a28',fg='#c4d7ef').pack(side='left')
     tk.Entry(filterbar,textvariable=search,width=24).pack(side='left',padx=6)
     trackbox=ttk.Combobox(filterbar,textvariable=track,state='readonly',width=26);trackbox.pack(side='left',padx=5)
     carbox=ttk.Combobox(filterbar,textvariable=car,state='readonly',width=24);carbox.pack(side='left',padx=5)
     sourcebox=ttk.Combobox(filterbar,textvariable=source,state='readonly',width=15,values=['全部来源','Logs','ImportedLogs','RecoveredLogs','DemoLogs']);sourcebox.pack(side='left',padx=5)
     tableframe=tk.Frame(window);tableframe.pack(fill='both',expand=True,padx=15)
-    columns=('date','track','vehicle','best','stable','source','status','note')
+    columns=('date','session_type','track','vehicle','best','stable','source','status','note')
     tree=ttk.Treeview(tableframe,columns=columns,show='headings',selectmode='extended',style='Scope.Treeview')
-    for k,label,width in [('date','记录日期',175),('track','赛道',210),('vehicle','车辆',165),('best','最快圈 s',95),('stable','稳定性 σ s',100),('source','来源',100),('status','状态',90),('note','备注 / 交通',200)]:
+    for k,label,width in [('date','记录日期',175),('session_type','阶段',85),('track','赛道',210),('vehicle','车辆',165),('best','最快圈 s',95),('stable','稳定性 σ s',100),('source','来源',100),('status','状态',90),('note','备注 / 交通',200)]:
         tree.heading(k,text=label);tree.column(k,width=width,minwidth=70)
     ys=ttk.Scrollbar(tableframe,orient='vertical',command=tree.yview);xs=ttk.Scrollbar(tableframe,orient='horizontal',command=tree.xview)
     tree.configure(yscrollcommand=ys.set,xscrollcommand=xs.set);tree.grid(row=0,column=0,sticky='nsew');ys.grid(row=0,column=1,sticky='ns');xs.grid(row=1,column=0,sticky='ew');tableframe.rowconfigure(0,weight=1);tableframe.columnconfigure(0,weight=1)
@@ -84,8 +84,8 @@ def show_library(app,root,render_review,make_report):
             if track.get()!='全部赛道' and v['track']!=track.get():continue
             if car.get()!='全部车辆' and v['vehicle']!=car.get():continue
             if source.get()!='全部来源' and v['source']!=source.get():continue
-            if q and q not in ' '.join(str(v[k]) for k in ('date','track','vehicle','driver','note')).casefold():continue
-            tree.insert('', 'end',iid=v['key'],values=(v['date'][:19].replace('T',' '),v['track'],v['vehicle'],
+            if q and q not in ' '.join(str(v[k]) for k in ('session_type','date','track','vehicle','driver','note')).casefold():continue
+            tree.insert('', 'end',iid=v['key'],values=(v['date'][:19].replace('T',' '),v['session_type'],v['track'],v['vehicle'],
                 f"{v['time_s']:.3f}" if v['time_s'] else '—',f"{v['stability_s']:.3f}" if v['stability_s'] is not None else '未分析',
                 v['source'],v['status'],('交通 · ' if v['traffic'] else '')+v['note']))
         status.set(f"显示 {len(tree.get_children())} / 共 {len(state['items'])} 场；按 Ctrl 多选，最多六圈对比。")

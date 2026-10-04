@@ -10,12 +10,12 @@ import unittest
 import warnings
 import zipfile
 from unittest.mock import patch,Mock
-ROOT=Path(__file__).parent;sys.path.insert(0,str(ROOT/'src'))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 import session_archive as packs
 from library import inventory,save_note
 from laps import export_fastest,export_selected_laps,complete_laps
 from reference import ReferenceLap
-import tests as base_tests
+from tests import test_core as base_tests
 
 
 class ArchiveTests(unittest.TestCase):
@@ -46,11 +46,13 @@ class ArchiveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT) as t:
             data,folder=self.fixture(t);before=self.hashes(folder)
             package=packs.export_session(data,'Logs/Fixture',Path(t)/'exports')
+            self.assertIn('_Race_',Path(package['path']).name)
             target=Path(t)/'restored';result=packs.import_session(target,package['path'])
             restored=Path(result['folder']);actual=self.hashes(restored)
             self.assertEqual({k:actual[k] for k in before},before)
             self.assertEqual(self.hashes(folder),before)
             item=inventory(target)[0];self.assertTrue(item['traffic']);self.assertIn('测试备注',item['note'])
+            self.assertEqual(item['session_type'],'Race')
             self.assertEqual(item['source'],'ImportedLogs');self.assertEqual(len(complete_laps(restored)['laps']),4)
             self.assertEqual(ReferenceLap.load(restored/item['fastest_file']).info['number'],4)
             self.assertEqual(packs.import_session(target,package['path'])['status'],'skipped')
