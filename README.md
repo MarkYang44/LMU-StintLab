@@ -37,7 +37,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 ## 开发与发布
 
-双击 `Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.0-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
+双击 `Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.1-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
 
 ```powershell
 .venv\Scripts\python.exe tools/run_tests.py

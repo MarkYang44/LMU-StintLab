@@ -113,7 +113,7 @@ class DistributionTests(unittest.TestCase):
             for name in ('inputs.csv','session.json','Fastest.lap.json'):
                 self.assertEqual(digest(session/name),digest(target/'Logs'/'fixture'/name))
             self.assertEqual(json.loads((target/'settings.json').read_text())['fixed_hz'],2400)
-            self.assertEqual(json.loads((target/'reference_settings.json').read_text())['path'],str(target/'Logs'/'fixture'/'Fastest.lap.json'))
+            self.assertEqual(json.loads((target/'reference_settings.json').read_text())['path'],str((target/'Logs'/'fixture'/'Fastest.lap.json').resolve()))
             self.assertEqual((target/'FastestLapCompare.html').read_text(),'<html>legacy fixture</html>')
             self.assertTrue((target/'assets'/'tracks'/'catalog.json').exists())
             self.assertEqual(before,{p.relative_to(source):digest(p) for p in source.rglob('*') if p.is_file()})
@@ -133,6 +133,32 @@ class DistributionTests(unittest.TestCase):
             self.assertEqual(updated['path'],str(target/'Logs'/'fixture'/'Fastest.lap.json'))
             self.assertEqual(updated['nested'],value['nested'])
             self.assertEqual(value['path'],str(alias))
+
+    @unittest.skipUnless(sys.platform=='win32','Windows path alias regression')
+    def test_migration_with_real_windows_short_source_and_destination_paths(self):
+        with tempfile.TemporaryDirectory(prefix='StintLab_LongPath_Test_') as directory:
+            root=Path(directory).resolve();source=root/'Long Source Folder';target=root/'Long Destination Folder'
+            (source/'src').mkdir(parents=True);(source/'src'/'inputscope.py').write_text('')
+            folder=source/'Logs'/'fixture';folder.mkdir(parents=True)
+            (folder/'inputs.csv').write_text('time_s,throttle\n0,1\n');(folder/'Fastest.lap.json').write_text('{}')
+            target.mkdir()
+            kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+            kernel.GetShortPathNameW.argtypes=[ctypes.c_wchar_p,ctypes.c_wchar_p,ctypes.c_ulong]
+            kernel.GetShortPathNameW.restype=ctypes.c_ulong
+            def short(path):
+                buffer=ctypes.create_unicode_buffer(32768)
+                count=kernel.GetShortPathNameW(str(path),buffer,len(buffer))
+                if not 0<count<len(buffer):self.skipTest('Filesystem does not provide short path aliases')
+                return Path(buffer.value)
+            old_alias,new_alias=short(source),short(target)
+            if str(old_alias)==str(source):self.skipTest('8.3 name creation is disabled on this volume')
+            (source/'reference_settings.json').write_text(json.dumps({'path':str(old_alias/'Logs'/'fixture'/'Fastest.lap.json'),'locked':True}))
+            before=(source/'reference_settings.json').read_bytes()
+            migrate(old_alias,new_alias,root/'backup')
+            value=json.loads((target/'reference_settings.json').read_text())
+            self.assertEqual(value['path'],str((target/'Logs'/'fixture'/'Fastest.lap.json').resolve()))
+            self.assertEqual(Path(value['path']).read_bytes(),b'{}')
+            self.assertEqual((source/'reference_settings.json').read_bytes(),before)
 
     def test_migration_collision_stops_before_copying_or_overwriting(self):
         with tempfile.TemporaryDirectory() as directory:

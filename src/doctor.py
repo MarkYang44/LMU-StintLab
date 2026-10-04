@@ -31,4 +31,4 @@ def check():
     game=discover_game()
     return dict(ok=all(tests.values()),checks=tests,game_detected=game is not None,
         note='Game detection is optional; LMU_Data is read only. No game files were modified.',
-        python=sys.version.split()[0],data_directory=str(root),version='0.1.0')
+        python=sys.version.split()[0],data_directory=str(root),version='0.1.1')

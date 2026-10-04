@@ -1560,7 +1560,7 @@ def main():
         if not result['ok']:raise SystemExit(1)
         return
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.0');return
+        print('LMU StintLab 0.1.1');return
     if '--import-duckdb' in sys.argv:
         index=sys.argv.index('--import-duckdb')
         if index+1>=len(sys.argv):raise ValueError('--import-duckdb 后需要已结束的 .duckdb 文件路径')
