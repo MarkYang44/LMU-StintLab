@@ -11,6 +11,7 @@ from library import session_label
 from sampling import DEFAULTS, drawing_rate
 from session_reports import make_report
 from storage import BatchWriter, StorageError, atomic_json
+from race_journal import RaceJournal
 
 
 class Recorder:
@@ -30,9 +31,11 @@ class Recorder:
         self.pending_reports = []
         self.meta_lock = threading.RLock()
         self.meta_io_lock = threading.Lock()
+        self.race_journal = None
 
     def start(self, sample, settings=None, target_hz=None):
         self.batch=None
+        self.race_journal = None
         self.vehicle_batch=None;self.vehicle_last=None;self.vehicle_last_sample=None
         safe = ''.join('_' if c in '<>:"/\\|?*' else c for c in sample['track'])[:60]
         self.folder = self.output / (datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f') + '_'
@@ -64,8 +67,11 @@ class Recorder:
             if sample.get('vehicle_data'):
                 self.vehicle_batch=BatchWriter(self.folder,vehiclelab.COLUMNS,on_checkpoint=self.save_meta,
                     filename='vehicle.csv',checkpoint_name='vehicle_checkpoint.json')
+            self.race_journal=RaceJournal(self.folder,sample)
+            self.meta['race_journal']=dict(version=1,file='race_events.csv',scoring_available=bool(sample.get('race_state')))
         except StorageError as e:
             if self.batch:self.batch.finish()
+            if self.vehicle_batch:self.vehicle_batch.finish()
             self.meta.update(status='write_error',end_reason=str(e));self.save_meta();raise
         self.file = self.batch.file
 
@@ -92,6 +98,7 @@ class Recorder:
             atomic_json(self.folder/'session.json',snapshot)
 
     def add(self, sample):
+        self.observe_race(sample)
         if sample['et'] == self.last_et:
             return False
         self.last_et = sample['et']
@@ -118,6 +125,10 @@ class Recorder:
             self.meta['effective_sample_hz'] = (self.samples - 1) / elapsed if elapsed > 0 else 0
         return True
 
+    def observe_race(self,sample):
+        if self.race_journal:
+            self.race_journal.observe(sample)
+
     def finish(self, reason, failure=None):
         if self.file is None:
             return None
@@ -130,6 +141,9 @@ class Recorder:
                     self.vehicle_batch.add(vehiclelab.sample_row({**self.vehicle_last_sample,'vehicle':self.vehicle_last_sample.get('vehicle_data',{})},self.origin))
             except OSError as e:error=str(e)
             try:self.meta['vehicle_writer_stats']=self.vehicle_batch.finish()
+            except OSError as e:error=str(e)
+        if self.race_journal:
+            try:self.meta['race_writer_stats']=self.race_journal.finish(reason)
             except OSError as e:error=str(e)
         self.file = None
         self.meta.update(status='write_error' if error else 'complete', end_reason=error or reason,

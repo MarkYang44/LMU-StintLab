@@ -209,6 +209,8 @@ class Engine:
                         self.recorder.set_sampling(config, self.target_hz, sample['et']-self.recorder.origin)
                         with self.recorder.meta_lock:self.recorder.meta['missed_poll_cycles'] = self.missed_cycles - self.session_missed_base
                         self.recorder.add(sample)
+                    elif self.recorder.file is not None:
+                        self.recorder.observe_race(sample)
                     with self.lock:
                         if fresh:
                             vehicle_sample = dict(sample, vehicle_name=sample['vehicle'],

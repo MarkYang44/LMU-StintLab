@@ -61,7 +61,8 @@ def run(bundle,root):
     folders=list((root/'DemoLogs').glob('*/session.json'))
     if len(folders)!=1:raise RuntimeError('Expected one synthetic recording')
     folder=folders[0].parent
-    required=('inputs.csv','session.json','review.html','fastest_lap_summary.json','fastest_lap.html')
+    required=('inputs.csv','session.json','review.html','fastest_lap_summary.json','fastest_lap.html',
+              '圈速单.png','比赛日志.png','race_log.json','race_log.txt','race_images.json','race_events.csv')
     checks={name:(folder/name).is_file() for name in required}
     meta=json.loads((folder/'session.json').read_text(encoding='utf-8'))
     summary=json.loads((folder/'fastest_lap_summary.json').read_text(encoding='utf-8'))

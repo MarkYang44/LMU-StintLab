@@ -136,6 +136,20 @@ def recover_session(source,root):
                 if not chunk:raise OSError('附加遥测源记录变短')
                 out.write(chunk);remaining-=len(chunk)
         metadata['vehicle_recovered_samples']=committed.get('rows')
+    events=source/'race_events.csv';event_checkpoint=source/'race_events_checkpoint.json'
+    if events.exists() and event_checkpoint.exists():
+        committed=json.loads(event_checkpoint.read_text(encoding='utf-8'));limit=committed.get('committed_bytes')
+        if not isinstance(limit,int) or not 0<limit<=events.stat().st_size:raise ValueError('赛事事件检查点无效')
+        with events.open('rb') as stream,(folder/'race_events.csv').open('wb') as out:
+            remaining=limit
+            while remaining:
+                chunk=stream.read(min(1048576,remaining))
+                if not chunk:raise OSError('赛事事件源记录变短')
+                out.write(chunk);remaining-=len(chunk)
+        # Incomplete sessions have no final summary. Recover availability only,
+        # rather than treating their observed positions as a final result.
+        atomic_json(folder/'race_summary.json',dict(version=1,available=bool(metadata.get('race_journal',{}).get('scoring_available')),
+            recovered=True,finish_flag=0,note='中断记录；只恢复检查点之前的事件。'))
     atomic_json(folder/'session.json',metadata)
     return folder
 

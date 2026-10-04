@@ -165,9 +165,13 @@ def show_library(app,root,render_review,make_report):
         from session_archive import import_session,transfer_batch
         background(lambda:transfer_batch(packages,lambda package:import_session(root,package)),
                    lambda result:transferred(result,'导入'))
+    def race_images(v):
+        from race_report import generate
+        folder=Path(v['folder']);generate(folder);return folder
     transferbar=tk.Frame(window,bg='#101a28');transferbar.pack(fill='x',padx=15)
     for text,command in [('导出比赛包（可多选）',export_packages),('导入比赛包（可多选）',import_packages)]:
         tk.Button(transferbar,text=text,command=command).pack(side='left',padx=3,pady=3)
+    tk.Button(transferbar,text='圈速单 / 比赛日志',command=lambda:action(race_images,os.startfile)).pack(side='left',padx=3,pady=3)
     tk.Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg='#101a28',fg='#8fabc9').pack(side='left',padx=10)
     buttons=tk.Frame(window,bg='#101a28');buttons.pack(fill='x',padx=15)
     for text,command in [('刷新',refresh),('分析 / 完整复盘',lambda:action(analyze,lambda path:(os.startfile(path),refresh()))),('同场圈 A／B',same_session),('最快圈页',lambda:action(lambda v:Path(v['folder'])/'fastest_lap.html',os.startfile)),('多选对比',compare),('设为锁定参考',lambda:action(choose_reference,lock_reference)),('保存备注',save),('压缩备份',lambda:action(lambda v:compress_session(v['folder']),lambda v:status.set(f"已校验压缩备份：{v['compressed_bytes']/1048576:.2f} MB；保留原 CSV"))),('恢复中断记录',lambda:action(recover,lambda path:refresh()))]:

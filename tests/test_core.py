@@ -699,6 +699,8 @@ class Tests(unittest.TestCase):
                 self.assertTrue(recorder.add(sample))
                 self.assertFalse(recorder.add(sample))
             folder = recorder.finish('test completed')
+            recorder.report_thread.join(10)
+            self.assertFalse(recorder.report_thread.is_alive())
             with (folder / 'inputs.csv').open() as stream:
                 self.assertEqual(len(list(csv.DictReader(stream))), 1000)
             for _ in range(100):
@@ -706,6 +708,8 @@ class Tests(unittest.TestCase):
                     break
                 time.sleep(0.02)
             self.assertTrue((folder / 'review.html').is_file())
+            self.assertTrue((folder / '圈速单.png').is_file())
+            self.assertTrue((folder / '比赛日志.png').is_file())
             text = (folder / 'review.html').read_text(encoding='utf-8')
             self.assertNotIn('</script><script>danger()', text)
             meta = json.loads((folder / 'session.json').read_text())

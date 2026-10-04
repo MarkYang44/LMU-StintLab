@@ -4,13 +4,14 @@ import math
 import time
 from itertools import islice
 import vehiclelab
+from race_journal import capture
 
 
 def decode(value):
     return bytes(value).split(b'\0', 1)[0].decode('utf-8', 'replace')
 
 
-def extract(data):
+def extract(data, race_cache=None):
     info = data.scoring.scoringInfo
     telemetry = data.telemetry
     if not info.mInRealtime or not telemetry.playerHasVehicle:
@@ -46,7 +47,8 @@ def extract(data):
                 'wetness':float(info.mAvgPathWetness) if math.isfinite(info.mAvgPathWetness) and 0<=info.mAvgPathWetness<=1 else '',
                 'tc_level':int(car.mTC),'abs_level':int(car.mABS),'tc_active':int(car.mTCActive),
                 'abs_active':int(car.mABSActive),'gear':int(car.mGear)},
-            'vehicle_data':vehiclelab.extract_vehicle(car,info,player)}
+            'vehicle_data':vehiclelab.extract_vehicle(car,info,player),
+            'race_state':capture(data,car,player,info,race_cache)}
 
 
 class SharedReader:
@@ -73,6 +75,7 @@ class SharedReader:
             raise OSError('Cannot read LMU shared memory')
         self.cached_sample = None
         self.cached_at = 0
+        self.race_cache = None
 
     def read(self):
         if (self.cached_sample is not None and time.monotonic()-self.cached_at < 0.25
@@ -85,7 +88,8 @@ class SharedReader:
             b = ctypes.string_at(self.pointer, self.size)
             if a == b:
                 data = self.structure.from_buffer_copy(a)
-                sample = extract(data)
+                sample = extract(data,getattr(self,'race_cache',None))
+                self.race_cache = sample.get('race_state') if sample else None
                 self.cached_sample = sample
                 self.cached_at = time.monotonic()
                 if sample is not None:

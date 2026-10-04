@@ -10,7 +10,8 @@ ROOT=Path(__file__).resolve().parents[1]
 ROOT_FILES={'.gitignore','.gitattributes','README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION',
     'requirements.txt','requirements-build.txt','requirements-lock.txt','Setup.cmd','Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd'}
 PRIVATE_PARTS={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','_local','_backup','_verification','__pycache__','.venv','vendor','runtime'}
-PRIVATE_NAMES={'local_settings.json','settings.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json','session.json','recording_checkpoint.json','vehicle_checkpoint.json'}
+PRIVATE_NAMES={'local_settings.json','settings.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json','session.json','recording_checkpoint.json','vehicle_checkpoint.json',
+    'race_log.json','race_summary.json','race_images.json','race_events_checkpoint.json','race_images_error.txt','car_calibration.json'}
 DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.exe','.dll','.pyd','.pyc','.pdf','.png','.jpg','.svg'}
 SECRET_PATTERNS=[rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',rb'gh[pousr]_[A-Za-z0-9]{30,}',rb'github_pat_[A-Za-z0-9_]{30,}',rb'AKIA[0-9A-Z]{16}',rb'sk-[A-Za-z0-9_-]{40,}']
 PRIVATE_PATTERNS=[rb'(?i)[A-Z]:[\\/]+Users[\\/]+[^\\/\s]+',rb'(?i)[A-Z]:[\\/]+(?:SteamLibrary|SPD)[\\/]+']

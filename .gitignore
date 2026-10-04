@@ -47,6 +47,12 @@
 **/vehicle_settings.json
 **/endurance_settings.json
 **/last_native_import.json
+**/race_log.json
+**/race_summary.json
+**/race_images.json
+**/race_events_checkpoint.json
+**/race_images_error.txt
+**/car_calibration.json
 *.csv
 *.lap.json
 *.duckdb

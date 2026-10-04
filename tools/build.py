@@ -18,7 +18,8 @@ PORTABLE_ROOT_FILES={'LMU-StintLab.exe','README.md','LICENSE','THIRD_PARTY_NOTIC
 
 def bundle_audit(folder):
     private={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','.venv','_local','_backup','_verification'}
-    denied={'local_settings.json','settings.json','session.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json'}
+    denied={'local_settings.json','settings.json','session.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json',
+        'race_log.json','race_summary.json','race_images.json','race_events_checkpoint.json','race_images_error.txt','car_calibration.json'}
     for file in Path(folder).rglob('*'):
         if not file.is_file():continue
         rel=file.relative_to(folder)

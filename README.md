@@ -20,6 +20,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 - 紧凑置顶 HUD、纯曲线和纯曲线 + 柱形图 / 540° 示意方向盘模式；缩放与磨砂风格显示。
 - 1–4000 Hz 目标轮询频率、动态采样、同步绘制及实际速率诊断。游戏新数据频率、CPU、Tk 和屏幕刷新率决定实际效果；高轮询不会制造新的游戏遥测。
 - 结束后自动保存 CSV、离线 HTML 回放、最快圈文件及油刹曲线图；最快圈带圈号、车辆、赛道和会话信息。
+- 赛后自动生成高清 `圈速单.png`、`比赛日志.png` 与完整 JSON / 文本日志，保存在同一赛事目录；分段、名次与赛事事件来自游戏。长比赛自动分页，旧记录可在会话库补图。无需运行 RaceCom 或 Image Generate.exe。
 - 同车同赛道跨比赛参考圈、完整圈 A / 圈 B 选择与提取、距离对齐、差距分析和规则生成的驾驶建议。
 - 赛道轨迹播放、位置对比、缩放和拖拽；胎温 / 胎压 / 磨损、燃油 / 能量及耐力赛相关面板与日志分析。部分通道需要导入原生遥测文件。
 - 只读导入 LMU `.duckdb` 记录、会话库、恢复与压缩。不会上传遥测，也不会连接外部 AI 服务。
@@ -40,7 +41,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 开发测试集中在 `tests/`，自检、构建与发布工具集中在 `tools/`；根目录只保留日常启动与源码安装入口。便携 ZIP 不包含这些开发文件或开发文档，保留原有各个启动模式、操作说明和必要许可证。
 
-双击 `tools/Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.3-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
+双击 `tools/Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.4-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
 
 ```powershell
 .venv\Scripts\python.exe tools/run_tests.py

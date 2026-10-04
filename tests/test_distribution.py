@@ -32,7 +32,8 @@ class DistributionTests(unittest.TestCase):
         self.assertFalse(audit(['src/module.py'],lambda _:b'\xff')['ok'])
 
     def test_git_ignores_nested_and_root_private_data(self):
-        names=['data/Logs/input.csv','src/Logs/session.json','local_settings.json','dist/test.zip','_local/wheels/test.whl','src/a.lap.json','src/tracks/sources/map.pdf']
+        names=['data/Logs/input.csv','src/Logs/session.json','local_settings.json','dist/test.zip','_local/wheels/test.whl','src/a.lap.json','src/tracks/sources/map.pdf',
+               'src/race_log.json','src/race_summary.json','src/race_images.json','src/car_calibration.json']
         result=subprocess.run(git_command('check-ignore','--stdin','-z'),cwd=ROOT,input=('\0'.join(names)+'\0').encode(),capture_output=True)
         self.assertEqual(set(result.stdout.decode().strip('\0').split('\0')),set(names))
 

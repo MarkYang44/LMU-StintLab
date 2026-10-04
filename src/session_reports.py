@@ -23,7 +23,15 @@ def make_report(folder):
                                'FastestLapCompare.html'),ASSETS/'compare.html',selection)
     except Exception as error:
         (folder/'fastest_lap_error.txt').write_text(str(error),encoding='utf-8')
-    render_review(folder, fastest)
+    try:render_review(folder, fastest)
+    finally:
+        # Separate from HTML generation: a review-page failure must not prevent
+        # native race images, and an image error must leave existing reports intact.
+        try:
+            from race_report import generate
+            generate(folder)
+        except Exception as error:
+            (folder/'race_images_error.txt').write_text(str(error),encoding='utf-8')
 
 
 def render_review(folder, fastest=None):

@@ -30,7 +30,12 @@ def __getattr__(name):
 
 def main():
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.3');return
+        print('LMU StintLab 0.1.4');return
+    if '--race-images' in sys.argv:
+        index=sys.argv.index('--race-images')
+        if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')
+        from race_report import generate
+        generate(sys.argv[index+1]);return
     if '--import-duckdb' in sys.argv:
         index=sys.argv.index('--import-duckdb')
         if index+1>=len(sys.argv):raise ValueError('--import-duckdb 后需要已结束的 .duckdb 文件路径')
