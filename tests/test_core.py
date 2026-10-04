@@ -433,7 +433,7 @@ class Tests(unittest.TestCase):
         hud.drawing = False
         hud.draw_job = 'pending'
         hud.trace_key = 'cached'
-        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp, patch.object(app,'ROOT',Path(temp)):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as temp, patch('hud.ROOT',Path(temp)):
             hud.toggle_input_channel()
             checked = app.load_settings(Path(temp)/'settings.json')
             self.assertEqual(checked['input_channel'],'filtered')

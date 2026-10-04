@@ -2,7 +2,6 @@
 import json
 import os
 from pathlib import Path
-import threading
 import tkinter as tk
 from tkinter import ttk,messagebox,filedialog
 from library import inventory,save_note
@@ -89,25 +88,16 @@ def show_library(app,root,render_review,make_report):
                 f"{v['time_s']:.3f}" if v['time_s'] else '—',f"{v['stability_s']:.3f}" if v['stability_s'] is not None else '未分析',
                 v['source'],v['status'],('交通 · ' if v['traffic'] else '')+v['note']))
         status.set(f"显示 {len(tree.get_children())} / 共 {len(state['items'])} 场；按 Ctrl 多选，最多六圈对比。")
-    def background(work,done,daemon=True):
+    def background(work,done):
         if state['busy']:status.set('上一个任务仍在处理，请稍候');return
         state['busy']=True;status.set('后台处理中…')
-        def run():
-            try:value,error=work(),None
-            except Exception as e:value,error=None,str(e)
+        def finish(value,error):
+            state['busy']=False
             if app.closing:return
-            def finish():
-                state['busy']=False
-                if not window.winfo_exists():return
-                if error:status.set(error)
-                else:done(value)
-            try:app.root.after(0,finish)
-            except (RuntimeError,tk.TclError):pass
-        worker=threading.Thread(target=run,daemon=daemon)
-        if not daemon:
-            app.archive_workers=[t for t in getattr(app,'archive_workers',[]) if t.is_alive()]
-            app.archive_workers.append(worker)
-        worker.start()
+            if not window.winfo_exists():return
+            if error:status.set(error)
+            else:done(value)
+        app.run_background(work,finish)
     def refresh():
         def done(items):
             state['items']=items;trackbox['values']=['全部赛道',*sorted({v['track'] for v in items})];carbox['values']=['全部车辆',*sorted({v['vehicle'] for v in items})];fill()
@@ -117,13 +107,13 @@ def show_library(app,root,render_review,make_report):
         if len(values)!=1:raise ValueError('请选择一场记录')
         return values[0]
     def action(work,done):
-        try:v=one()
+        try:v=dict(one(),reference_kind=app.reference_kind.get())
         except ValueError as e:status.set(str(e));return
         background(lambda:work(v),done)
     def analyze(v):
         folder=Path(v['folder']);analyze_session(folder);render_review(folder);return folder/'review.html'
     def choose_reference(v):
-        file=v['stable_file'] if app.reference_kind.get()=='stable' else v['fastest_file']
+        file=v['stable_file'] if v['reference_kind']=='stable' else v['fastest_file']
         if not file:raise ValueError('没有所选类型的参考圈；稳定圈需先分析且至少有三圈')
         return ReferenceLap.load(Path(v['folder'])/file)
     def lock_reference(ref):
@@ -133,10 +123,11 @@ def show_library(app,root,render_review,make_report):
     def compare():
         values=selected()
         if not 1<=len(values)<=6:status.set('请选择 1–6 场记录');return
+        kind=app.reference_kind.get()
         def work():
             records=[]
             for v in values:
-                file=v['stable_file'] if app.reference_kind.get()=='stable' else v['fastest_file']
+                file=v['stable_file'] if kind=='stable' else v['fastest_file']
                 if not file:raise ValueError(v['track']+' 没有所选类型的参考圈')
                 records.append(json.loads((Path(v['folder'])/file).read_text(encoding='utf-8')))
             path=root/'LibraryCompare.html';write_compare(path,ASSETS/'compare.html',records);return path
@@ -165,7 +156,7 @@ def show_library(app,root,render_review,make_report):
         if not destination:return
         from session_archive import export_session,transfer_batch
         background(lambda:transfer_batch([v['key'] for v in values],lambda key:export_session(root,key,destination)),
-                   lambda result:transferred(result,'导出'),daemon=False)
+                   lambda result:transferred(result,'导出'))
     def import_packages():
         if state['busy']:status.set('上一个任务仍在处理，请稍候');return
         packages=filedialog.askopenfilenames(title='选择一个或多个 StintLab 比赛包',parent=window,
@@ -173,7 +164,7 @@ def show_library(app,root,render_review,make_report):
         if not packages:return
         from session_archive import import_session,transfer_batch
         background(lambda:transfer_batch(packages,lambda package:import_session(root,package)),
-                   lambda result:transferred(result,'导入'),daemon=False)
+                   lambda result:transferred(result,'导入'))
     transferbar=tk.Frame(window,bg='#101a28');transferbar.pack(fill='x',padx=15)
     for text,command in [('导出比赛包（可多选）',export_packages),('导入比赛包（可多选）',import_packages)]:
         tk.Button(transferbar,text=text,command=command).pack(side='left',padx=3,pady=3)
@@ -218,21 +209,15 @@ def show_lap_selection(app,root,folder):
     def background(work,done):
         if state['busy']:return
         state['busy']=True;status.set('后台处理中…');enable()
-        def run():
-            try:result,error=work(),None
-            except Exception as e:result,error=None,str(e)
-            if app.closing:return
-            def finish():
-                if app.closing or not window.winfo_exists():return
-                state['busy']=False
-                if error:status.set(error)
-                else:
-                    try:done(result)
-                    except OSError as e:status.set('文件已生成，打开失败：'+str(e))
-                enable()
-            try:app.root.after(0,finish)
-            except (RuntimeError,tk.TclError):pass
-        threading.Thread(target=run,daemon=False).start()
+        def finish(result,error):
+            if app.closing or not window.winfo_exists():return
+            state['busy']=False
+            if error:status.set(error)
+            else:
+                try:done(result)
+                except OSError as e:status.set('文件已生成，打开失败：'+str(e))
+            enable()
+        app.run_background(work,finish)
     def selected(keys):
         try:return [state['laps'][vars[k].get()]['number'] for k in keys]
         except KeyError:raise ValueError('请先选择完整圈') from None

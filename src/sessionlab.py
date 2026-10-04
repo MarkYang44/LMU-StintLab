@@ -32,8 +32,9 @@ def lap_conditions(rows,native=None,start=0,offset=0):
             s=native.get('channels',{}).get(name)
             if s and s['data']:
                 shift=offset if s['event'] else 0
-                times=[r[0]-shift for r in s['data']];i=max(0,bisect.bisect_right(times,start)-1)
-                if times[i]<=start+.2:result[key]=s['data'][i][1]
+                data=s['data']
+                i=max(0,bisect.bisect_right(data,start+shift,key=lambda row:row[0])-1)
+                if data[i][0]-shift<=start+.2:result[key]=data[i][1]
     return result
 
 

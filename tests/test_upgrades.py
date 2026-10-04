@@ -180,7 +180,7 @@ class Upgrades(unittest.TestCase):
         class Feed:
             def read(self):return dict(sample,session=phase[0],et=time.monotonic())
             def close(self):pass
-        with tempfile.TemporaryDirectory(dir=ROOT) as t,patch.object(app,'make_report'):
+        with tempfile.TemporaryDirectory(dir=ROOT) as t,patch('recorder.make_report'):
             root=Path(t);engine=app.Engine(output=root/'Logs',reader_factory=Feed)
             try:
                 for code in (0,8,9,13):
@@ -252,7 +252,7 @@ class Upgrades(unittest.TestCase):
             value.engine=Engine();value.engine.lock=threading.Lock();value.engine.reference=ReferenceLap(ref_value(),'old')
             value.engine.reference_points=[];value.engine.reference_revision=0
             path=Path(t)/'chosen.lap.json';path.write_text(json.dumps(ref_value()))
-            with patch.object(app,'ROOT',Path(t)),patch.object(app.filedialog,'askopenfilename',return_value=str(path)):
+            with patch('hud.ROOT',Path(t)),patch.object(app.filedialog,'askopenfilename',return_value=str(path)):
                 value.select_reference()
             self.assertEqual(value.reference_settings['path'],str(path));self.assertTrue(value.reference_locked.get())
 

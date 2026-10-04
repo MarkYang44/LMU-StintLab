@@ -12,6 +12,38 @@ class NumericRing(Sequence):
 
     def __len__(self): return self._size
 
+    def timestamp(self, index):
+        """Read a time without constructing or expanding an entire row."""
+        return self._data[self._index(index)]
+
+    def lower_bound(self, cutoff):
+        """First timestamp >= cutoff, in logical order across ring wrap.
+
+        Time-indexed callers must append nondecreasing timestamps and clear the
+        buffer at a session reset. Values and equal timestamps are kept exactly.
+        """
+        low, high = 0, self._size
+        while low < high:
+            mid = (low + high) // 2
+            if self.timestamp(mid) < cutoff:
+                low = mid + 1
+            else:
+                high = mid
+        return low
+
+    def iter_since(self, cutoff):
+        """Materialize only the visible rows; callers hold the owner's lock."""
+        for i in range(self.lower_bound(cutoff), self._size):
+            yield self[i]
+
+    def rate_since(self, cutoff):
+        first = self.lower_bound(cutoff)
+        count = self._size - first
+        if count < 2:
+            return 0
+        span = self.timestamp(-1) - self.timestamp(first)
+        return (count - 1) / span if span > 0 else 0
+
     def _index(self, index):
         if index < 0: index += self._size
         if not 0 <= index < self._size: raise IndexError(index)
@@ -58,6 +90,21 @@ class NumericRing(Sequence):
     def clear(self):
         self._data = array('d')
         self._capacity = self._start = self._size = 0
+
+
+def window_rows(history, cutoff):
+    """Copy a window while accepting legacy deque-based integrations."""
+    if isinstance(history, NumericRing):
+        return list(history.iter_since(cutoff))
+    return [row for row in history if row[0] >= cutoff]
+
+
+def window_rate(history, cutoff):
+    if isinstance(history, NumericRing):
+        return history.rate_since(cutoff)
+    values = [row[0] for row in history if row[0] >= cutoff]
+    span = values[-1] - values[0] if len(values) > 1 else 0
+    return (len(values) - 1) / span if span > 0 else 0
 
 
 class ControlHistory(NumericRing):
