@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>InputScope · 圈速曲线对比</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1019;color:#e6edf8;font:14px system-ui,"Microsoft YaHei",sans-serif}main{max-width:1480px;margin:auto;padding:30px 28px 45px}header{display:flex;align-items:center;justify-content:space-between;gap:20px}h1{font-size:28px;letter-spacing:-.7px;margin:6px 0 10px}h2{font-size:17px;margin:0 0 15px}p{line-height:1.8;margin:8px 0}small,.muted{color:#91a2bc}.eyebrow{font-size:11px;letter-spacing:2px;color:#68c4fa}button,select,.file-button{border:1px solid #354761;border-radius:9px;padding:9px 13px;background:#1b283b;color:#eaf2ff;font:inherit;cursor:pointer}button:hover,.file-button:hover{background:#283c55}button:disabled{opacity:.35;cursor:default}.primary{background:#264c70;border-color:#44769f}.actions,.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar{margin-top:20px}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}input{accent-color:#67c7ff}.card{border:1px solid #28374b;border-radius:16px;background:linear-gradient(130deg,#172233,#111a27);padding:20px;margin-top:18px}.lap-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:18px}.lap-card{border:1px solid #32425a;background:#141e2d;border-radius:12px;padding:14px;border-left:3px solid var(--lap)}.lap-title{font-size:15px;font-weight:650;display:flex;gap:8px;align-items:center}.lap-time{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;margin:8px 0}.tag{display:inline-block;border:1px solid #38516b;border-radius:6px;padding:2px 6px;font-size:11px;margin-right:5px}.positive{color:#ffab9c}.negative{color:#70e2bc}.chart-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}canvas{width:100%;height:510px;display:block;touch-action:none}#readout{min-height:42px;line-height:1.8;font-variant-numeric:tabular-nums}.warning{color:#f3c57f;background:#322919;border:1px solid #59452a;border-radius:9px;padding:10px 13px;margin-top:14px;line-height:1.7}.empty{padding:40px;text-align:center;color:#9faec4}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}td,th{text-align:left;padding:12px 10px;border-bottom:1px solid #2b3b51}th{font-size:12px;color:#94a8c4;font-weight:500}.table-wrap{overflow:auto}.insight{border-left:3px solid var(--lap);padding-left:14px;margin:18px 0}.insight h3{font-size:15px;margin:0 0 8px}.insight li{line-height:1.8;margin:7px 0}footer{color:#8294ad;line-height:1.8;margin-top:24px;font-size:12px}a{color:#78c9fa}@media(max-width:700px){main{padding:18px 12px}header{display:block}h1{font-size:23px}.card{padding:14px}canvas{height:510px}.chart-head{align-items:flex-start}}
+.map-calibration input[type=number]{background:#101a28;color:#eef4ff;border:1px solid #344660;border-radius:7px;padding:7px}#reference{max-width:100%}.toolbar>label{max-width:100%;min-width:0}.table-wrap{max-width:100%}</style>
+<style>.chart-map{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:22px}.map-pane h2{margin:0 0 8px}#track-map{height:360px}#map-mode,#map-source{font-size:12px;line-height:1.7;margin:6px 0 12px}#map-source{min-height:44px}.map-row{line-height:1.7;font-size:12px;margin:8px 0;font-variant-numeric:tabular-nums}.replay{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:18px;padding-top:16px;border-top:1px solid #2a3a51}.replay input{min-width:160px;flex:1}#replay-time{font-variant-numeric:tabular-nums;font-size:12px;color:#a1b5cf}@media(max-width:1000px){.chart-map{grid-template-columns:1fr}}</style>
+<main>
+<header><div><div class="eyebrow">INPUTSCOPE / LAP LAB</div><h1>圈速曲线对比</h1><div class="muted" id="context">指定完整圈、最快圈和稳定圈，按同一条赛道距离线对齐。</div></div>
+<div class="actions"><label class="file-button primary" for="files">＋ 导入圈数据 JSON</label><input id="files" type="file" accept=".json" multiple><button id="save-page">保存对比页</button><button id="save-notes">导出结论</button></div></header>
+<div class="toolbar"><label>基准圈 <select id="reference"></select></label><label>输入通道 <select id="channel"><option value="raw">原始油刹</option><option value="filtered">游戏过滤后油刹</option></select></label><button id="reset">完整一圈</button><small>每圈一种颜色 · 滚轮缩放 · 拖动平移 · 指针查看输入</small></div>
+<div id="message" role="status"></div><div id="laps" class="lap-list"></div>
+<section class="card"><div class="chart-head"><h2>油门 / 刹车 / 累计时间差</h2><small id="axis-note">按赛道距离对齐</small></div><div class="chart-map"><div><canvas id="chart"></canvas><div id="readout" class="muted"></div></div><aside class="map-pane"><h2>同时间赛道位置对比</h2><div id="map-mode" class="muted"></div><canvas id="track-map" aria-label="各圈车辆位置与领先距离"></canvas><div id="map-states"></div><div id="map-source" class="muted"></div></aside></div><div class="replay"><button id="replay-play">▶ 同时间回放</button><button id="replay-start">回到起点</button><label><select id="replay-speed"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option></select> 倍速</label><input id="replay-seek" type="range" min="0" max="1" value="0" step="0.001"><span id="replay-time"></span><small>各圈同时起跑 · 标记颜色与曲线一致 · 拖动时间条或指向曲线定位</small></div></section>
+<section class="card"><h2>完整圈数据</h2><div class="table-wrap"><table><thead><tr><th>圈次</th><th>圈速 / 相对基准</th><th>全油时间占比</th><th>制动时间</th><th>滑行时间</th><th>油刹重叠</th></tr></thead><tbody id="metrics"></tbody></table></div></section>
+<section class="card"><h2>逐弯对比</h2><p class="muted" id="corner-source"></p><details><summary>调整弯段名称与边界 / 导入导出</summary><p class="muted">自动编号不是官方弯号。单位为米，按顺序且不重叠，满足 start &lt; apex &lt; end。可改成自己的弯名。</p><textarea id="corner-editor" aria-label="弯段定义 JSON" style="width:100%;height:145px;background:#101a28;color:#dce6f7;border:1px solid #344660;border-radius:8px"></textarea><div class="toolbar"><button id="corner-apply">应用弯段</button><button id="corner-auto">恢复自动识别</button><button id="corner-export">导出弯段</button><label class="file-button" for="corner-file">导入弯段</label><input id="corner-file" type="file" accept=".json"></div><p id="corner-error" class="muted"></p></details><div class="table-wrap"><table><thead><tr><th>弯段 / 圈次（点击定位）</th><th>开始制动 m</th><th>松刹 m</th><th>入弯 / 最低 km/h</th><th>恢复全油 m</th><th>出弯 km/h</th><th>区间用时 / 差值</th></tr></thead><tbody id="corner-metrics"></tbody></table></div></section>
+<section class="card" id="vehicle-panel"></section>
+<section class="card"><h2>自动对比结论与练习建议</h2><div id="insights"></div></section>
+<footer>分析阈值：刹车 / 油门 5%，全油 90%；连续制动区至少 8 m。油刹、速度与累计时间差只能说明记录中的关联。新实时记录与官方导入记录在提供对应通道时保存燃油、胎种、天气和辅助设置；缺失即为条件未知。交通可在比赛管理中人工标记，尚未自动识别。建议用于同车、相近条件下的复盘，不据此认定某个输入一定更快。新日志轨迹来自游戏世界坐标；旧日志按距离估算位置，没有精确走线和无效圈标记，圈速与距离也可能为估算值。曲线按距离对齐，车辆标记与彩色游标按同一时间回放。记录圈号与 inputs.csv 的 LMU 圈号一致。数据保留在本机，本页无需网络。</footer>
+</main>
+<script>
+/*TRACK_VIEW_JS*/
+/*VEHICLE_VIEW_JS*/
+const initial=/*LAP_DATA*/null;
+const palette=['#69b8ff','#ffb86b','#c99aff','#67e3bc','#f28cb3','#f2db73'];
+const columns=['distance_m','lap_time_s','throttle','brake','filtered_throttle','filtered_brake','speed_kmh'];
+const $=s=>document.querySelector(s),canvas=$('#chart'),ctx=canvas.getContext('2d'),back=document.createElement('canvas'),bg=back.getContext('2d');
+let laps=[],chosen=new Set(),referenceId='',left=0,right=1,cursor=null,drag=null,notes='',analysisCache=new Map(),framePending=false;
+let replayTime=0,replayMax=1,replayPlaying=false,replayTick=0,cornerDefinitions=null,cornerKey='',cornerSections=[];
+const trackView=new InputScopeTrack.View($('#track-map'),$('#map-mode'),$('#map-source'));
+const vehicleView=new InputScopeVehicle.View($('#vehicle-panel'),d=>{if(!base())return;replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放';replayTime=valueAt(base(),d)[1];drawCursor()});
+const minute=t=>Math.floor(t/60)+':'+(t%60).toFixed(3).padStart(6,'0');
+const label=v=>'第 '+v.lap.number+' 圈 · '+v.session.vehicle;
+const day=v=>(v.session.started_utc||'未知时间').replace('T',' ').replace(/\.\d+.*$/,' UTC');
+function validateLap(v){
+ if(!v||v.format!=='inputscope.fastest-lap'||v.version!==1||!v.session||!v.lap||JSON.stringify(v.data_columns)!==JSON.stringify(columns))throw Error('不是支持的 InputScope 圈数据文件');
+ if(!Number.isInteger(v.lap.number)||v.lap.number<0||!Number.isInteger(v.lap.sample_count)||v.lap.sample_count<3||!Number.isFinite(v.lap.time_s)||v.lap.time_s<=0||!Number.isFinite(v.lap.track_length_m)||v.lap.track_length_m<=100||!Array.isArray(v.data)||v.data.length<3||v.data.length>2000000)throw Error('圈速、距离或采样数据无效');
+ let t=-1,d=-1;
+ for(const r of v.data){if(!Array.isArray(r)||r.length!==7||!r.every(Number.isFinite)||r[0]<d||r[1]<=t||r[0]<0||r[0]>v.lap.track_length_m+.1||r[1]>v.lap.time_s+.1||r.slice(2,6).some(x=>x<-.01||x>1.01)||r[6]<0)throw Error('采样值或顺序无效');d=r[0];t=r[1]}
+ if(v.data[0][0]>.1||v.data[0][1]>.001||Math.abs(v.data.at(-1)[0]-v.lap.track_length_m)>.1||Math.abs(v.data.at(-1)[1]-v.lap.time_s)>.001)throw Error('缺少完整圈边界');
+ if(v.trajectory!=null){const p=v.trajectory;if(JSON.stringify(p.columns)!==JSON.stringify(['lap_time_s','distance_m','world_x_m','world_z_m'])||!Array.isArray(p.points)||p.points.length<3||p.points.length>500000)throw Error('赛道坐标格式无效');let time=-1,distance=-1;for(const r of p.points){if(!Array.isArray(r)||r.length!==4||!r.every(Number.isFinite)||r[0]<=time||r[0]<0||r[0]>v.lap.time_s+.001||r[1]<distance||r[1]<0||r[1]>v.lap.track_length_m+.1||Math.abs(r[2])>(p.source==='gps_mercator_m'?2.1e7:1e7)||Math.abs(r[3])>(p.source==='gps_mercator_m'?2.1e7:1e7))throw Error('赛道坐标或时间顺序无效');time=r[0];distance=r[1]}}
+ InputScopeVehicle.validate(v.vehicle_telemetry);
+ v.id=String(v.id||v.session.started_utc+':'+v.lap.number);
+ for(const k of ['track','vehicle','driver','started_utc'])v.session[k]=String(v.session[k]||'未知').slice(0,200);
+ return v;
+}
+function addLap(v){v=validateLap(v);const old=laps.find(x=>x.id===v.id);if(old)return false;if(laps.length>=6)throw Error('一次最多对比 6 圈；重新打开页面可重选文件');laps.push(v);chosen.add(v.id);return true}
+function compatible(a,b){return a.session.track.trim().toLowerCase()===b.session.track.trim().toLowerCase()&&Math.abs(a.lap.track_length_m-b.lap.track_length_m)<=Math.max(30,b.lap.track_length_m*.01)}
+function base(){return laps.find(v=>v.id===referenceId)}
+function visible(){const b=base();return b?laps.filter(v=>chosen.has(v.id)&&compatible(v,b)):[]}
+function color(v){return palette[laps.indexOf(v)%palette.length]}
+function valueAtTime(v,t){const data=v.data,target=Math.max(0,Math.min(v.lap.time_s,t));let lo=0,hi=data.length-1;while(lo<hi){const m=(lo+hi)>>1;if(data[m][1]<target)lo=m+1;else hi=m}if(!lo)return data[0];const a=data[lo-1],b=data[lo],f=(target-a[1])/Math.max(1e-9,b[1]-a[1]);return a.map((x,k)=>x+(b[k]-x)*f)}
+function valueAt(v,d){
+ const data=v.data,L=base()?.lap.track_length_m||v.lap.track_length_m,target=d/L*v.lap.track_length_m;
+ let lo=0,hi=data.length-1;while(lo<hi){const m=(lo+hi)>>1;if(data[m][0]<target)lo=m+1;else hi=m}
+ if(lo===0)return data[0];const a=data[lo-1],b=data[lo],f=Math.max(0,Math.min(1,(target-a[0])/Math.max(.000001,b[0]-a[0])));
+ return a.map((x,k)=>x+(b[k]-x)*f);
+}
+function metrics(v){
+ const offset=$('#channel').value==='raw'?2:4,m={full:0,brake:0,coast:0,overlap:0};
+ for(let i=0;i<v.data.length-1;i++){const r=v.data[i],dt=v.data[i+1][1]-r[1];if(r[offset]>=.9)m.full+=dt;if(r[offset+1]>=.05)m.brake+=dt;if(r[offset]<.05&&r[offset+1]<.05)m.coast+=dt;if(r[offset]>=.05&&r[offset+1]>=.05)m.overlap+=dt}
+ return m;
+}
+function grid(v){
+ const key=v.id+'|'+referenceId+'|'+$('#channel').value;if(analysisCache.has(key))return analysisCache.get(key);
+ const L=base().lap.track_length_m,offset=$('#channel').value==='raw'?2:4,step=Math.max(2,L/12000),points=[];
+ for(let d=0;d<L;d+=step){const r=valueAt(v,d);points.push({d:d,t:r[1],throttle:r[offset],brake:r[offset+1],speed:r[6]})}
+ const r=valueAt(v,L);points.push({d:L,t:r[1],throttle:r[offset],brake:r[offset+1],speed:r[6]});
+ const events=[];let current=null;
+ for(let i=0;i<points.length;i++){const p=points[i];if(p.brake>=.05){if(!current)current={start:p.d,end:p.d,peak:p.brake};current.end=p.d;current.peak=Math.max(current.peak,p.brake)}else if(current){if(current.end-current.start>=8){current.release=p.d;current.endIndex=i;events.push(current)}current=null}}
+ if(current&&current.end-current.start>=8){current.release=L;current.endIndex=points.length-1;events.push(current)}
+ for(let i=0;i<events.length;i++){const e=events[i],limit=events[i+1]?.start||L;e.full=null;
+  for(let j=e.endIndex;j<points.length&&points[j].d<limit;j++){if(points[j].throttle>=.9&&j+5<points.length&&points.slice(j,j+6).every(p=>p.throttle>=.9)){e.full=points[j].d;break}}}
+ const result={points:points,events:events};analysisCache.set(key,result);return result;
+}
+function cornerStorageKey(){const b=base();return b?'inputscope.corners.v1.'+b.session.track.toLowerCase()+'.'+Math.round(b.lap.track_length_m):''}
+function loadCorners(){const b=base();if(!b){cornerSections=[];return}const key=cornerStorageKey();if(key!==cornerKey){cornerKey=key;cornerDefinitions=null;try{const value=JSON.parse(localStorage.getItem(key));if(value)cornerDefinitions=InputScopeLab.validateCorners(value,b.lap.track_length_m)}catch{}}
+ cornerSections=cornerDefinitions||InputScopeLab.corners(b,InputScopeTrack.official(b.session.track,b.lap.track_length_m),grid(b).events);
+}
+function cornerMeasurement(v,c){return InputScopeLab.measure(v,c,(lap,d)=>[d,...valueAt(lap,d).slice(1)],$('#channel').value==='raw'?2:4)}
+function seekDistance(d,c=null){const b=base();if(!b)return;replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放';replayTime=valueAt(b,d)[1];cursor=d;if(c){left=Math.max(0,c.start-15);right=Math.min(b.lap.track_length_m,c.end+15)}trackView.selectedCorner=c;trackView.key='';drawBackground();drawCursor()}
+trackView.onSeekDistance=d=>seekDistance(d);
+function fillCorners(){const b=base(),table=$('#corner-metrics');table.replaceChildren();$('#corner-editor').value=JSON.stringify(cornerSections.map(({name,start,apex,end})=>({name,start:Math.round(start),apex:Math.round(apex),end:Math.round(end)})),null,2);
+ $('#corner-source').textContent=!cornerSections.length?'没有足够的轨迹或制动区信息，可手动定义弯段。':cornerDefinitions?'手动弯段 · 点击行可联动地图和曲线。':cornerSections[0].source==='trajectory'?'按实测走线转向曲率自动识别弯段；起点包含进弯制动，终点为下一弯之间的距离中点。':'按轮廓估算弯段或制动区识别；边界和弯心建议手动校准。';
+ if(!b)return;const format=x=>x===null?'—':x.toFixed(0);
+ for(const c of cornerSections){const ref=cornerMeasurement(b,c);for(const v of visible()){const m=cornerMeasurement(v,c),tr=document.createElement('tr');tr.style.cursor='pointer';tr.dataset.corner=c.name;tr.title='定位到 '+c.name;tr.onclick=()=>seekDistance(c.apex,c);const texts=[c.name+' · 第 '+v.lap.number+' 圈',format(m.brake),format(m.release),m.entry.toFixed(1)+' / '+m.minimum.toFixed(1),format(m.full),m.exit.toFixed(1),m.time.toFixed(3)+' s / '+(v.id===b.id?'基准':(m.time-ref.time>=0?'+':'')+(m.time-ref.time).toFixed(3)+' s')];texts.forEach((text,i)=>{const td=document.createElement('td');td.textContent=text;if(!i)td.style.color=color(v);tr.append(td)});table.append(tr)}}
+}
+function applyCorners(value){cornerDefinitions=InputScopeLab.validateCorners(value,base().lap.track_length_m);try{localStorage.setItem(cornerStorageKey(),JSON.stringify(cornerDefinitions))}catch{}refresh();$('#corner-error').textContent='弯段已保存到本机浏览器；导出文件可跨浏览器使用。'}
+$('#corner-apply').onclick=()=>{try{applyCorners(JSON.parse($('#corner-editor').value))}catch(e){$('#corner-error').textContent=e.message}};
+$('#corner-auto').onclick=()=>{cornerDefinitions=null;try{localStorage.removeItem(cornerStorageKey())}catch{}refresh();$('#corner-error').textContent='已恢复自动弯段'};
+$('#corner-export').onclick=()=>download('InputScope_corners.json','application/json',JSON.stringify({format:'inputscope.corners',track:base().session.track,length_m:base().lap.track_length_m,corners:cornerSections.map(({name,start,apex,end})=>({name,start,apex,end}))},null,2));
+$('#corner-file').onchange=async e=>{try{const v=JSON.parse(await e.target.files[0].text());if(v.format!=='inputscope.corners'||v.track.toLowerCase()!==base().session.track.toLowerCase()||Math.abs(v.length_m-base().lap.track_length_m)>1)throw Error('弯段文件与当前赛道布局不匹配');applyCorners(v.corners)}catch(error){$('#corner-error').textContent=error.message}e.target.value=''};
+function segmentTime(v,a,b){return valueAt(v,b)[1]-valueAt(v,a)[1]}
+function compareNotes(v,b){
+ const delta=v.lap.time_s-b.lap.time_s,out=[];
+ out.push('第 '+v.lap.number+' 圈（'+day(v)+'）相对基准 '+(delta>=0?'慢 ':'快 ')+Math.abs(delta).toFixed(3)+' s。');
+ if(v.session.vehicle!==b.session.vehicle){out.push('车辆不同：仅展示曲线与时间差，不生成驾驶改进建议。');return out}
+ if(v.lap.lap_invalidated||b.lap.lap_invalidated||v.lap.in_pits||b.lap.in_pits){out.push('至少一圈带有无效或进站标记：仅展示完整记录的曲线、地图和数值差异，不生成驾驶改进建议。');return out}
+ if(v.lap.validity!=='verified'||b.lap.validity!=='verified')out.push('至少一圈来自旧记录，游戏有效性未验证；圈速和制动点比较需结合原始复盘。');
+ const conditions=[],a=v.native_context?.channels,z=b.native_context?.channels,unknown=[];
+ const rules={fuel_l:[2,'起始燃油'],tyre_compound:[0,'胎种'],track_temp_c:[5,'赛道温度'],wetness:[.1,'湿度'],tc_level:[0,'TC 级别'],abs_level:[0,'ABS 级别']};
+ for(const [k,[t,label]] of Object.entries(rules)){const x=v.conditions?.[k],y=b.conditions?.[k];if(Number.isFinite(x)&&Number.isFinite(y)){if(Math.abs(x-y)>t)conditions.push(label)}else unknown.push(label)}
+ if(a&&z){const first=(c,n)=>c[n]?.data?.[0]?.[1];for(const [name,threshold,label] of [['Fuel Level',2,'起始燃油'],['Track Temperature',5,'赛道温度'],['Minimum Path Wetness',.1,'赛道湿度']]){const x=first(a,name),y=first(z,name);if(Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x-y)>threshold)conditions.push(label)}for(const name of ['TyresCompound','TCLevel','ABSLevel']){const x=first(a,name),y=first(z,name);if(x!==undefined&&y!==undefined&&x!==y)conditions.push(name)}}
+ if(conditions.length){out.push('记录条件存在差异：'+conditions.join(' / ')+'。保留逐弯数值对比，暂不自动推断驾驶改进方向。');return out}
+ if(unknown.length)out.push('条件未知：'+unknown.join(' / ')+'；下方建议是待复盘的线索，不能直接归因于操作。');
+ if(delta<=.05){out.push(delta<-.05?'这圈比所选基准更快，可将它设为基准再观察其他圈。':'两圈总耗时接近，先检查局部差异与可重复性，不由单圈差异下结论。');return out}
+ const L=b.lap.track_length_m,parts=cornerSections.map(c=>({a:c.start,z:c.end,name:c.name,loss:segmentTime(v,c.start,c.end)-segmentTime(b,c.start,c.end)}));
+ parts.sort((a,z)=>z.loss-a.loss);
+ if(parts[0]?.loss>.03)out.push('最大区间时间损失在 '+parts[0].name+'（'+parts[0].a.toFixed(0)+'–'+parts[0].z.toFixed(0)+' m），较基准多用 '+parts[0].loss.toFixed(3)+' s。边界来自走线识别或手动设置，并非游戏官方分段。');
+ const referenceEvents=grid(b).events,events=grid(v).events,used=new Set(),suggestions=[];
+ for(const e of referenceEvents){let match=null,index=-1,bestDistance=Infinity;events.forEach((q,i)=>{const distance=Math.abs(q.start-e.start);if(!used.has(i)&&distance<bestDistance&&distance<Math.max(60,L*.035)){match=q;index=i;bestDistance=distance}});
+  if(!match)continue;used.add(index);const a=Math.max(0,Math.min(e.start,match.start)-30),z=Math.min(L,Math.max(e.release,match.release,(e.full||0),(match.full||0))+40),loss=segmentTime(v,a,z)-segmentTime(b,a,z);
+  if(loss<=.03)continue;
+  const early=e.start-match.start,recovery=match.full!==null&&e.full!==null?match.full-e.full:0;
+  if(early>10)suggestions.push({loss:loss,text:e.start.toFixed(0)+' m 附近：比基准提前约 '+early.toFixed(0)+' m 刹车，此制动/出弯区间多用 '+loss.toFixed(3)+' s。优先复盘是否过早收油或制动；在相近条件、车辆稳定的前提下再小幅测试制动位置，别直接照抄更晚刹车点。'});
+  else if(early< -10)suggestions.push({loss:loss,text:e.start.toFixed(0)+' m 附近：比基准晚约 '+(-early).toFixed(0)+' m 刹车，但该区间仍多用 '+loss.toFixed(3)+' s。检查是否为晚刹牺牲了入弯姿态或出弯回油；晚刹本身不代表更快。'});
+  if(recovery>10)suggestions.push({loss:loss,text:e.release.toFixed(0)+' m 后：恢复到 90% 油门比基准晚约 '+recovery.toFixed(0)+' m。对照这一段的出弯姿态、方向与抓地，尝试更连贯地回油，而不是直接更早踩满。'});
+ }
+ suggestions.sort((a,z)=>z.loss-a.loss);out.push(...suggestions.slice(0,3).map(x=>x.text));
+ const own=metrics(v),ref=metrics(b);
+ if(own.coast-ref.coast>.3)out.push('全圈滑行时间比基准多 '+(own.coast-ref.coast).toFixed(2)+' s（油门、刹车均低于 5%）。重点检查高损失区间的等待阶段，区分必要稳定车身与可缩短的空档。');
+ if(own.overlap-ref.overlap>.3)out.push('油刹重叠比基准多 '+(own.overlap-ref.overlap).toFixed(2)+' s。核对是否有无意识带刹；如果是主动左脚制动，此项不能单独判为错误。');
+ if(!suggestions.length&&own.coast-ref.coast<=.3)out.push('当前油刹数据没有形成明确的单一改进指向；先复盘上面的高损失区间，并结合走线、车身姿态和交通再判断。');
+ return out;
+}
+function message(text){$('#message').className=text?'warning':'';$('#message').textContent=text}
+function fillList(){
+ const ref=$('#reference');ref.replaceChildren();$('#laps').replaceChildren();
+ for(const v of laps){const option=document.createElement('option');option.value=v.id;option.textContent=minute(v.lap.time_s)+' · '+label(v)+' · '+day(v);ref.append(option);
+  const card=document.createElement('div');card.className='lap-card';card.style.setProperty('--lap',color(v));
+  const title=document.createElement('label');title.className='lap-title';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=chosen.has(v.id);checkbox.onchange=()=>{if(checkbox.checked)chosen.add(v.id);else if(v.id===referenceId){checkbox.checked=true;return}else chosen.delete(v.id);refresh()};title.append(checkbox,document.createTextNode(label(v)));
+  const time=document.createElement('div');time.className='lap-time';time.style.color=color(v);time.textContent=minute(v.lap.time_s);
+  const details=document.createElement('div');details.className='muted';details.textContent=v.session.track+' · '+v.session.driver+' · '+day(v);
+  const validity=document.createElement('p');validity.className='muted';validity.textContent=(v.lap.lap_invalidated||v.lap.in_pits?'完整记录 / '+[v.lap.lap_invalidated?'无效标记':'',v.lap.in_pits?'进站标记':''].filter(Boolean).join(' / '):v.lap.validity==='verified'?'已记录有效性 / 无进站':v.native_context?'官方日志：有效性未验证':'旧日志：有效性未验证')+' · '+v.lap.sample_count.toLocaleString()+' 样本';
+  if(v.reference_kind==='selected'){const tag=document.createElement('p');tag.className='muted';tag.textContent='指定完整圈 · 第 '+v.lap.number+' 圈';card.append(tag)}
+  if(v.native_context){const context=document.createElement('p');context.className='muted';context.textContent='官方日志附加通道：'+Object.keys(v.native_context.channels||{}).join(' / ');card.append(context)}if(v.reference_kind==='stable'){const t=document.createElement('p');t.className='muted';t.textContent='典型稳定圈 · '+v.stability.count+' 圈 · σ '+v.stability.std.toFixed(3)+' s';card.append(t)}if(v.actions){const t=document.createElement('p');t.className='muted';const a=v.actions[$('#channel').value];t.textContent='松刹 '+(a.brake_release_pct_s?.toFixed(1)||'—')+' %/s · 转向修正 '+a.steering_corrections+' · 收油 '+a.throttle_lifts;card.append(t)}card.append(title,time,details,validity);$('#laps').append(card);
+ }
+ ref.value=referenceId;
+}
+function refresh(resetRange=false){
+ const b=base();$('#save-page').disabled=!laps.length;$('#save-notes').disabled=!laps.length;
+ if(!b){$('#metrics').replaceChildren();$('#insights').textContent='导入至少一圈查看单圈数据，导入两圈同赛道、同车辆的完整圈后自动生成对比结论。';$('#readout').textContent='暂时没有可比较的完整圈。';message(initial?.status==='no_complete_lap'?'该场次没有可导出的完整有效圈；残缺圈、无效圈、进站圈不会替代最快圈。':'');notes='';setupReplay(true);drawBackground();return}
+ chosen.add(b.id);loadCorners();if(resetRange){left=0;right=b.lap.track_length_m;cursor=null}fillList();
+ const active=visible(),warnings=[];
+ if(laps.some(v=>chosen.has(v.id)&&!compatible(v,b)))warnings.push('不同赛道或圈长差异过大：相应圈已从本次图表与分析中排除。');
+ if(active.some(v=>v.session.vehicle!==b.session.vehicle))warnings.push('包含不同车辆：可以查看曲线，但不生成跨车型驾驶建议。');
+ if(active.some(v=>v.lap.validity!=='verified'))warnings.push('旧日志圈的游戏有效性未验证，边界圈速为近似值。');
+ if(active.some(v=>v.lap.validity==='verified'&&v.lap.timing_source!=='game_lap_start'))warnings.push('圈边界计时为采样估算，并非游戏官方圈速。');
+ const estimated=active.some(v=>v.lap.distance_source!=='game_track_length');
+ if(estimated)warnings.push('距离来自旧日志估算：按全圈比例对齐起终点，制动点米数为近似值。');
+ message(warnings.join(' '));$('#context').textContent=b.session.track+' · 基准 '+label(b)+' · '+minute(b.lap.time_s);$('#axis-note').textContent=(estimated?'估算距离 / ':'赛道距离 / ')+b.lap.track_length_m.toFixed(0)+' m';
+ $('#metrics').replaceChildren();$('#insights').replaceChildren();
+ const report=['INPUTSCOPE 圈速对比',b.session.track+' / '+b.session.vehicle,'基准：'+label(b)+' / '+day(b)+' / '+minute(b.lap.time_s),...warnings];
+ for(const v of active){const m=metrics(v),delta=v.lap.time_s-b.lap.time_s,tr=document.createElement('tr');
+  const values=[label(v)+' · '+day(v),minute(v.lap.time_s)+' / '+(v.id===b.id?'基准':(delta>=0?'+':'')+delta.toFixed(3)+' s'),(m.full/v.lap.time_s*100).toFixed(1)+'%',m.brake.toFixed(2)+' s',m.coast.toFixed(2)+' s',m.overlap.toFixed(2)+' s'];
+  values.forEach((text,i)=>{const td=document.createElement('td');td.textContent=text;if(i===0)td.style.color=color(v);tr.append(td)});$('#metrics').append(tr);
+  if(v.id===b.id)continue;const block=document.createElement('div');block.className='insight';block.style.setProperty('--lap',color(v));const h=document.createElement('h3');h.textContent=label(v)+' / '+day(v);const ul=document.createElement('ul'),conclusions=compareNotes(v,b);conclusions.forEach(text=>{const li=document.createElement('li');li.textContent=text;ul.append(li)});block.append(h,ul);$('#insights').append(block);report.push('',h.textContent,...conclusions);
+ }
+ if(active.length===1){const m=metrics(b);$('#insights').textContent='已提取第 '+b.lap.number+' 圈：全油 '+(m.full/b.lap.time_s*100).toFixed(1)+'%，制动 '+m.brake.toFixed(2)+' s，滑行 '+m.coast.toFixed(2)+' s。再导入一场兼容记录即可自动对比；只有单圈时不推断最佳制动点。';report.push($('#insights').textContent)}
+ report.push('','以上为输入与计时数据的关联分析。燃油、轮胎、天气仅在官方导入日志提供对应通道时可查，交通仍未记录；坐标轨迹只在新日志中可用，旧日志位置为距离映射估算。');notes=report.join('\n');fillCorners();setupReplay(resetRange);drawBackground();
+}
+function drawBackground(){
+ const w=Math.max(300,canvas.clientWidth),h=510,dpr=devicePixelRatio||1;canvas.width=back.width=Math.round(w*dpr);canvas.height=back.height=h*dpr;bg.setTransform(dpr,0,0,dpr,0,0);bg.fillStyle='#101a28';bg.fillRect(0,0,w,h);bg.font='12px system-ui';
+ const b=base();if(!b){bg.fillStyle='#8ea3bd';bg.fillText('导入完整圈文件后，曲线将在这里显示。',35,70);drawCursor();return}
+ const x0=60,x1=w-20,range=right-left,active=visible();
+ for(const lane of [0,1]){const top=30+lane*170,bottom=top+120;bg.fillStyle='#bbcbdf';bg.fillText(lane===0?'THROTTLE / 油门':'BRAKE / 刹车',x0,top-10);
+  for(const percent of [0,50,100]){const y=bottom-percent/100*120;bg.strokeStyle='#24354b';bg.beginPath();bg.moveTo(x0,y);bg.lineTo(x1,y);bg.stroke();bg.fillStyle='#8397b2';bg.fillText(percent+'%',15,y+4)}
+  for(const v of active){const offset=($('#channel').value==='raw'?2:4)+lane,L=b.lap.track_length_m,scale=L/v.lap.track_length_m;bg.strokeStyle=color(v);bg.lineWidth=v.id===b.id?2:1.6;bg.beginPath();let lastBucket=-Infinity,min=0,max=0,first=true;
+   const emit=()=>{const x=x0+lastBucket;if(first){bg.moveTo(x,bottom-min*120);first=false}else bg.lineTo(x,bottom-min*120);bg.lineTo(x,bottom-max*120)};
+   for(const r of v.data){const d=r[0]*scale;if(d<left)continue;if(d>right)break;const bucket=Math.floor((d-left)/range*(x1-x0)),value=Math.max(0,Math.min(1,r[offset]));if(bucket!==lastBucket){if(lastBucket!==-Infinity)emit();lastBucket=bucket;min=max=value}else{min=Math.min(min,value);max=Math.max(max,value)}}if(lastBucket!==-Infinity)emit();bg.stroke();
+  }
+ }
+ let maxDelta=.1;for(const v of active){for(const p of grid(v).points)maxDelta=Math.max(maxDelta,Math.abs(p.t-valueAt(b,p.d)[1]))}
+ const mid=435,half=35;bg.fillStyle='#b8c9e0';bg.fillText('累计时间差 / 正值较慢',x0,380);bg.strokeStyle='#2d415b';bg.beginPath();bg.moveTo(x0,mid);bg.lineTo(x1,mid);bg.stroke();bg.fillStyle='#8397b2';bg.fillText('+'+maxDelta.toFixed(2)+'s',4,402);bg.fillText('0',35,439);bg.fillText('-'+maxDelta.toFixed(2)+'s',4,473);
+ for(const v of active){bg.strokeStyle=color(v);bg.lineWidth=1.6;bg.beginPath();let begun=false;for(const p of grid(v).points){if(p.d<left||p.d>right)continue;const x=x0+(p.d-left)/range*(x1-x0),y=mid-(p.t-valueAt(b,p.d)[1])/maxDelta*half;if(!begun){bg.moveTo(x,y);begun=true}else bg.lineTo(x,y)}bg.stroke()}
+ bg.fillStyle='#8397b2';for(let i=0;i<6;i++){const d=left+range*i/5,text=d.toFixed(0)+' m';bg.fillText(text,Math.min(w-bg.measureText(text).width-4,x0+(x1-x0)*i/5-14),500)}drawCursor();
+}
+function drawCursor(){ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(back,0,0);const b=base();if(!b){renderPositions();return}const dpr=devicePixelRatio||1,w=canvas.clientWidth;ctx.setTransform(dpr,0,0,dpr,0,0);
+ const read=$('#readout');read.replaceChildren(document.createTextNode('同一起跑后 '+replayTime.toFixed(3)+' s'));
+ for(const v of visible()){const r=valueAtTime(v,replayTime),o=$('#channel').value==='raw'?2:4,d=r[0]/v.lap.track_length_m*b.lap.track_length_m,x=60+(d-left)/(right-left)*(w-80);if(d>=left&&d<=right){ctx.strokeStyle=color(v)+'99';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,22);ctx.lineTo(x,477);ctx.stroke();ctx.setLineDash([])}const span=document.createElement('span');span.style.color=color(v);span.textContent='　● 第 '+v.lap.number+' 圈 '+minute(r[1])+' · 油门 '+(r[o]*100).toFixed(1)+'% · 刹车 '+(r[o+1]*100).toFixed(1)+'% · '+r[6].toFixed(1)+' km/h';read.append(span)}renderPositions();
+}
+function cursorFrame(){if(framePending)return;framePending=true;requestAnimationFrame(()=>{framePending=false;drawCursor()})}
+canvas.onpointerdown=e=>{if(!base())return;drag=[e.clientX,left,right];canvas.setPointerCapture(e.pointerId)};
+canvas.onpointerup=()=>drag=null;
+canvas.onpointermove=e=>{if(!base())return;const L=base().lap.track_length_m;if(drag){const shift=(e.clientX-drag[0])/(canvas.clientWidth-80)*(drag[2]-drag[1]);left=Math.max(0,Math.min(L-(drag[2]-drag[1]),drag[1]-shift));right=left+drag[2]-drag[1];drawBackground()}else{replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放';cursor=Math.max(left,Math.min(right,left+(e.offsetX-60)/(canvas.clientWidth-80)*(right-left)));replayTime=valueAt(base(),cursor)[1];cursorFrame()}};
+canvas.addEventListener('wheel',e=>{if(!base())return;e.preventDefault();const L=base().lap.track_length_m,f=Math.max(0,Math.min(1,(e.offsetX-60)/(canvas.clientWidth-80))),d=left+f*(right-left),span=Math.max(20,Math.min(L,(right-left)*Math.exp(e.deltaY*.0015)));left=Math.max(0,Math.min(L-span,d-f*span));right=left+span;drawBackground()},{passive:false});
+$('#reference').onchange=()=>{referenceId=$('#reference').value;analysisCache.clear();refresh(true)};
+$('#channel').onchange=()=>refresh();
+$('#reset').onclick=()=>refresh(true);
+$('#files').onchange=async e=>{const errors=[];for(const file of e.target.files){try{if(file.size>100*1024*1024)throw Error('文件超过 100 MB');addLap(JSON.parse(await file.text()))}catch(error){errors.push(file.name+'：'+error.message)}}if(!referenceId&&laps.length)referenceId=laps.reduce((a,b)=>a.lap.time_s<b.lap.time_s?a:b).id;analysisCache.clear();refresh(true);if(errors.length)message(errors.join('；'));e.target.value=''};
+function download(name,type,text){const url=URL.createObjectURL(new Blob([text],{type:type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+$('#save-notes').onclick=()=>download('InputScope_圈速对比结论.txt','text/plain;charset=utf-8',notes);
+$('#save-page').onclick=()=>{const clone=document.documentElement.cloneNode(true);clone.querySelectorAll('.map-navigation,.map-calibration').forEach(n=>n.remove());const script=clone.querySelector('script'),payload=JSON.stringify({laps:visible(),status:'saved',reference_id:referenceId,channel:$('#channel').value,replay_time_s:replayTime,map_calibration:trackView.exportState(),corner_definitions:cornerDefinitions}).replace(/</g,'\\u003c');script.textContent=script.textContent.replace(/const initial=.*?;\n/,()=> 'const initial='+payload+';\n');download('InputScope_圈速对比.html','text/html;charset=utf-8','<!doctype html>'+clone.outerHTML)};
+window.onresize=drawBackground;
+function setupReplay(reset=false){const b=base(),active=visible();replayMax=Math.max(1,...active.map(v=>v.lap.time_s));if(reset){replayTime=0;replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放'}replayTime=Math.min(replayTime,replayMax);$('#replay-seek').max=replayMax;$('#replay-play').disabled=!b;$('#replay-start').disabled=!b;$('#replay-seek').disabled=!b;$('#map-states').replaceChildren();for(const v of active){const row=document.createElement('div');row.className='map-row';row.dataset.id=v.id;row.style.color=color(v);$('#map-states').append(row)}
+ vehicleView.setEntries(b?[b,...active.filter(v=>v.id!==b.id)].map(v=>({id:v.id,label:'第 '+v.lap.number+' 圈 · '+v.session.vehicle,color:color(v),duration:v.lap.time_s,bundle:v.vehicle_telemetry,project:t=>valueAtTime(v,Math.max(0,Math.min(v.lap.time_s,t)))[0]/v.lap.track_length_m*b.lap.track_length_m})):[]);
+ const ordered=b?[b,...active.filter(v=>v.id!==b.id)]:[];trackView.setEntries(ordered.map(v=>({id:v.id,title:'第 '+v.lap.number+' 圈',color:color(v),length:v.lap.track_length_m,duration:v.lap.time_s,points:v.trajectory?.points||[],coordinateSource:v.trajectory?.source||'recorded_world_xz'})),b?.session.track||'',b?.lap.track_length_m||1)}
+function renderPositions(){const b=base(),active=visible();if(!b){trackView.draw([]);vehicleView.draw(0,[0,1]);$('#replay-time').textContent='暂无回放数据';return}const state=active.map(v=>({id:v.id,t:replayTime,d:valueAtTime(v,replayTime)[0]})),positions=trackView.draw(state),refDistance=valueAtTime(b,replayTime)[0];for(const [i,v] of active.entries()){const d=state[i].d/v.lap.track_length_m*b.lap.track_length_m,gap=d-refDistance,kind=positions[i]?.kind,source=kind==='recorded'?'实测':kind==='unknown'?'坐标缺口':'估算',relative=v.id===b.id?'基准':(gap>=0?'领先基准 ':'落后基准 ')+Math.abs(gap).toFixed(1)+' m',node=[...$('#map-states').children].find(n=>n.dataset.id===v.id);if(node)node.textContent=(i+1)+' · 第 '+v.lap.number+' 圈 · '+d.toFixed(1)+' m · '+relative+' · '+source+(replayTime>=v.lap.time_s?' · 已完成':'')}vehicleView.draw(replayTime,[left,right]);$('#replay-seek').value=replayTime;$('#replay-time').textContent=replayTime.toFixed(3)+' / '+replayMax.toFixed(3)+' s';}
+$('#replay-seek').oninput=()=>{replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放';replayTime=Number($('#replay-seek').value);drawCursor()};
+$('#replay-start').onclick=()=>{replayPlaying=false;replayTime=0;$('#replay-play').textContent='▶ 同时间回放';drawCursor()};
+$('#replay-play').onclick=()=>{if(!replayPlaying&&replayTime>=replayMax)replayTime=0;replayPlaying=!replayPlaying;replayTick=performance.now();$('#replay-play').textContent=replayPlaying?'❚❚ 暂停':'▶ 同时间回放'};
+function replayFrame(now){if(replayPlaying){replayTime=Math.min(replayMax,replayTime+Math.min(.25,(now-replayTick)/1000)*Number($('#replay-speed').value));if(replayTime>=replayMax){replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放'}drawCursor()}replayTick=now;requestAnimationFrame(replayFrame)}
+try{for(const v of initial?.laps||[])addLap(v);if(laps.length)referenceId=laps.some(v=>v.id===initial?.reference_id)?initial.reference_id:laps.reduce((a,b)=>a.lap.time_s<b.lap.time_s?a:b).id;$('#channel').value=initial?.channel==='filtered'?'filtered':'raw';refresh(true);if(initial?.corner_definitions){applyCorners(initial.corner_definitions)}if(initial?.map_calibration){trackView.restoreState(initial.map_calibration)}if(Number.isFinite(initial?.replay_time_s)){replayTime=Math.max(0,Math.min(replayMax,initial.replay_time_s));drawCursor()}}catch(error){message('无法读取内嵌圈数据：'+error.message)}
+requestAnimationFrame(replayFrame);
+</script>
+</html>
