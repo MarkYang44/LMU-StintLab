@@ -42,7 +42,7 @@ def main():
     args.append(str(ROOT/'src'/'inputscope.py'))
     subprocess.run(args,cwd=ROOT,check=True)
     bundle=stage/'LMU-StintLab'
-    for name in ('README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION','Start.cmd','Demo.cmd','Check.cmd'):
+    for name in ('README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION','Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd','Check.cmd'):
         shutil.copy2(ROOT/name,bundle/name)
     shutil.copytree(ROOT/'docs',bundle/'docs')
     licenses=bundle/'licenses';licenses.mkdir()

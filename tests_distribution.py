@@ -12,6 +12,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parent;sys.path.insert(0,str(ROOT/'src'))
 from tools.audit_publication import audit,allowed,git_command
 from tools.install_dependencies import choose_wheel
+from tools.migrate_inputscope import migrate,digest
 from build import bundle_audit,ASSET_NAMES
 import paths
 
@@ -81,6 +82,52 @@ class DistributionTests(unittest.TestCase):
         self.assertEqual(json.loads((paths.ASSETS/'tracks'/'catalog.json').read_text(encoding='utf-8')),[])
         self.assertTrue(all((paths.ASSETS/name).is_file() for name in ASSET_NAMES))
         self.assertFalse((paths.ASSETS/'tracks'/'sources').exists())
+
+    def test_private_maps_override_public_defaults_without_changing_public_assets(self):
+        from laps import track_script
+        public_before=(paths.ASSETS/'tracks'/'catalog.json').read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);catalog=root/'assets'/'tracks'/'catalog.json';catalog.parent.mkdir(parents=True)
+            with patch.object(paths,'data_directory',return_value=root):
+                self.assertEqual(paths.track_catalog_path(),paths.ASSETS/'tracks'/'catalog.json')
+                catalog.write_text('[{"id":"fixture-private-map","points":[]}]',encoding='utf-8')
+                self.assertEqual(paths.track_catalog_path(),catalog)
+                self.assertIn('fixture-private-map',track_script(paths.ASSETS))
+        self.assertEqual(public_before,(paths.ASSETS/'tracks'/'catalog.json').read_bytes())
+
+    def test_migration_preserves_records_and_preferences_and_relinks_reference(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);source=root/'old';target=root/'new'/'data';backup=root/'backup'
+            (source/'src'/'tracks').mkdir(parents=True);(source/'src'/'inputscope.py').write_text('')
+            session=source/'Logs'/'fixture';session.mkdir(parents=True)
+            (session/'inputs.csv').write_bytes(b'time_s,throttle\n0,1\n')
+            (session/'session.json').write_text('{"driver":"Synthetic fixture"}')
+            (session/'Fastest.lap.json').write_text('{}')
+            (source/'settings.json').write_text('{"fixed_hz":2400,"input_channel":"raw","draw_mode":"sync"}')
+            (source/'reference_settings.json').write_text(json.dumps({'path':str(session/'Fastest.lap.json'),'locked':True}))
+            (source/'FastestLapCompare.html').write_text('<html>legacy fixture</html>')
+            (source/'src'/'tracks'/'catalog.json').write_text('[{"id":"synthetic-private-map"}]')
+            before={p.relative_to(source):digest(p) for p in source.rglob('*') if p.is_file()}
+            result=migrate(source,target,backup)
+            self.assertEqual(result['status'],'complete')
+            for name in ('inputs.csv','session.json','Fastest.lap.json'):
+                self.assertEqual(digest(session/name),digest(target/'Logs'/'fixture'/name))
+            self.assertEqual(json.loads((target/'settings.json').read_text())['fixed_hz'],2400)
+            self.assertEqual(json.loads((target/'reference_settings.json').read_text())['path'],str(target/'Logs'/'fixture'/'Fastest.lap.json'))
+            self.assertEqual((target/'FastestLapCompare.html').read_text(),'<html>legacy fixture</html>')
+            self.assertTrue((target/'assets'/'tracks'/'catalog.json').exists())
+            self.assertEqual(before,{p.relative_to(source):digest(p) for p in source.rglob('*') if p.is_file()})
+
+    def test_migration_collision_stops_before_copying_or_overwriting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);source=root/'old';target=root/'new';backup=root/'backup'
+            (source/'src').mkdir(parents=True);(source/'src'/'inputscope.py').write_text('')
+            for folder,payload in ((source,b'legacy'),(target,b'existing')):
+                session=folder/'Logs'/'fixture';session.mkdir(parents=True);(session/'inputs.csv').write_bytes(payload)
+            (source/'settings.json').write_text('{"fixed_hz":2400}')
+            with self.assertRaises(ValueError):migrate(source,target,backup)
+            self.assertEqual((target/'Logs'/'fixture'/'inputs.csv').read_bytes(),b'existing')
+            self.assertFalse((target/'settings.json').exists());self.assertFalse(backup.exists())
 
     def test_wheel_selection_rejects_other_platforms_and_ambiguity(self):
         files=[{'filename':'example-1-cp313-cp313-win_amd64.whl'}, {'filename':'example-1-cp313-cp313-manylinux_x86_64.whl'}]

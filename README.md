@@ -30,6 +30,8 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 公开版的预置底图库为空：此前本地参考图没有足够明确的再分发授权，因此未随项目发布。**有世界坐标或 GPS 的记录直接绘制实测赛道轨迹，位置回放、对比和缩放仍可使用。** 缺少坐标的旧记录会提示不可用，不会猜测车辆位置。
 
+已有 InputScope 用户可以用 `tools/migrate_inputscope.py` 迁移记录、使用偏好和私有底图库；原文件保留，数据不会加入 Git 或发布包。具体见 [隐私与迁移](docs/PRIVACY.md)。`Start Clean.cmd`、`Start Clean Controls.cmd`、`Start Demo.cmd` 继续提供旧版相同的启动方式。
+
 ## 开发与发布
 
 双击 `Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.0-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。

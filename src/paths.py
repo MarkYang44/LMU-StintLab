@@ -17,6 +17,11 @@ def data_directory():
     path=Path(configured).expanduser() if configured else APP_ROOT/'data'
     return (path if path.is_absolute() else APP_ROOT/path).resolve()
 
+def track_catalog_path(assets=None):
+    """Private legacy maps override the public catalog only at runtime."""
+    private=data_directory()/'assets'/'tracks'/'catalog.json'
+    return private if private.is_file() else Path(assets or ASSETS)/'tracks'/'catalog.json'
+
 def discover_game():
     specified=local_settings().get('game_directory')
     if specified and Path(specified).is_dir():return Path(specified)

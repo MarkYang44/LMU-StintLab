@@ -12,4 +12,8 @@
 
 迁移旧版 InputScope：关闭两个版本后，把原版 Logs、ImportedLogs、RecoveredLogs 和需要的设置复制到新版 `data/` 的同名位置。DemoLogs 可选。不要复制原 EXE、runtime、vendor、src 或旧 `_verification`。原记录格式与 InputScope 标识保留以维持兼容；原数据不需要改写。重新打开报告会在自己的私有数据目录生成新版 HTML。
 
+也可运行 `.venv\Scripts\python.exe tools/migrate_inputscope.py --source "旧版文件夹"`：脚本复制记录、设置、比较页和旧版私有底图，逐文件验证 SHA256，原目录保留；不同内容的既有记录会中止迁移，已存在的设置替换前会备份。属于旧目录的参考圈路径会改为迁移后的路径。迁移清单和备份在 `_local/migrations/`，不会发布。
+
+旧版赛道底图放在 `data/assets/tracks/catalog.json`，只在本机生成报告时优先读取；公开源码和 ZIP 使用 `src/tracks/catalog.json`，不会打包私有底图。重新安装、更新或构建时保留 `data/` 和 `local_settings.json`。旧版的三个启动入口 `Start Clean.cmd`、`Start Clean Controls.cmd`、`Start Demo.cmd` 在新版中继续可用。
+
 运行时不上传记录或调用外部 AI。联网仅发生在首次源码安装 / 构建依赖下载、你主动打开外部链接，以及 GitHub 的发布流程。环境检查可能显示数据目录；请勿将未脱敏检查输出作为公开 issue 附件。

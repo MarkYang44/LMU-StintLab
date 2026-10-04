@@ -11,6 +11,9 @@
 !/requirements-lock.txt
 !/Setup.cmd
 !/Start.cmd
+!/Start Clean.cmd
+!/Start Clean Controls.cmd
+!/Start Demo.cmd
 !/Demo.cmd
 !/Build.cmd
 !/Check.cmd

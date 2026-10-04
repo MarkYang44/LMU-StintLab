@@ -247,7 +247,8 @@ def write_compare(path, template, laps=(), status=None,reference_id=None):
 
 def track_script(folder):
     folder = Path(folder)
-    catalog = (folder/'tracks'/'catalog.json').read_text(encoding='utf-8').replace('<','\\u003c')
+    from paths import track_catalog_path
+    catalog = track_catalog_path(folder).read_text(encoding='utf-8-sig').replace('<','\\u003c')
     return (folder/'laplab.js').read_text(encoding='utf-8')+'\n'+(folder/'trackview.js').read_text(encoding='utf-8').replace('/*TRACK_CATALOG*/null',catalog)
 
 
