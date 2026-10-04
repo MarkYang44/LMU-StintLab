@@ -1540,7 +1540,7 @@ class App:
             self.root.after(25, self.close)
             return
         # Keep Tk and its variables alive on the GUI thread until all exports finish.
-        if any(t.is_alive() for t in self.engine.recorder.pending_reports):
+        if any(t.is_alive() for t in [*self.engine.recorder.pending_reports,*getattr(self,'archive_workers',[])]):
             self.root.after(25,self.close)
             return
         self.render_waiter.close()

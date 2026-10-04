@@ -15,7 +15,7 @@ def main():
     if hasattr(sys.stdout,'reconfigure'):sys.stdout.reconfigure(encoding='utf-8',errors='replace')
     if hasattr(sys.stderr,'reconfigure'):sys.stderr.reconfigure(encoding='utf-8',errors='replace')
     parser=argparse.ArgumentParser();parser.add_argument('--quick',action='store_true');args=parser.parse_args()
-    modules=['tests_distribution'] if args.quick else ['tests','tests_upgrades','tests_laplab','tests_selected_laps','tests_vehicle','tests_endurance','tests_distribution','tests_lightweight']
+    modules=['tests_distribution'] if args.quick else ['tests','tests_upgrades','tests_laplab','tests_selected_laps','tests_vehicle','tests_endurance','tests_distribution','tests_lightweight','tests_archives']
     names=[case.id() for module in modules for case in flatten(unittest.defaultTestLoader.loadTestsFromName(module))]
     failed=[]
     for name in names:

@@ -17,6 +17,16 @@ def run():
     if folder and (folder/'fastest_lap_summary.json').exists():
         summary=json.loads((folder/'fastest_lap_summary.json').read_text(encoding='utf-8'))
         checks['complete_reference']=summary.get('status')=='saved'
+    if all(checks.values()):
+        from session_archive import export_session,import_session,_digest
+        from library import inventory
+        package=export_session(root,str(folder.relative_to(root)),root/'SessionPackages')
+        restored=import_session(root/'archive-test-import',package['path'])
+        from pathlib import Path
+        imported=Path(restored['folder'])
+        checks['archive_roundtrip']=all(_digest(folder/name)==_digest(imported/name) for name in required)
+        checks['archive_in_library']=len(inventory(root/'archive-test-import'))==1
+        checks['archive_duplicate']=import_session(root/'archive-test-import',package['path'])['status']=='skipped'
     result={'ok':all(checks.values()),'checks':checks,'synthetic_only':True}
     (root/'release-smoke.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
     if not result['ok']:raise RuntimeError('Release smoke test failed: '+str(checks))

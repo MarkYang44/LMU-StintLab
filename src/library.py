@@ -17,7 +17,10 @@ def inventory(root):
                 for file,target in [('fastest_lap_summary.json',summary),('session_analysis.json',analysis)]:
                     path=folder/file
                     if path.exists():target.update(json.loads(path.read_text(encoding='utf-8')))
-                key=str(folder.relative_to(root));note=notes.get(key,{})
+                key=str(folder.relative_to(root));note=notes.get(key)
+                if note is None:
+                    try:note=json.loads((folder/'_archive_note.json').read_text(encoding='utf-8'))
+                    except (OSError,ValueError):note={}
                 lap=summary.get('lap',{});stable=analysis.get('recent_stability',{})
                 out.append(dict(key=key,folder=str(folder),track=meta.get('track',''),vehicle=meta.get('vehicle',''),
                     date=meta.get('started_utc',''),driver=meta.get('driver',''),status=meta.get('status',''),source=name,

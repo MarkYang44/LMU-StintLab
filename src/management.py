@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import threading
 import tkinter as tk
-from tkinter import ttk,messagebox
+from tkinter import ttk,messagebox,filedialog
 from library import inventory,save_note
 from reference import ReferenceLap,DistanceAligner
 from storage import atomic_json,recover_session,compress_session
@@ -89,7 +89,7 @@ def show_library(app,root,render_review,make_report):
                 f"{v['time_s']:.3f}" if v['time_s'] else '—',f"{v['stability_s']:.3f}" if v['stability_s'] is not None else '未分析',
                 v['source'],v['status'],('交通 · ' if v['traffic'] else '')+v['note']))
         status.set(f"显示 {len(tree.get_children())} / 共 {len(state['items'])} 场；按 Ctrl 多选，最多六圈对比。")
-    def background(work,done):
+    def background(work,done,daemon=True):
         if state['busy']:status.set('上一个任务仍在处理，请稍候');return
         state['busy']=True;status.set('后台处理中…')
         def run():
@@ -101,8 +101,13 @@ def show_library(app,root,render_review,make_report):
                 if not window.winfo_exists():return
                 if error:status.set(error)
                 else:done(value)
-            app.root.after(0,finish)
-        threading.Thread(target=run,daemon=True).start()
+            try:app.root.after(0,finish)
+            except (RuntimeError,tk.TclError):pass
+        worker=threading.Thread(target=run,daemon=daemon)
+        if not daemon:
+            app.archive_workers=[t for t in getattr(app,'archive_workers',[]) if t.is_alive()]
+            app.archive_workers.append(worker)
+        worker.start()
     def refresh():
         def done(items):
             state['items']=items;trackbox['values']=['全部赛道',*sorted({v['track'] for v in items})];carbox['values']=['全部车辆',*sorted({v['vehicle'] for v in items})];fill()
@@ -145,6 +150,34 @@ def show_library(app,root,render_review,make_report):
     def same_session():
         try:show_lap_selection(app,root,one()['folder'])
         except ValueError as e:status.set(str(e))
+    def transferred(result,kind):
+        items=result['items'];errors=result['errors'];skipped=sum(v.get('status')=='skipped' for v in items)
+        refresh()
+        text=f"{kind}完成：成功 {len(items)-skipped} 场，重复跳过 {skipped} 场，失败 {len(errors)} 场。"
+        if errors:text+='\n\n'+ '\n'.join(Path(e['item']).name+'：'+e['error'] for e in errors)
+        status.set(text)
+        (messagebox.showwarning if errors else messagebox.showinfo)('比赛包'+kind,text,parent=window)
+    def export_packages():
+        if state['busy']:status.set('上一个任务仍在处理，请稍候');return
+        values=selected()
+        if not values:status.set('请选择一场或多场比赛；Ctrl / Shift 可多选');return
+        destination=filedialog.askdirectory(title='选择比赛包导出目录（每场一个 ZIP）',parent=window)
+        if not destination:return
+        from session_archive import export_session,transfer_batch
+        background(lambda:transfer_batch([v['key'] for v in values],lambda key:export_session(root,key,destination)),
+                   lambda result:transferred(result,'导出'),daemon=False)
+    def import_packages():
+        if state['busy']:status.set('上一个任务仍在处理，请稍候');return
+        packages=filedialog.askopenfilenames(title='选择一个或多个 StintLab 比赛包',parent=window,
+                                            filetypes=[('StintLab 比赛包','*.stintlab.zip'),('ZIP 文件','*.zip')])
+        if not packages:return
+        from session_archive import import_session,transfer_batch
+        background(lambda:transfer_batch(packages,lambda package:import_session(root,package)),
+                   lambda result:transferred(result,'导入'),daemon=False)
+    transferbar=tk.Frame(window,bg='#101a28');transferbar.pack(fill='x',padx=15)
+    for text,command in [('导出比赛包（可多选）',export_packages),('导入比赛包（可多选）',import_packages)]:
+        tk.Button(transferbar,text=text,command=command).pack(side='left',padx=3,pady=3)
+    tk.Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg='#101a28',fg='#8fabc9').pack(side='left',padx=10)
     buttons=tk.Frame(window,bg='#101a28');buttons.pack(fill='x',padx=15)
     for text,command in [('刷新',refresh),('分析 / 完整复盘',lambda:action(analyze,lambda path:(os.startfile(path),refresh()))),('同场圈 A／B',same_session),('最快圈页',lambda:action(lambda v:Path(v['folder'])/'fastest_lap.html',os.startfile)),('多选对比',compare),('设为锁定参考',lambda:action(choose_reference,lock_reference)),('保存备注',save),('压缩备份',lambda:action(lambda v:compress_session(v['folder']),lambda v:status.set(f"已校验压缩备份：{v['compressed_bytes']/1048576:.2f} MB；保留原 CSV"))),('恢复中断记录',lambda:action(recover,lambda path:refresh()))]:
         tk.Button(buttons,text=text,command=command).pack(side='left',padx=3,pady=8)
