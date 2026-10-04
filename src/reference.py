@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 from sessionlab import condition_check
+from array import array
+from buffers import NumericTable
 
 
 class ReferenceLap:
@@ -16,7 +18,7 @@ class ReferenceLap:
             raise ValueError('带无效或进站标记的完整圈仅供复盘，不能用作 HUD 参考')
         self.length = float(self.info['track_length_m'])
         self.duration = float(self.info['time_s'])
-        self.data = tuple(tuple(r) for r in value['data'])
+        self.data = value['data']
         if not math.isfinite(self.length) or not math.isfinite(self.duration) or self.length <= 100 or self.duration <= 0 or len(self.data) < 3:
             raise ValueError('参考圈边界无效')
         last_d, last_t = -1, -1
@@ -30,7 +32,8 @@ class ReferenceLap:
         if (self.data[0][0] > .1 or self.data[0][1] > .001
                 or abs(last_d-self.length) > .1 or abs(last_t-self.duration) > .001):
             raise ValueError('参考圈缺少完整边界')
-        self.distances = tuple(r[0] for r in self.data)
+        self.data = NumericTable(self.data,7)
+        self.distances = array('d',(r[0] for r in self.data))
         self.path = str(path)
         self.conditions=value.get('conditions',{})
         self.kind=value.get('reference_kind','fastest')
@@ -43,8 +46,8 @@ class ReferenceLap:
                 raise ValueError('参考圈坐标格式无效')
             for a,b in zip(points,points[1:]):
                 if not 0<b[0]-a[0]<=.25 or b[1]<a[1] or math.hypot(b[2]-a[2],b[3]-a[3])>100:continue
-                for p in (a,b):
-                    cell=(math.floor(p[2]/50),math.floor(p[3]/50))
+                cells={(math.floor(p[2]/50),math.floor(p[3]/50)) for p in (a,b)}
+                for cell in cells:
                     self.cells.setdefault(cell,[]).append((a,b))
 
     @classmethod

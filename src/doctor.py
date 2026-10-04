@@ -21,7 +21,7 @@ def check():
     except ImportError:tests['duckdb']=False
     from pyLMUSharedMemory.lmu_data import LMUObjectOut
     tests['sdk_layout']=ctypes.sizeof(LMUObjectOut)==324820 and LMUObjectOut.telemetry.offset==128464
-    tests['offline_assets']=all((ASSETS/name).is_file() for name in ('report.html','compare.html','trackview.js','laplab.js','vehicleview.js','enduranceview.js','tracks/catalog.json'))
+    tests['offline_assets']=all((ASSETS/name).is_file() for name in ('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','tracks/catalog.json'))
     root=data_directory()
     try:
         root.mkdir(parents=True,exist_ok=True)

@@ -4,6 +4,8 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 实时油门 / 刹车 / 转向 HUD、比赛记录、完整圈对比与耐力赛遥测分析。界面以中文为主，所有记录默认保存在本机。
 
+实时缓存与离线复盘采用紧凑数值存储和流式压缩；保留完整采样、原始 CSV 与现有操作。实测结果、模块职责和旧网页升级方式见 [内存与赛事文件](docs/PERFORMANCE.md)。
+
 ## 下载与一键启动
 
 **便携版（推荐）**：从 [Releases](https://github.com/MarkYang44/LMU-StintLab/releases) 下载 `LMU-StintLab-v*-windows-x64.zip`，完整解压到可写目录，双击 `Start.cmd`。不需要安装 Python；`Demo.cmd` 可在不开游戏时演示。不要只移动 EXE，保留 `_internal` 文件夹。

@@ -20,6 +20,8 @@ from sessionlab import analyze_session,lap_conditions
 from telemetry_import import import_recording
 from storage import BatchWriter, StorageError, atomic_json, recover_session, compress_session
 from diagnostics import Diagnostics
+from buffers import ControlHistory, NumericRing
+import reporting
 import vehiclelab
 import endurance
 from paths import ASSETS,data_directory,telemetry_directory
@@ -306,6 +308,7 @@ class SharedReader:
             self.handle = None
 
 
+@reporting.serialized
 def make_report(folder):
     try:analyze_session(folder)
     except Exception as e:(folder/'analysis_error.txt').write_text(str(e),encoding='utf-8')
@@ -326,20 +329,7 @@ def make_report(folder):
 
 def render_review(folder, fastest=None):
     """Upgrade a review page without rewriting its CSV or lap exports."""
-    template = (ASSETS / 'report.html').read_text(encoding='utf-8')
-    template = template.replace('/*TRACK_VIEW_JS*/', track_script(ASSETS))
-    template = template.replace('/*VEHICLE_VIEW_JS*/',vehiclelab.script(ASSETS))
-    template = template.replace('/*ENDURANCE_VIEW_JS*/',(ASSETS/'enduranceview.js').read_text(encoding='utf-8'))
-    metadata = json.loads((folder / 'session.json').read_text(encoding='utf-8'))
-    # Embed the CSV as text, not as hundreds of thousands of JSON objects.
-    payload = json.dumps({'meta': metadata, 'fastest':fastest,
-                         'analysis':json.loads((folder/'session_analysis.json').read_text(encoding='utf-8')) if (folder/'session_analysis.json').exists() else None,
-                         'native_channels':json.loads((folder/'native_channels.json').read_text(encoding='utf-8')) if (folder/'native_channels.json').exists() else None,
-                         'vehicle_telemetry':vehiclelab.load_recording(folder),
-                         'endurance':json.loads((folder/'endurance_analysis.json').read_text(encoding='utf-8')) if (folder/'endurance_analysis.json').exists() else None,
-                         'csv': (folder / 'inputs.csv').read_text(encoding='utf-8')},
-                         ensure_ascii=False).replace('<', '\\u003c')
-    (folder / 'review.html').write_text(template.replace('/*SESSION_DATA*/null', payload), encoding='utf-8')
+    reporting.render_review(folder,ASSETS,track_script(ASSETS),fastest)
 
 
 class Recorder:
@@ -490,21 +480,21 @@ class Engine:
         self.vehicle_latest=None;self.vehicle_estimate={}
         self.settings = validate_settings(settings or DEFAULTS)
         self.target_hz = self.settings['fixed_hz'] if self.settings['mode']=='fixed' else self.settings['max_hz']
-        self.points = deque(maxlen=80001)
+        self.points = ControlHistory(80001)
         self.reference = None
         self.reference_enabled = False
-        self.reference_points = deque(maxlen=24001)
+        self.reference_points = NumericRing(6,24001)
         self.reference_latest = None
         self.reference_revision = 0
         self.aligner = DistanceAligner()
         self.reference_state = {'mode':'关闭','confidence':0}
         self.diagnostics = Diagnostics()
-        self.plot_points = deque(maxlen=80001)
+        self.plot_points = NumericRing(19,80001)
         self.plot_hz = math.ceil(592*4/10)
         self.plot_y_scale = 102*4
         self.plot_revision = 0
-        self.sample_times = deque(maxlen=12001)
-        self.poll_times = deque(maxlen=12001)
+        self.sample_times = NumericRing(1,12001)
+        self.poll_times = NumericRing(1,12001)
         self._rates_at = -math.inf
         self._rates = (0, 0)
         self.reason = ''
@@ -528,8 +518,8 @@ class Engine:
         if now-self._rates_at >= 0.25:
             horizon = max(2.5, 2.5/self.target_hz)
             with self.lock:
-                polls = [t for t in self.poll_times if now-t <= horizon]
-                fresh = [t for t in self.sample_times if now-t <= horizon]
+                polls = [r[0] for r in self.poll_times if now-r[0] <= horizon]
+                fresh = [r[0] for r in self.sample_times if now-r[0] <= horizon]
             def rate(values):
                 return (len(values)-1)/(values[-1]-values[0]) if len(values)>1 else 0
             self._rates = (rate(polls), rate(fresh))
@@ -638,7 +628,7 @@ class Engine:
                     sample = reader.read()
                     self.diagnostics.note('read',time.perf_counter()-read_started)
                 with self.lock:
-                    self.poll_times.append(now)
+                    self.poll_times.append((now,))
                 sampler.observe(sample, now)
                 self.target_hz = sampler.rate(now, sample is not None and now-last_fresh <= 3)
                 self.reason = sampler.reason
@@ -700,7 +690,7 @@ class Engine:
                                     self.reference_revision += 1
                                 while self.reference_points and now-self.reference_points[0][0]>20:
                                     self.reference_points.popleft()
-                            self.sample_times.append(now)
+                            self.sample_times.append((now,))
                         self.latest = sample
                     if fresh:
                         self.status = ('DEMO' if self.demo else 'REC') + ' · ' + sample['track']

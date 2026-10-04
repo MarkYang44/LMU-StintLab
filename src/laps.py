@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 import statistics
 import threading
+from buffers import CompactRow
 
 FORMAT = 'inputscope.fastest-lap'
 DATA_COLUMNS = ['distance_m','lap_time_s','throttle','brake','filtered_throttle','filtered_brake','speed_kmh']
@@ -17,25 +18,40 @@ def safe_name(value):
 
 
 def write_json(path, value):
+    from reporting import json_chunks
     path = Path(path)
     pending = path.with_name(path.name+'.'+str(threading.get_ident())+'.pending')
-    pending.write_text(json.dumps(value,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-    pending.replace(path)
+    try:
+        with pending.open('wb') as f:
+            for chunk in json_chunks(value):f.write(chunk)
+        pending.replace(path)
+    finally:
+        if pending.exists():pending.unlink()
 
 
 def read_rows(path):
     with Path(path).open(encoding='utf-8-sig',newline='') as stream:
-        for row in csv.DictReader(stream):
+        reader=csv.DictReader(stream)
+        numbers = {'time_s','session_time_s','lap','lap_distance_m','throttle','brake',
+                   'steering','filtered_throttle','filtered_brake','filtered_steering','speed_kmh',
+                   'lap_start_s','lap_invalidated','in_pits','track_length_m',
+                   'world_x_m','world_y_m','world_z_m','fuel_l','tyre_compound','track_temp_c',
+                   'wetness','tc_level','abs_level','tc_active','abs_active','gear'}
+        layout={k:i for i,k in enumerate(k for k in reader.fieldnames or () if k in numbers)}
+        last_utc=None
+        for row in reader:
             try:
-                numbers = {'time_s','session_time_s','lap','lap_distance_m','throttle','brake',
-                           'steering','filtered_throttle','filtered_brake','filtered_steering','speed_kmh',
-                           'lap_start_s','lap_invalidated','in_pits','track_length_m',
-                           'world_x_m','world_y_m','world_z_m','fuel_l','tyre_compound','track_temp_c',
-                           'wetness','tc_level','abs_level','tc_active','abs_active','gear'}
-                values = {key:float(value) for key,value in row.items() if key in numbers and value not in ('',None)}
-                if not all(math.isfinite(v) for v in values.values()):
-                    raise ValueError('Non-finite telemetry')
-                values['utc'] = row['utc']
+                numeric=[]
+                for key in layout:
+                    value=row.get(key)
+                    if value in ('',None):numeric.append(math.nan)
+                    else:
+                        number=float(value)
+                        if not math.isfinite(number):raise ValueError('Non-finite telemetry')
+                        numeric.append(number)
+                utc=row['utc']
+                if utc!=last_utc:last_utc=utc
+                values=CompactRow(layout,numeric,last_utc)
                 if not {'session_time_s','lap','lap_distance_m','throttle','brake',
                         'filtered_throttle','filtered_brake','speed_kmh'}.issubset(values):
                     raise ValueError('Required telemetry columns missing')
@@ -51,7 +67,7 @@ def lap_key(row):
     return ('counter',int(row['lap']))
 
 
-def extract_best(csv_path,on_candidate=None,include_flagged=False):
+def extract_best(csv_path,on_candidate=None,include_flagged=False,retain_best=True):
     """Require two observed boundaries, or an exact recorded first-lap start.
 
     Legacy CSVs use successive lap-counter transitions and never promote the
@@ -123,7 +139,7 @@ def extract_best(csv_path,on_candidate=None,include_flagged=False):
                         distance_source='game_track_length' if known_lengths else 'recorded_maximum_estimate',
                         first_distance_index=beginning,cadence_s=cadence)
             if on_candidate:on_candidate(value)
-            if best is None or duration<best['time_s']:best=value
+            if retain_best and (best is None or duration<best['time_s']):best=value
 
     for row in read_rows(csv_path):
         next_key = lap_key(row)
@@ -228,21 +244,22 @@ def trajectory_data(best, data):
                 source='recorded_world_xz',max_gap_s=1.5,sample_target_hz=50)
 
 
-def write_compare(path, template, laps=(), status=None,reference_id=None):
+def write_compare(path, template, laps=(), status=None,reference_id=None,view_state=None):
+    import reporting
     value = dict(laps=list(laps),status=status)
     if reference_id is not None:value['reference_id']=reference_id
-    payload = json.dumps(value,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c')
+    if view_state:
+        for key,item in view_state.items():
+            if key not in ('laps','status','reference_id'):value[key]=item
     template = Path(template)
-    source = template.read_text(encoding='utf-8').replace('/*LAP_DATA*/null',payload)
+    source = template.read_text(encoding='utf-8').replace('/*LAP_DATA*/null','await StintLabData.jsonBlock("stintlab-laps")')
+    source = source.replace('/*DATA_VIEW_JS*/',reporting.script(template.parent))
     if '/*TRACK_VIEW_JS*/' in source:
         source = source.replace('/*TRACK_VIEW_JS*/',track_script(template.parent))
     if '/*VEHICLE_VIEW_JS*/' in source:
         from vehiclelab import script
         source=source.replace('/*VEHICLE_VIEW_JS*/',script(template.parent))
-    path = Path(path)
-    pending = path.with_name(path.name+'.'+str(threading.get_ident())+'.pending')
-    pending.write_text(source,encoding='utf-8')
-    pending.replace(path)
+    reporting.write_page(path,source,[('stintlab-laps',reporting.json_chunks(value))])
 
 
 def track_script(folder):

@@ -18,7 +18,9 @@
 <section class="card"><h2>自动对比结论与练习建议</h2><div id="insights"></div></section>
 <footer>分析阈值：刹车 / 油门 5%，全油 90%；连续制动区至少 8 m。油刹、速度与累计时间差只能说明记录中的关联。新实时记录与官方导入记录在提供对应通道时保存燃油、胎种、天气和辅助设置；缺失即为条件未知。交通可在比赛管理中人工标记，尚未自动识别。建议用于同车、相近条件下的复盘，不据此认定某个输入一定更快。新日志轨迹来自游戏世界坐标；旧日志按距离估算位置，没有精确走线和无效圈标记，圈速与距离也可能为估算值。曲线按距离对齐，车辆标记与彩色游标按同一时间回放。记录圈号与 inputs.csv 的 LMU 圈号一致。数据保留在本机，本页无需网络。</footer>
 </main>
-<script>
+/*STINTLAB_BLOCKS*/
+<script type="module" data-stintlab-main>
+/*DATA_VIEW_JS*/
 /*TRACK_VIEW_JS*/
 /*VEHICLE_VIEW_JS*/
 const initial=/*LAP_DATA*/null;
@@ -190,7 +192,7 @@ $('#reset').onclick=()=>refresh(true);
 $('#files').onchange=async e=>{const errors=[];for(const file of e.target.files){try{if(file.size>100*1024*1024)throw Error('文件超过 100 MB');addLap(JSON.parse(await file.text()))}catch(error){errors.push(file.name+'：'+error.message)}}if(!referenceId&&laps.length)referenceId=laps.reduce((a,b)=>a.lap.time_s<b.lap.time_s?a:b).id;analysisCache.clear();refresh(true);if(errors.length)message(errors.join('；'));e.target.value=''};
 function download(name,type,text){const url=URL.createObjectURL(new Blob([text],{type:type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
 $('#save-notes').onclick=()=>download('InputScope_圈速对比结论.txt','text/plain;charset=utf-8',notes);
-$('#save-page').onclick=()=>{const clone=document.documentElement.cloneNode(true);clone.querySelectorAll('.map-navigation,.map-calibration').forEach(n=>n.remove());const script=clone.querySelector('script'),payload=JSON.stringify({laps:visible(),status:'saved',reference_id:referenceId,channel:$('#channel').value,replay_time_s:replayTime,map_calibration:trackView.exportState(),corner_definitions:cornerDefinitions}).replace(/</g,'\\u003c');script.textContent=script.textContent.replace(/const initial=.*?;\n/,()=> 'const initial='+payload+';\n');download('InputScope_圈速对比.html','text/html;charset=utf-8','<!doctype html>'+clone.outerHTML)};
+$('#save-page').onclick=async()=>{try{const clone=document.documentElement.cloneNode(true);clone.querySelectorAll('.map-navigation,.map-calibration').forEach(n=>n.remove());const script=clone.querySelector('script[data-stintlab-main]'),payload={laps:visible(),status:'saved',reference_id:referenceId,channel:$('#channel').value,replay_time_s:replayTime,map_calibration:trackView.exportState(),corner_definitions:cornerDefinitions};const block=await StintLabData.jsonNode('stintlab-laps',payload);script.textContent=script.textContent.replace(/const initial=.*?;\n/,()=> 'const initial=await StintLabData.jsonBlock("stintlab-laps");\n');script.before(block);download('InputScope_圈速对比.html','text/html;charset=utf-8','<!doctype html>'+clone.outerHTML)}catch(error){message('保存失败：'+error.message)}};
 window.onresize=drawBackground;
 function setupReplay(reset=false){const b=base(),active=visible();replayMax=Math.max(1,...active.map(v=>v.lap.time_s));if(reset){replayTime=0;replayPlaying=false;$('#replay-play').textContent='▶ 同时间回放'}replayTime=Math.min(replayTime,replayMax);$('#replay-seek').max=replayMax;$('#replay-play').disabled=!b;$('#replay-start').disabled=!b;$('#replay-seek').disabled=!b;$('#map-states').replaceChildren();for(const v of active){const row=document.createElement('div');row.className='map-row';row.dataset.id=v.id;row.style.color=color(v);$('#map-states').append(row)}
  vehicleView.setEntries(b?[b,...active.filter(v=>v.id!==b.id)].map(v=>({id:v.id,label:'第 '+v.lap.number+' 圈 · '+v.session.vehicle,color:color(v),duration:v.lap.time_s,bundle:v.vehicle_telemetry,project:t=>valueAtTime(v,Math.max(0,Math.min(v.lap.time_s,t)))[0]/v.lap.track_length_m*b.lap.track_length_m})):[]);

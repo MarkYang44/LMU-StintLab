@@ -1,5 +1,5 @@
 """Specified whole-lap extraction, regression and original-data integrity."""
-import csv,json,math
+import csv,json,math,base64,gzip,re
 from pathlib import Path
 import shutil,sys,tempfile,unittest
 ROOT=Path(__file__).parent;sys.path.insert(0,str(ROOT/'src'))
@@ -43,7 +43,9 @@ class SelectedLapTests(unittest.TestCase):
                 self.assertEqual(len(rows),count);self.assertTrue(all(int(float(r['lap']))==number for r in rows))
                 self.assertIn('steering',rows[0]);self.assertIn('filtered_steering',rows[0]);self.assertEqual(rows[0]['vehicle'],'BMW M4 LMGT3')
             self.assertEqual({p:p.read_bytes() for p in before},before)
-            html=Path(result['comparison']).read_text(encoding='utf-8');self.assertIn('"reference_id":"session:1"',html)
+            html=Path(result['comparison']).read_text(encoding='utf-8')
+            block=re.search(r'id="stintlab-laps" data-bytes="\d+">([^<]+)</script>',html).group(1)
+            self.assertEqual(json.loads(gzip.decompress(base64.b64decode(block)))['reference_id'],'session:1')
 
     def test_partial_pair_fails_before_creating_outputs(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as t:

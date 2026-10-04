@@ -108,18 +108,25 @@ def analyze_session(folder):
         if vehicle:info['vehicle_summary']=vehicle['summary']
         summaries.append(info)
         # Keep at most five actual candidates; representative is an observed lap.
-        recent.append((info,best));del recent[:-5]
-    _,candidates,error=extract_best(folder/'inputs.csv',collect)
-    latest=recent[-1][0]['conditions'] if recent else {}
-    training=[(i,b) for i,b in recent if condition_check(i['conditions'],latest)['allowed']]
-    times=[i['time_s'] for i,_ in training];stats=spread(times);reference=None
+        recent.append(info);del recent[:-5]
+    _,candidates,error=extract_best(folder/'inputs.csv',collect,retain_best=False)
+    latest=recent[-1]['conditions'] if recent else {}
+    training=[i for i in recent if condition_check(i['conditions'],latest)['allowed']]
+    times=[i['time_s'] for i in training];stats=spread(times);reference=None
     if len(training)>=3:
-        info,best=min(training,key=lambda pair:abs(pair[0]['time_s']-stats['median']))
+        info=min(training,key=lambda i:abs(i['time_s']-stats['median']))
+        selected=[]
+        def select(best):
+            if best['number']==info['number'] and abs(best['start_s']-clock_origin-info['start_time_s'])<1e-6:
+                selected.append(best)
+        extract_best(folder/'inputs.csv',select,retain_best=False)
+        best=selected[0]
         refinfo={k:best[k] for k in ('number','time_s','validity','timing_source','distance_source','cadence_s')}
         refinfo.update(track_length_m=best['length_m'],sample_count=len(best['rows']),start_session_time_s=best['start_s'],end_session_time_s=best['end_s'])
+        data=comparison_data(best)
         reference=dict(format=FORMAT,version=1,id=folder.name+':stable:'+str(info['number']),session={k:meta.get(k,'') for k in ('track','vehicle','driver','started_utc','source')},
-            lap=refinfo,data_columns=DATA_COLUMNS,data=comparison_data(best),conditions=info['conditions'],reference_kind='stable',
-            stability=stats,actions=info['action'],trajectory=trajectory_data(best,comparison_data(best)))
+            lap=refinfo,data_columns=DATA_COLUMNS,data=data,conditions=info['conditions'],reference_kind='stable',
+            stability=stats,actions=info['action'],trajectory=trajectory_data(best,data))
         reference['vehicle_telemetry']=lap_telemetry(best,vehicle_bundle)
         if reference['trajectory'] and meta.get('position_source'):reference['trajectory']['source']=meta['position_source']
         name=f"Stable_Lap_{info['number']}_{safe_name(meta['vehicle'])}_{safe_name(meta['track'])}.lap.json"
@@ -127,6 +134,6 @@ def analyze_session(folder):
     else:name=None
     detail=dict(version=1,laps=summaries,candidates=candidates,error=error,recent_stability=stats,
         stable_reference_file=name,conditions_unknown=condition_check(latest,latest)['unknown'],
-        metrics={k:spread([i[k] for i,_ in training if i[k] is not None]) for k in ('minimum_speed','first_brake_m','first_full_m')},
+        metrics={k:spread([i[k] for i in training if i[k] is not None]) for k in ('minimum_speed','first_brake_m','first_full_m')},
         note='最近最多五个完整圈；明确条件不同的圈排除。稳定参考为实测中位附近的一圈；不足三圈不生成。交通需人工标记。动作计数是阈值统计，不自动认定驾驶错误。')
     write_json(folder/'session_analysis.json',detail);return detail

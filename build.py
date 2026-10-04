@@ -11,7 +11,7 @@ import uuid
 import zipfile
 
 ROOT=Path(__file__).resolve().parent
-ASSET_NAMES=('report.html','compare.html','trackview.js','laplab.js','vehicleview.js','enduranceview.js','tracks/catalog.json')
+ASSET_NAMES=('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','tracks/catalog.json')
 
 def bundle_audit(folder):
     private={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','.venv','_local','_backup','_verification'}

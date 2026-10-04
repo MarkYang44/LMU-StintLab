@@ -6,6 +6,7 @@ import json
 import math
 from pathlib import Path
 import statistics
+from buffers import NullableTable
 
 WHEELS=('fl','fr','rl','rr')
 TYRE_FIELDS=('pressure_kpa','inner_c','middle_c','outer_c','carcass_c','wear_fraction','optimal_c','flat','detached')
@@ -286,12 +287,17 @@ def load_recording(folder):
     if not path.exists():return None
     with path.open(encoding='utf-8-sig',newline='') as f:
         reader=csv.DictReader(f);columns=[k for k in COLUMNS if k not in ('time_s','session_time_s')]
-        data=[];origin=None
-        for r in reader:
-            t=number(r.get('session_time_s'))
-            if t is None or data and t<=data[-1][0]:raise ValueError('附加遥测时间戳无效')
-            if origin is None:origin=t-(number(r.get('time_s')) or 0)
-            data.append([t,*[number(r.get(k)) for k in columns]])
+        origin=None
+        def records():
+            nonlocal origin
+            last=-math.inf
+            for r in reader:
+                t=number(r.get('session_time_s'))
+                if t is None or t<=last:raise ValueError('附加遥测时间戳无效')
+                last=t
+                if origin is None:origin=t-(number(r.get('time_s')) or 0)
+                yield [t,*[number(r.get(k)) for k in columns]]
+        data=NullableTable(records(),len(columns)+1)
     meta=json.loads((Path(folder)/'session.json').read_text(encoding='utf-8'))
     return dict(version=1,columns=columns,data=data,record_hz=meta.get('vehicle_telemetry',{}).get('target_hz'),
         source=meta.get('source'),time_origin_s=origin or 0,profile=meta.get('vehicle_profile',DEFAULT_PROFILE),
@@ -300,8 +306,10 @@ def load_recording(folder):
 
 def lap_telemetry(best,bundle=None):
     if bundle:
-        times=[r[0] for r in bundle['data']];a=max(0,bisect.bisect_left(times,best['start_s'])-1);b=bisect.bisect_right(times,best['end_s'])+1
-        payload={**bundle,'data':[[round(r[0]-best['start_s'],6),*r[1:]] for r in bundle['data'][a:b]]}
+        rows=bundle['data']
+        a=max(0,bisect.bisect_left(rows,best['start_s'],key=lambda r:r[0])-1)
+        b=min(len(rows),bisect.bisect_right(rows,best['end_s'],key=lambda r:r[0])+1)
+        payload={**bundle,'data':[[round(rows[i][0]-best['start_s'],6),*rows[i][1:]] for i in range(a,b)]}
     else:
         columns=['fuel_l'];data=[];last=-math.inf
         for r in best['rows']:
@@ -315,19 +323,30 @@ def lap_telemetry(best,bundle=None):
 def summarize(bundle,start,end):
     columns=bundle['columns'];rows=bundle['data'];result={}
     for j,k in enumerate(columns,1):
-        samples=[(r[0],r[j]) for r in rows if start<=r[0]<=end and r[j] is not None]
-        if not samples:continue
-        integral=weight=0.
-        for a,b in zip(samples,samples[1:]):
-            dt=b[0]-a[0]
-            if 0<dt<=1.5:integral+=(a[1]+b[1])*.5*dt;weight+=dt
-        result[k]=dict(min=min(v for _,v in samples),max=max(v for _,v in samples),
-            mean=integral/weight if weight else samples[0][1],start=samples[0][1],end=samples[-1][1])
+        first=previous=None;low=math.inf;high=-math.inf;integral=weight=0.
+        for r in rows:
+            t,v=r[0],r[j]
+            if not start<=t<=end or v is None:continue
+            if first is None:first=v
+            if previous is not None:
+                dt=t-previous[0]
+                if 0<dt<=1.5:integral+=(previous[1]+v)*.5*dt;weight+=dt
+            low=min(low,v);high=max(high,v);previous=(t,v)
+        if previous is None:continue
+        result[k]=dict(min=low,max=high,mean=integral/weight if weight else first,start=first,end=previous[1])
     for key in ('fuel_l','virtual_energy_pct'):
         j=columns.index(key)+1 if key in columns else None
         if j is None:continue
-        points=[dict(et=r[0],vehicle={key:r[j]}) for r in rows]
-        a=boundary(points,start,key);b=boundary(points,end,key)
+        points=[(r[0],r[j]) for r in rows if r[j] is not None]
+        def at(t):
+            if not points:return None
+            exact=next((v for x,v in points if abs(x-t)<1e-6),None)
+            if exact is not None:return exact
+            if len(points)<2:return points[0][1] if abs(points[0][0]-t)<.02 else None
+            i=bisect.bisect_left(points,t,key=lambda p:p[0]);p=max(0,min(i-1,len(points)-2));a,b=points[p:p+2]
+            if b[0]-a[0]>1.5 or min(abs(a[0]-t),abs(b[0]-t))>.3:return None
+            return a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0])
+        a=at(start);b=at(end)
         reset=any(y[j] is not None and x[j] is not None and y[j]>x[j]+(.2 if key=='fuel_l' else .5) for x,y in zip(rows,rows[1:]) if start<=y[0]<=end)
         gaps=any(y[0]-x[0]>1.5 for x,y in zip(rows,rows[1:]) if x[0]<end and y[0]>start)
         result[key+'_used']=dict(value=a-b if a is not None and b is not None and not reset and not gaps else None,

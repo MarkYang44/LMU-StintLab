@@ -5,6 +5,7 @@ from datetime import datetime,timezone
 import gzip
 import hashlib
 import json
+import io
 import os
 from pathlib import Path
 import queue
@@ -21,10 +22,17 @@ class StorageError(OSError):
     pass
 
 
+class PackedCSV:
+    """Sink accepting complete escaped CSV records, including embedded newlines."""
+    def __init__(self,file):self.file=file
+    def writerows(self,rows):self.file.write(''.join(rows))
+
+
 class BatchWriter:
     def __init__(self,folder,columns,capacity=131072,on_checkpoint=None,filename='inputs.csv',checkpoint_name='recording_checkpoint.json'):
         self.folder=Path(folder);self.checkpoint_name=checkpoint_name;self.file=(self.folder/filename).open('w',encoding='utf-8',newline='')
-        self.csv=csv.writer(self.file);self.csv.writerow(columns)
+        csv.writer(self.file).writerow(columns);self.csv=PackedCSV(self.file)
+        self.encoders=threading.local()
         self.queue=queue.Queue(maxsize=capacity);self.rows=0;self.peak=0;self.error=None;self.closed=False;self.on_checkpoint=on_checkpoint
         try:self.checkpoint()
         except Exception as e:
@@ -41,7 +49,11 @@ class BatchWriter:
     def add(self,row):
         if self.error:raise StorageError('后台写盘失败：'+self.error)
         if self.closed:raise StorageError('记录已关闭')
-        try:self.queue.put_nowait(tuple(row))
+        if not hasattr(self.encoders,'buffer'):
+            self.encoders.buffer=io.StringIO(newline='');self.encoders.writer=csv.writer(self.encoders.buffer)
+        buffer=self.encoders.buffer;buffer.seek(0);buffer.truncate(0)
+        self.encoders.writer.writerow(row)
+        try:self.queue.put_nowait(buffer.getvalue())
         except queue.Full:raise StorageError('写盘队列已满；停止该段记录，未静默丢弃采样') from None
         self.peak=max(self.peak,self.queue.qsize())
 
