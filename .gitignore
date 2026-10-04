@@ -14,6 +14,7 @@
 !/Demo.cmd
 !/Build.cmd
 !/Check.cmd
+!/Publish.cmd
 !/build.py
 !/tests*.py
 !/src/
