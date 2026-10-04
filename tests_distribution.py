@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parent;sys.path.insert(0,str(ROOT/'src'))
-from tools.audit_publication import audit,allowed
+from tools.audit_publication import audit,allowed,git_command
 from tools.install_dependencies import choose_wheel
 from build import bundle_audit,ASSET_NAMES
 import paths
@@ -32,8 +32,26 @@ class DistributionTests(unittest.TestCase):
 
     def test_git_ignores_nested_and_root_private_data(self):
         names=['data/Logs/input.csv','src/Logs/session.json','local_settings.json','dist/test.zip','_local/wheels/test.whl','src/a.lap.json','src/tracks/sources/map.pdf']
-        result=subprocess.run(['git','check-ignore','--stdin','-z'],cwd=ROOT,input=('\0'.join(names)+'\0').encode(),capture_output=True)
+        result=subprocess.run(git_command('check-ignore','--stdin','-z'),cwd=ROOT,input=('\0'.join(names)+'\0').encode(),capture_output=True)
         self.assertEqual(set(result.stdout.decode().strip('\0').split('\0')),set(names))
+
+    def test_cross_owner_checkout_is_audited_without_global_config_changes(self):
+        env=dict(os.environ,GIT_TEST_ASSUME_DIFFERENT_OWNER='1',GIT_CONFIG_COUNT='1',
+                 GIT_CONFIG_KEY_0='safe.directory',GIT_CONFIG_VALUE_0='')
+        before=subprocess.run(['git','config','--global','--get-all','safe.directory'],capture_output=True)
+        blocked=subprocess.run(['git','-c','safe.directory=','rev-parse','--show-toplevel'],cwd=ROOT,env=env,capture_output=True)
+        self.assertNotEqual(blocked.returncode,0)
+        self.assertIn(b'dubious ownership',blocked.stderr)
+        result=subprocess.run([sys.executable,str(ROOT/'tools'/'audit_publication.py'),'--json'],cwd=ROOT,env=env,capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertTrue(json.loads(result.stdout)['ok'])
+        after=subprocess.run(['git','config','--global','--get-all','safe.directory'],capture_output=True)
+        self.assertEqual((before.returncode,before.stdout),(after.returncode,after.stdout))
+
+    def test_git_command_trusts_only_exact_project_directory(self):
+        command=git_command('show',':README.md')
+        self.assertEqual(command,['git','-c','safe.directory=','-c','safe.directory='+ROOT.as_posix(),'show',':README.md'])
+        self.assertNotIn('safe.directory=*',command)
 
     def test_default_data_is_separate_from_assets(self):
         with patch.dict(os.environ,{},clear=True),patch.object(paths,'local_settings',return_value={}):

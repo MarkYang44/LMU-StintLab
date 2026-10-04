@@ -12,3 +12,5 @@
 ZIP 内包括独立解释器、Tk、DuckDB、离线模板、许可证及 build-manifest.json，不要求用户安装 RaceCom 或 Python。GitHub 的源码 Download ZIP 不包含二进制，但 Setup.cmd 可一次配置并启动。
 
 源码与输出分离的改动限于路径、SDK / DuckDB 依赖及发行脚本；公开版无授权不明的预置底图库。车轮盘体为程序绘制的示意图。新增静态素材前必须确认可再分发许可。
+
+如果 Git checkout 由沙箱账号创建、发布由普通 Windows 账号执行，发布脚本和隐私审计会在每次 Git 调用中仅信任当前项目的确切路径。无需更改文件所有权，也不写全局 `safe.directory` 配置；Git 读取失败会单独报错，不会误报成远程地址不符。

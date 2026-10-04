@@ -15,6 +15,10 @@ DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.exe','.dll','.pyd'
 SECRET_PATTERNS=[rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',rb'gh[pousr]_[A-Za-z0-9]{30,}',rb'github_pat_[A-Za-z0-9_]{30,}',rb'AKIA[0-9A-Z]{16}',rb'sk-[A-Za-z0-9_-]{40,}']
 PRIVATE_PATTERNS=[rb'(?i)[A-Z]:[\\/]+Users[\\/]+[^\\/\s]+',rb'(?i)[A-Z]:[\\/]+(?:SteamLibrary|SPD)[\\/]+']
 
+def git_command(*args):
+    """Trust this exact checkout per invocation, including cross-owner installs."""
+    return ['git','-c','safe.directory=','-c','safe.directory='+ROOT.as_posix(),*args]
+
 def allowed(name):
     path=PurePosixPath(name);parts=[p.casefold() for p in path.parts]
     if any(p in PRIVATE_PARTS for p in parts) or path.name.casefold() in PRIVATE_NAMES:return False
@@ -41,8 +45,8 @@ def main():
         files=[p.relative_to(ROOT).as_posix() for p in ROOT.rglob('*') if p.is_file() and not any(part in ('.git','.venv','_local','dist','build','data','__pycache__') for part in p.relative_to(ROOT).parts) and allowed(p.relative_to(ROOT).as_posix())]
         read=lambda name:(ROOT/name).read_bytes()
     else:
-        files=subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode('utf-8').split('\0');files=[f for f in files if f]
-        read=lambda name:subprocess.check_output(['git','show',':'+name],cwd=ROOT)
+        files=subprocess.check_output(git_command('ls-files','-z'),cwd=ROOT).decode('utf-8').split('\0');files=[f for f in files if f]
+        read=lambda name:subprocess.check_output(git_command('show',':'+name),cwd=ROOT)
     result=audit(files,read);print(json.dumps(result,indent=2) if args.json else f"Publication audit: {'PASS' if result['ok'] else 'FAIL'}; {result['files']} public files, {result['bytes']} bytes"+('\n'+'\n'.join(result['failures']) if result['failures'] else ''))
     return 0 if result['ok'] else 1
 
