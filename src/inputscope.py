@@ -30,7 +30,7 @@ def __getattr__(name):
 
 def main():
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.6');return
+        print('LMU StintLab 0.1.7');return
     if '--race-images' in sys.argv:
         index=sys.argv.index('--race-images')
         if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')

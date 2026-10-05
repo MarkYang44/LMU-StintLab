@@ -85,7 +85,8 @@ class Shell:
         bar.pack(side='right',fill='y',padx=(round(8*s),0));self.scroll.pack(side='left',fill='both',expand=True);self.scroll.configure(yscrollcommand=bar.set)
         self.content=tk.Frame(self.scroll,bg=BG);self.item=self.scroll.create_window(0,0,anchor='nw',window=self.content)
         self.scroll.bind('<Configure>',lambda e:self.scroll.itemconfigure(self.item,width=e.width))
-        self.content.bind('<Configure>',lambda e:self.scroll.configure(scrollregion=self.scroll.bbox('all')))
+        # The animation translates the window, not the scrollable document origin.
+        self.content.bind('<Configure>',lambda e:self.scroll.configure(scrollregion=(0,0,e.width,e.height)))
     def paint_brand(self,_=None):
         c=self.brand;s=self.s;c.delete('all')
         if self.logo:c.create_image(0,0,image=self.logo,anchor='nw')

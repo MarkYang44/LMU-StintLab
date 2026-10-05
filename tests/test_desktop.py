@@ -47,6 +47,7 @@ class DesktopTests(unittest.TestCase):
                 self.assertEqual(switch.value,1);self.assertFalse(switch.motion.jobs)
                 self.assertEqual(center.shell.navigation.position,0);self.assertFalse(center.shell.navigation.motion.jobs)
                 self.assertFalse(center.shell.motion.jobs);self.assertEqual(center.scroll.coords(center.content_item),[0,0])
+                self.assertEqual(tuple(float(v) for v in center.scroll.cget('scrollregion').split())[:2],(0,0))
                 variable.set(False);switch.destroy();center.root.update();self.assertFalse(switch.motion.jobs)
                 self.assertFalse(errors)
             finally:center.close()
