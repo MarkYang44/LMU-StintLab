@@ -12,9 +12,11 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
 from race_journal import RaceJournal,capture
 from race_model import build_model,lap_time
-from race_report import digest,generate
+from race_report import digest,generate as generate_report
 from race_art import select_car
 from tests import test_core
+
+def generate(*args,**kwargs):return generate_report(*args,**kwargs,renderer='native')
 
 
 def sample(et=0,lap=0,start=0,completed=0,**updates):

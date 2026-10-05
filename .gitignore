@@ -53,6 +53,11 @@
 **/race_events_checkpoint.json
 **/race_images_error.txt
 **/car_calibration.json
+**/renderer_settings.json
+**/image_generate_config.json
+**/RaceComRenderer/
+**/_racecom/
+**/_report_history/
 *.csv
 *.lap.json
 *.duckdb

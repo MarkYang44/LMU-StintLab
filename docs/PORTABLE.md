@@ -1,13 +1,16 @@
 # LMU StintLab · Windows x64 便携版
 
-完整解压到可写文件夹，双击 **Start.cmd**。无需安装 Python，无需往游戏目录复制文件。请保留 EXE 旁的 **_internal** 文件夹。
+完整解压到可写文件夹，双击 **Start.cmd** 打开控制中心，再点击 **启动 HUD**。无需安装 Python，无需往游戏目录复制文件。请保留 EXE 旁的 **_internal** 文件夹。
 
 - **Demo.cmd / Start Demo.cmd**：不开游戏时演示合成曲线。
 - **Start Clean.cmd**：只显示曲线。
 - **Start Clean Controls.cmd**：显示曲线、油刹柱形图和方向盘。
-- 右键 HUD 打开设置、比赛记录管理、圈速对比和退出菜单。
+- 控制中心按功能分类；**赛事复盘** 直接打开圈速单、比赛日志和 Review，**曲线对比** 选择同场 A / B 或跨场最快圈。
+- HUD 标题栏菜单按钮打开控制中心；右键快捷菜单继续保留。`Start.cmd --hud` 可直接进入旧 HUD。
 
-进入 LMU 驾驶会话后自动记录；正常退出 HUD 会等待写入与报告完成。记录保存在 `data/`，新文件夹与导出比赛包带 `Practice / Qualify / Race` 阶段标签。
+仅 Qualify / Race 自动记录；Practice / Warmup 仅实时显示，旧记录保留。正常退出 HUD 会等待写入与报告完成；停止 HUD 后控制中心仍可用。记录保存在 `data/`。
+
+要使用 RaceCom 原版圈速单和比赛日志，在 **图像与数据** 中选择自己 RaceCom 安装目录里的 **Image Generate.exe**，保留该目录下的 `Source` 文件夹。生成器不会随本软件分发；未配置时记录仍保存，可配置后补图。可明确选择 `native` 兼容版式；演示模式使用兼容版式。
 
 完整操作见 [使用说明](docs/USAGE.md)，本机记录与设置保护见 [数据与隐私](docs/PRIVACY.md)。便携包只包含运行文件、启动入口、使用文档和必要许可证；开发测试、构建发布脚本和自检程序留在源码仓库。
 

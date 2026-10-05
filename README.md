@@ -12,7 +12,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 **源码版**：点击 GitHub **Code → Download ZIP**，完整解压，双击 `Setup.cmd`，完成后双击 `Start.cmd`。首次配置需要联网：脚本查找 64 位 Python 3.13；没有时使用 winget 为当前用户安装官方 Python，然后创建独立 `.venv`、校验固定版本依赖并安装。没有 winget 时，请手动安装带 Tcl/Tk 的 [Python 3.13](https://www.python.org/downloads/windows/)，然后重试。
 
-运行游戏后，HUD 会等待 LMU 的 `LMU_Data` 共享内存并自动记录。**无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。** LMU StintLab 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
+`Start.cmd` 默认打开分类控制中心，点击 **启动 HUD** 后读取 LMU 的 `LMU_Data` 共享内存。**只自动记录排位赛和正赛；Practice / Warmup 保留实时 HUD，不写比赛文件。** 无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。LMU StintLab 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
 
 ## 功能
 
@@ -20,14 +20,16 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 - 紧凑置顶 HUD、纯曲线和纯曲线 + 柱形图 / 540° 示意方向盘模式；缩放与磨砂风格显示。
 - 1–4000 Hz 目标轮询频率、动态采样、同步绘制及实际速率诊断。游戏新数据频率、CPU、Tk 和屏幕刷新率决定实际效果；高轮询不会制造新的游戏遥测。
 - 结束后自动保存 CSV、离线 HTML 回放、最快圈文件及油刹曲线图；最快圈带圈号、车辆、赛道和会话信息。
-- 赛后自动生成高清 `圈速单.png`、`比赛日志.png` 与完整 JSON / 文本日志，保存在同一赛事目录；分段、名次与赛事事件来自游戏。长比赛自动分页，旧记录可在会话库补图。无需运行 RaceCom 或 Image Generate.exe。
+- 分类控制中心：启动与 HUD、赛事复盘、曲线对比、采样与遥测、图像与数据；直接打开图片、Review 和完整圈 A / B 对比。
+- 赛后调用用户自行配置的 RaceCom **Image Generate.exe**，使用原版浅色版式生成 `圈速单.png`、`比赛日志.png`，保存在同一赛事目录。生成器及其 `Source` 图片需保留在自己的安装目录；在控制中心 **图像与数据** 选择生成器。公开下载包不包含第三方程序或照片。
+- 原版生成器未配置时保留遥测并提示配置；也可明确选择 `native` 兼容版式（长比赛分页）。演示模式默认使用兼容版式。旧记录可从菜单补图，切换生成方式会保留旧报告备份。缺失字段不补造；PIT / 部分记录 / 未验证圈标为统计无效，仅排除最快圈计算，不代表游戏处罚。
 - 同车同赛道跨比赛参考圈、完整圈 A / 圈 B 选择与提取、距离对齐、差距分析和规则生成的驾驶建议。
 - 赛道轨迹播放、位置对比、缩放和拖拽；胎温 / 胎压 / 磨损、燃油 / 能量及耐力赛相关面板与日志分析。部分通道需要导入原生遥测文件。
 - 只读导入 LMU `.duckdb` 记录、会话库、恢复与压缩。不会上传遥测，也不会连接外部 AI 服务。
 - 会话库支持多选导出 / 导入比赛包：每场一个校验 ZIP，保留完整遥测、离线复盘、圈文件和备注，可手动上传网盘。
-- 新记录文件夹、比赛包与会话库带 `Practice / Qualify / Race` 阶段标签；旧记录无需改名。
+- 新记录文件夹、比赛包与会话库带 `Qualify / Race` 阶段标签；旧 Practice 记录保留且无需改名。
 
-游戏 HUD 建议使用窗口 / 无边框窗口模式。它是 Windows 置顶窗口；独占全屏可能不显示。右键打开菜单，拖动移动；快捷键与工作流见 [使用说明](docs/USAGE.md)。
+游戏 HUD 建议使用窗口 / 无边框窗口模式。它是 Windows 置顶窗口；独占全屏可能不显示。HUD 标题栏菜单按钮打开控制中心，右键快捷菜单继续保留；拖动移动。快捷键与工作流见 [使用说明](docs/USAGE.md)。
 
 ## 数据与隐私
 

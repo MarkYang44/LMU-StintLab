@@ -26,14 +26,15 @@ from telemetry_import import import_recording
 
 
 class App:
-    def __init__(self, demo=False, clean=False, clean_controls=False):
-        self.root = tk.Tk()
+    def __init__(self, demo=False, clean=False, clean_controls=False, root=None, on_menu=None):
+        self.root = root if root is not None else tk.Tk()
+        self.on_menu=on_menu
         self.root.title('LMU StintLab' + (' · DEMO' if demo else ''))
         self.root.geometry('640x228+70+70')
         self.root.minsize(440, 160)
         self.root.overrideredirect(True)
         self.root.configure(bg='#0c111a')
-        self.top = tk.BooleanVar(value=True)
+        self.top = tk.BooleanVar(self.root,value=True)
         self.root.attributes('-topmost', True)
         self.root.attributes('-alpha', 1.0)
         self.clickthrough = False
@@ -46,25 +47,25 @@ class App:
         self.settings = load_settings(ROOT / 'settings.json')
         self.vehicle_settings=vehiclelab.load_settings(ROOT/'vehicle_settings.json')
         self.endurance_settings=endurance.load_settings(ROOT/'endurance_settings.json')
-        for kind in ('pit','stint','weather'):setattr(self,kind+'_on',tk.BooleanVar(value=self.endurance_settings[kind+'_enabled']))
-        self.tyres_on=tk.BooleanVar(value=self.vehicle_settings['tyres_enabled'])
-        self.strategy_on=tk.BooleanVar(value=self.vehicle_settings['strategy_enabled'])
+        for kind in ('pit','stint','weather'):setattr(self,kind+'_on',tk.BooleanVar(self.root,value=self.endurance_settings[kind+'_enabled']))
+        self.tyres_on=tk.BooleanVar(self.root,value=self.vehicle_settings['tyres_enabled'])
+        self.strategy_on=tk.BooleanVar(self.root,value=self.vehicle_settings['strategy_enabled'])
         try:
             self.reference_settings = json.loads((ROOT/'reference_settings.json').read_text(encoding='utf-8'))
         except (OSError,ValueError):
             self.reference_settings = dict(enabled=False,automatic=True,path='')
-        self.reference_on = tk.BooleanVar(value=bool(self.reference_settings.get('enabled',False)))
-        self.reference_auto = tk.BooleanVar(value=bool(self.reference_settings.get('automatic',True)))
+        self.reference_on = tk.BooleanVar(self.root,value=bool(self.reference_settings.get('enabled',False)))
+        self.reference_auto = tk.BooleanVar(self.root,value=bool(self.reference_settings.get('automatic',True)))
         self.reference_loading = False
         self.reference_generation = 0
         self.reference_scan_at = 0
         self.reference_match_key = None
         self.reference_message = ''
-        self.reference_kind = tk.StringVar(value=self.reference_settings.get('kind','fastest'))
-        self.reference_locked = tk.BooleanVar(value=bool(self.reference_settings.get('locked',False)))
-        self.input_channel = tk.StringVar(value=self.settings['input_channel'])
+        self.reference_kind = tk.StringVar(self.root,value=self.reference_settings.get('kind','fastest'))
+        self.reference_locked = tk.BooleanVar(self.root,value=bool(self.reference_settings.get('locked',False)))
+        self.input_channel = tk.StringVar(self.root,value=self.settings['input_channel'])
         self.settings_dialog = None
-        self.hud_mode = tk.StringVar(value='normal')
+        self.hud_mode = tk.StringVar(self.root,value='normal')
         self.applied_hud_mode = 'normal'
         self.user32 = ctypes.WinDLL('user32', use_last_error=True)
         self.user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
@@ -81,7 +82,7 @@ class App:
                     self.close()
                     return
                 if event.x > self.canvas.winfo_width() - 76*scale:
-                    menu.tk_popup(event.x_root, event.y_root)
+                    self.open_control_center()
                     return
             self.drag_origin = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
         def move_drag(event):
@@ -89,6 +90,7 @@ class App:
                 x, y = event.x_root - self.drag_origin[0], event.y_root - self.drag_origin[1]
                 self.root.geometry(f'{x:+d}{y:+d}')
         menu = tk.Menu(self.root, tearoff=False, bg='#172236', fg='#eef4ff')
+        menu.add_command(label='打开控制中心',command=self.open_control_center)
         menu.add_command(label='打开记录', command=self.open_logs)
         menu.add_command(label='打开 CSV 复盘', command=self.review_csv)
         menu.add_command(label='最快圈曲线对比', command=self.open_fastest_compare)
@@ -124,7 +126,7 @@ class App:
             menu.add_radiobutton(label=label,variable=self.hud_mode,value=mode,
                                  command=self.apply_clean_mode)
         menu.add_separator()
-        self.window = tk.StringVar(value='10')
+        self.window = tk.StringVar(self.root,value='10')
         for seconds in ('5', '10', '20'):
             menu.add_radiobutton(label=seconds + ' 秒波形', variable=self.window, value=seconds)
         menu.add_separator()
@@ -186,6 +188,12 @@ class App:
 
     def run_background(self, work, done):
         return self.tasks.submit(work, done)
+
+    def open_control_center(self):
+        if self.on_menu:self.on_menu()
+        else:
+            from control_center import show_attached
+            show_attached(self)
 
     def poll_tasks(self):
         self.task_job = None
@@ -809,6 +817,10 @@ class App:
 
     def close(self):
         self.closing = True
+        center=getattr(self,'control_center',None)
+        if center and center.root.winfo_exists():
+            if not center.closing:
+                center.closing=True;center.tasks.close();center.root.after_cancel(center.job)
         tasks = getattr(self, 'tasks', None)
         if tasks:
             tasks.close()
@@ -825,7 +837,7 @@ class App:
             self.root.after(25, self.close)
             return
         # Keep Tk and its variables alive on the GUI thread until all exports finish.
-        if ((tasks and tasks.busy) or
+        if ((tasks and tasks.busy) or (center and center.tasks.busy) or
                 any(t.is_alive() for t in [*self.engine.recorder.pending_reports,*getattr(self,'archive_workers',[])])):
             self.root.after(25,self.close)
             return
@@ -834,4 +846,6 @@ class App:
             # Discard callbacks after shutdown while releasing their result data.
             for _ in tasks.completions():
                 pass
+        if center:
+            for _ in center.tasks.completions():pass
         self.root.destroy()

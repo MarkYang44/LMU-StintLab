@@ -151,7 +151,9 @@ def describe(event):
     if name=='pit_exit':return '驶离维修区'
     if name=='lap_invalidated':return '当前圈被游戏标记为无效'
     if name=='recording_start':return '开始记录'
-    if name=='recording_end':return '结束记录 · '+str(p.get('reason',''))
+    if name=='recording_end':
+        result={2:'未完赛（DNF）',3:'取消资格（DQ）'}.get(p.get('finish_flag'))
+        return '结束记录 · '+(result or str(p.get('reason','')))
     if name=='phase':
         phases={0:'赛前',1:'侦察圈',2:'发车格',3:'暖胎圈',4:'倒计时',5:'绿旗',6:'全场黄旗',7:'暂停比赛',8:'比赛结束',9:'暂停'}
         return '赛事阶段 · '+phases.get(p.get('to'),str(p.get('to')))

@@ -9,7 +9,7 @@ import subprocess
 import time
 
 
-def close_demo(process):
+def close_demo(process,title_expected='LMU StintLab · DEMO'):
     """Send a normal close only to the synthetic HUD this test launched."""
     if process.poll() is not None:return
     user=ctypes.WinDLL('user32',use_last_error=True)
@@ -24,7 +24,7 @@ def close_demo(process):
         pid=wintypes.DWORD();user.GetWindowThreadProcessId(handle,ctypes.byref(pid))
         if pid.value==process.pid:
             title=ctypes.create_unicode_buffer(256);user.GetWindowTextW(handle,title,len(title))
-            if title.value=='LMU StintLab · DEMO':targets.append(handle)
+            if title.value==title_expected:targets.append(handle)
         return True
     if not user.EnumWindows(collect,0) or len(targets)!=1:
         raise RuntimeError('Expected exactly one test-owned DEMO window')
@@ -39,6 +39,21 @@ def run(bundle,root):
     bundle=Path(bundle).resolve();root=Path(root).resolve();root.mkdir(parents=True,exist_ok=False)
     environment=dict(os.environ,LMU_STINTLAB_DATA_DIR=str(root))
     startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
+    menu=subprocess.Popen([str(bundle/'LMU-StintLab.exe')],cwd=bundle,env=environment,startupinfo=startup,
+        stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    try:
+        deadline=time.monotonic()+20
+        while True:
+            if menu.poll() is not None:raise RuntimeError('Portable control center failed to start')
+            try:close_demo(menu,'LMU StintLab · 控制中心');break
+            except RuntimeError:
+                if time.monotonic()>deadline:raise
+                time.sleep(.1)
+        menu.wait(timeout=15)
+        if menu.returncode:raise RuntimeError('Portable control center failed to close')
+        idle=not (root/'Logs').exists() and not (root/'DemoLogs').exists()
+    finally:
+        if menu.poll() is None:menu.terminate();menu.wait(timeout=10)
     process=subprocess.Popen([str(bundle/'LMU-StintLab.exe'),'--demo'],cwd=bundle,
         env=environment,startupinfo=startup,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
@@ -64,6 +79,7 @@ def run(bundle,root):
     required=('inputs.csv','session.json','review.html','fastest_lap_summary.json','fastest_lap.html',
               '圈速单.png','比赛日志.png','race_log.json','race_log.txt','race_images.json','race_events.csv')
     checks={name:(folder/name).is_file() for name in required}
+    checks['control_center_starts_without_recording']=idle
     meta=json.loads((folder/'session.json').read_text(encoding='utf-8'))
     summary=json.loads((folder/'fastest_lap_summary.json').read_text(encoding='utf-8'))
     with (folder/'inputs.csv').open(encoding='utf-8',newline='') as stream:

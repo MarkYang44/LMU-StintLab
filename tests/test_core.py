@@ -693,6 +693,7 @@ class Tests(unittest.TestCase):
             recorder = app.Recorder(temp)
             sample = app.extract(fixture())
             sample['driver'] = '</script><script>danger()</script>'
+            sample['demo'] = True  # self-contained compatibility-renderer fixture
             recorder.start(sample)
             for i in range(1000):
                 sample['et'] = 10 + i / 60

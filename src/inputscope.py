@@ -30,7 +30,7 @@ def __getattr__(name):
 
 def main():
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.4');return
+        print('LMU StintLab 0.1.5');return
     if '--race-images' in sys.argv:
         index=sys.argv.index('--race-images')
         if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')
@@ -43,7 +43,6 @@ def main():
         make_report(folder)
         (ROOT/'last_native_import.json').write_text(json.dumps({'folder':str(folder)},ensure_ascii=False),encoding='utf-8')
         return
-    from hud import App
     # Keep the high-rate reader from holding Python's GIL for the default 5 ms
     # timeslice while the GUI is trying to draw a submillisecond frame.
     sys.setswitchinterval(0.0005)
@@ -60,8 +59,13 @@ def main():
     timer = ctypes.WinDLL('winmm')
     requested = timer.timeBeginPeriod(1) == 0
     try:
-        App('--demo' in sys.argv, clean='--clean' in sys.argv,
-            clean_controls='--clean-controls' in sys.argv).root.mainloop()
+        if any(flag in sys.argv for flag in ('--hud','--demo','--clean','--clean-controls')):
+            from hud import App
+            App('--demo' in sys.argv, clean='--clean' in sys.argv,
+                clean_controls='--clean-controls' in sys.argv).root.mainloop()
+        else:
+            from control_center import ControlCenter
+            ControlCenter().root.mainloop()
     finally:
         if requested:
             timer.timeEndPeriod(1)

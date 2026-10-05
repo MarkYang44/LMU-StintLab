@@ -185,15 +185,17 @@ class Upgrades(unittest.TestCase):
             try:
                 for code in (0,8,9,13):
                     phase[0]=code;deadline=time.monotonic()+3
-                    while engine.recorder.meta.get('session')!=code or not engine.recorder.samples:
-                        if time.monotonic()>deadline:self.fail('Recorder did not enter session '+str(code))
+                    while (not engine.latest or engine.latest['session']!=code or
+                           (code in (8,13) and (engine.recorder.meta.get('session')!=code or not engine.recorder.samples))):
+                        if time.monotonic()>deadline:self.fail('Engine did not enter session '+str(code))
                         time.sleep(.01)
+                    if code in (0,9):self.assertIsNone(engine.recorder.file)
             finally:
                 engine.stop.set();engine.wake.set();engine.thread.join(3)
                 for worker in engine.recorder.pending_reports:worker.join(3)
             self.assertFalse(engine.thread.is_alive())
             items=library.inventory(root)
-            self.assertEqual(len(items),4)
+            self.assertEqual(len(items),2)
             actual={}
             for item in items:
                 folder=Path(item['folder']);meta=json.loads((folder/'session.json').read_text(encoding='utf-8'))
@@ -201,7 +203,7 @@ class Upgrades(unittest.TestCase):
                 self.assertIn('_'+item['session_type']+'_Test Track',folder.name)
                 self.assertEqual(meta['status'],'complete')
                 self.assertGreater(meta['samples'],0)
-            self.assertEqual(actual,{0:'Practice',8:'Qualify',9:'Warmup',13:'Race'})
+            self.assertEqual(actual,{8:'Qualify',13:'Race'})
 
     def test_latency_counts_each_unique_sample_once(self):
         d=diagnostics.Diagnostics();sample=dict(et=1,_received_perf=time.perf_counter())

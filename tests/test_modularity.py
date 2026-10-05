@@ -136,14 +136,14 @@ class ModularityTests(unittest.TestCase):
         from tests.test_core import fixture
         from telemetry import extract
         import time
-        sample=extract(fixture());phase=[0]
+        sample=extract(fixture());phase=[5]
         class Feed:
             def read(self):return dict(sample,session=phase[0])
             def close(self):pass
         with tempfile.TemporaryDirectory(dir=ROOT) as folder,patch('recorder.make_report'):
             engine=Engine(output=folder,reader_factory=Feed,settings={'fixed_hz':500})
             try:
-                for value in (0,8):
+                for value in (5,8):
                     phase[0]=value;deadline=time.monotonic()+2
                     while engine.recorder.meta.get('session')!=value or not engine.recorder.file:
                         if time.monotonic()>deadline:self.fail('New session first frame was lost')
@@ -153,7 +153,7 @@ class ModularityTests(unittest.TestCase):
                 for thread in engine.recorder.pending_reports:thread.join(3)
             records=[json.loads(p.read_text()) for p in Path(folder).glob('*/session.json')]
             self.assertEqual(len(records),2)
-            self.assertEqual({m['session'] for m in records},{0,8})
+            self.assertEqual({m['session'] for m in records},{5,8})
             self.assertTrue(all(m['samples']==1 and m['status']=='complete' for m in records))
 
     def test_real_tk_dispatch_and_shutdown_finish_background_export(self):

@@ -4,6 +4,7 @@
 
 - `data/` 内的 Logs、DemoLogs、ImportedLogs、RecoveredLogs、圈文件、CSV、数据库、HTML / SVG 报告、诊断和用户设置。
 - 根目录 `local_settings.json` 中的机器路径。
+- `data/renderer_settings.json` 中的生成器路径、`data/RaceComRenderer/` 中的私有程序 / 图片与校准，以及赛事 `_racecom/` 适配文件和 `_report_history/` 旧报告备份。
 - 圈速单 / 比赛日志 PNG、事件 CSV、赛后 JSON / TXT，以及 `data/assets/cars/` 中的私人车辆照片和校准文件。公开版不包含 RaceCom 程序、车辆图片或其标志。
 - `.venv/`、`_local/`、dist、构建缓存、备份和验证目录。
 

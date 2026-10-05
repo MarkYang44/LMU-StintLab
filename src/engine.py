@@ -5,6 +5,7 @@ import time
 
 import endurance
 import vehiclelab
+from recording_policy import should_record
 from app_config import ROOT
 from buffers import ControlHistory, NumericRing, window_rate
 from diagnostics import Diagnostics
@@ -201,7 +202,8 @@ class Engine:
                         last_fresh = now
                         last_received_perf=time.perf_counter()
                     sample=dict(sample,_received_perf=last_received_perf)
-                    if self.recorder.file is None and ended_key != key and sample['finish'] == 0 and fresh:
+                    recording=should_record(sample['session'],self.demo)
+                    if recording and self.recorder.file is None and ended_key != key and sample['finish'] == 0 and fresh:
                         self.recorder.start(sample, config, self.target_hz)
                         self.recorder.meta['vehicle_strategy']['started_at_s']=(self.fuel_planner.baseline_et if self.fuel_planner.baseline_et is not None else sample['et'])-sample['et']
                         self.session_missed_base = self.missed_cycles
@@ -244,7 +246,7 @@ class Engine:
                             self.sample_times.append((now,))
                         self.latest = sample
                     if fresh:
-                        self.status = ('DEMO' if self.demo else 'REC') + ' · ' + sample['track']
+                        self.status = ('DEMO' if self.demo else 'REC' if recording else 'LIVE · 此阶段不录制') + ' · ' + sample['track']
                     if ended_key == key:
                         self.status = ('ERROR · '+self.recording_failure if getattr(self,'recording_failure',None) else 'SAVED · 比赛记录已保存')
                     if sample['finish'] in (1, 2, 3) and self.recorder.file:
