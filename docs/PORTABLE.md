@@ -21,3 +21,9 @@
 源码、更新与问题反馈：[MarkYang44/LMU-StintLab](https://github.com/MarkYang44/LMU-StintLab)。公开版不附带授权不明的赛道底图，仍可根据记录中的世界坐标 / GPS 展示实测轨迹。
 
 **English:** Fully extract, then run **LMU-StintLab.exe**. Keep **_internal** next to the executable. Python is bundled. No game files are modified; all telemetry and settings stay local. Developer tests and standalone environment-check tools are excluded from this portable package.
+
+## Windows 快捷启动与表单操作
+
+控制中心 **运行与 HUD → Windows 快捷启动 → 添加 / 更新开始菜单** 会创建当前用户的 `LMU StintLab` 快捷方式。之后可在 Windows 搜索中输入 `StintLab` 或 `LMU`，也可从开始菜单的所有应用启动；无需管理员权限。可右键搜索结果固定到开始菜单或任务栏。移动便携文件夹后，重新打开 EXE 点击更新入口即可；移除入口不会删除程序或个人数据。首次解压仍需保留完整 `_internal` 文件夹。
+
+表单使用统一的切角输入框与下拉面板：黄绿焦点描边、短展开过渡、平滑选项高亮，兼容深浅主题。下拉框支持方向键、Home / End、输入前缀跳转、Enter 确认、Escape 取消和 Tab 切换；长列表可滚动。动画仅在交互时运行，离开页面会清理弹层与回调。

@@ -10,6 +10,7 @@ from tkinter import ttk,filedialog,messagebox
 from app_config import ROOT
 from background import BackgroundTasks
 from control_widgets import GlassCard,Pill,Switch,CardGrid,LaunchArtwork,backdrop,px
+from control_fields import Select,Field
 from paths import ASSETS
 from control_shell import Shell
 from control_list import SessionList
@@ -116,11 +117,11 @@ class ControlCenter:
 
     def choice(self,parent,label,var,choices,command=None):
         row=self.row(parent);self.label(row,label,10,T.MUTED).pack(side='left')
-        box=ttk.Combobox(row,textvariable=var,values=choices,state='readonly',style='Lab.TCombobox',width=26)
+        box=Select(row,textvariable=var,values=choices,state='readonly',width=26)
         box.pack(side='right',padx=4);box.bind('<<ComboboxSelected>>',lambda _:command() if command else None);return box
 
     def wheel(self,event):
-        if str(event.widget).startswith(str(self.content)) and not isinstance(event.widget,(ttk.Treeview,ttk.Combobox)):
+        if str(event.widget).startswith(str(self.content)) and not isinstance(event.widget,(ttk.Treeview,ttk.Combobox,Select)):
             self.shell.scroller.add(-event.delta/120*px(self.root,65))
             return 'break'
 
@@ -170,6 +171,17 @@ class ControlCenter:
             value=tk.BooleanVar(self.root,value=(vehicle if module=='vehicle' else end)[key+'_enabled'])
             Switch(body,title,value,lambda m=module,k=key,v=value:self.update_module(m,{k+'_enabled':v.get()})).pack(fill='x',pady=2)
 
+        body=self.card('Windows 快捷启动','添加后可在开始菜单 / Windows 搜索中输入 StintLab 或 LMU 启动；迁移程序后可再次更新入口')
+        row=self.row(body)
+        self.button(row,'添加 / 更新开始菜单',self.register_app,False,185)
+        self.button(row,'移除开始菜单入口',lambda:self.register_app(True),False,170)
+        self.label(body,'可在 Windows 搜索结果中右键固定到开始菜单或任务栏。',9,T.MUTED).pack(anchor='w',pady=6)
+
+    def register_app(self,remove=False):
+        from windows_integration import register
+        def done(_):self.status.set('开始菜单入口已移除，程序和数据仍保留' if remove else '已添加 LMU StintLab · 可在 Windows 搜索 / 开始菜单中打开')
+        self.work(lambda:register(remove),done)
+
     def start(self,demo=False):
         if self.active():self.hud.root.lift();self.status.set('HUD 已在运行；请先停止后切换真实 / 演示模式');return
         if self.hud is not None and self.hud.root.winfo_exists():self.status.set('正在保存上一场记录，请稍候');return
@@ -204,8 +216,8 @@ class ControlCenter:
         self.run_background(work,finish)
 
     def sessions(self,body,multiple=False,checkboxes=False):
-        row=self.row(body);self.search=tk.StringVar(self.root);entry=tk.Entry(row,textvariable=self.search,bg=T.FIELD,fg=T.FG,insertbackground=T.ACCENT,relief='flat',font=('Microsoft YaHei UI',10))
-        entry.pack(side='left',fill='x',expand=True,ipady=8);entry.bind('<KeyRelease>',lambda _:self.populate())
+        row=self.row(body);self.search=tk.StringVar(self.root);entry=Field(row,textvariable=self.search)
+        entry.pack(side='left',fill='x',expand=True);entry.entry.bind('<KeyRelease>',lambda _:self.populate())
         self.button(row,'刷新记录',self.refresh,False,112)
         self.tree=SessionList(body,columns=('date','type','track','car','lap'),height=9,selectmode='extended' if multiple else 'browse',checkboxes=checkboxes)
         for key,title,width in [('date','时间（UTC）',180),('type','阶段',76),('track','赛道',200),('car','车辆',175),('lap','最快圈',92)]:
@@ -328,7 +340,7 @@ class ControlCenter:
         for key,label in specs:
             row=self.row(body);self.label(row,label,10,T.MUTED).pack(side='left')
             var=tk.StringVar(self.root,value=str(source[key]));variables[key]=var
-            tk.Entry(row,textvariable=var,bg=T.FIELD,fg=T.FG,insertbackground=T.FG,relief='flat',width=15,font=('Segoe UI',11)).pack(side='right',ipady=5,padx=4)
+            Field(row,textvariable=var,width=15,font=('Segoe UI',11)).pack(side='right',padx=4)
         for key,label,options in choices:
             var=tk.StringVar(self.root,value=source[key]);variables[key]=var;self.choice(body,label,var,options)
         row=self.row(body)
@@ -359,7 +371,7 @@ class ControlCenter:
         body=self.card('RaceCom 原版图像','直接调用你自己的 Image Generate.exe；原版版式、字体、颜色与车辆校准保留')
         config=renderer_config.load();self.renderer_mode=tk.StringVar(self.root,value=config['mode']);self.renderer_path=tk.StringVar(self.root,value=config['executable'])
         self.choice(body,'生成方式',self.renderer_mode,['racecom','native'])
-        entry=tk.Entry(body,textvariable=self.renderer_path,bg=T.FIELD,fg=T.FG,insertbackground=T.FG,relief='flat',font=('Segoe UI',10));entry.pack(fill='x',ipady=9,pady=8)
+        entry=Field(body,textvariable=self.renderer_path,font=('Segoe UI',10));entry.pack(fill='x',pady=8)
         def choose():
             path=filedialog.askopenfilename(parent=self.root,title='选择 RaceCom 的 Image Generate.exe',filetypes=[('RaceCom 图像生成器','*.exe')])
             if path:self.renderer_path.set(path)

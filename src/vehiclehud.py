@@ -1,6 +1,7 @@
 """Optional compact tyre/strategy overlays and local per-car preferences."""
 import copy
 import tkinter as tk
+from control_fields import Select,Field
 from control_theme import T
 from tkinter import ttk,messagebox
 from pathlib import Path
@@ -109,16 +110,16 @@ class Panels:
         car=tk.StringVar(window,value=latest['vehicle'] if latest else '*');p=config['profiles'].get(car.get(),config['profiles'].get('*',vehiclelab.DEFAULT_PROFILE))
         frame=tk.Frame(window,bg=T.BG);frame.pack(fill='both',expand=True,padx=18,pady=15)
         tk.Label(frame,text='轮胎阈值按车型保存；* 为通用默认。',bg=T.BG,fg=T.FG,anchor='w').grid(row=0,column=0,columnspan=2,sticky='w',pady=5)
-        tk.Label(frame,text='车型',bg=T.BG,fg=T.MUTED).grid(row=1,column=0,sticky='w');box=ttk.Combobox(frame,textvariable=car,values=list(dict.fromkeys([car.get(),'*',*config['profiles']])),width=40);box.grid(row=1,column=1,sticky='ew',pady=5)
+        tk.Label(frame,text='车型',bg=T.BG,fg=T.MUTED).grid(row=1,column=0,sticky='w');box=Select(frame,textvariable=car,values=list(dict.fromkeys([car.get(),'*',*config['profiles']])),width=40);box.grid(row=1,column=1,sticky='ew',pady=5)
         enabled=tk.BooleanVar(window,value=p['alerts']);tk.Checkbutton(frame,text='启用该车型自定义温度 / 胎压 / 胎况报警',variable=enabled,bg=T.BG,fg=T.FG,selectcolor=T.FIELD).grid(row=2,column=0,columnspan=2,sticky='w')
         variables={}
         specs=[('temp_min','胎面中温下限 °C',p['temp_min']),('temp_max','胎面中温上限 °C',p['temp_max']),('pressure_min','胎压下限 kPa',p['pressure_min']),('pressure_max','胎压上限 kPa',p['pressure_max']),('wear_min','胎况字段下限 %',p['wear_min']),
                ('reserve_l','燃油安全余量 L',config['reserve_l']),('extra_finish_laps','计时赛额外保险圈',config['extra_finish_laps']),('history_laps','估算采用最近完整圈数 1–20',config['history_laps']),('record_hz','附加遥测记录上限 1–50 Hz',config['record_hz']),('target_value','手动总圈数 / 从应用起剩余分钟',config['target_value'])]
         for row,(key,label,value) in enumerate(specs,3):
-            var=tk.StringVar(window,value=str(value));variables[key]=var;tk.Label(frame,text=label,bg=T.BG,fg=T.MUTED,anchor='w').grid(row=row,column=0,sticky='w',pady=4);tk.Entry(frame,textvariable=var,width=18).grid(row=row,column=1,sticky='ew',pady=4)
+            var=tk.StringVar(window,value=str(value));variables[key]=var;tk.Label(frame,text=label,bg=T.BG,fg=T.MUTED,anchor='w').grid(row=row,column=0,sticky='w',pady=4);Field(frame,textvariable=var,width=18,height=28).grid(row=row,column=1,sticky='ew',pady=4)
         mode=tk.StringVar(window,value=config['target_mode']);rate=tk.StringVar(window,value=config['rate_mode'])
         for row,label,var,options in [(13,'赛程来源',mode,['auto','laps','time']),(14,'耗油统计方式',rate,['conservative','median'])]:
-            tk.Label(frame,text=label,bg=T.BG,fg=T.MUTED).grid(row=row,column=0,sticky='w',pady=5);ttk.Combobox(frame,textvariable=var,state='readonly',values=options).grid(row=row,column=1,sticky='ew')
+            tk.Label(frame,text=label,bg=T.BG,fg=T.MUTED).grid(row=row,column=0,sticky='w',pady=5);Select(frame,textvariable=var,state='readonly',values=options).grid(row=row,column=1,sticky='ew')
         tk.Label(frame,text='auto：游戏比赛圈数 / 时间；laps：手动总圈数；time：剩余分钟。\nconservative：近期最高耗油；median：中位数。轮胎示例阈值默认不报警。\n胎况是 mWear 字段百分比，不等同剩余抓地力。',bg=T.BG,fg=T.MUTED,justify='left',wraplength=580).grid(row=15,column=0,columnspan=2,sticky='w',pady=10)
         def load_profile(_):
             current=config['profiles'].get(car.get(),config['profiles'].get('*',vehiclelab.DEFAULT_PROFILE));enabled.set(current['alerts'])

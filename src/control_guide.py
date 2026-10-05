@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 from control_theme import T
+from control_fields import Field
 from control_widgets import px
 from guidebook import catalog
 from guide_library import Library
@@ -36,8 +37,8 @@ class GuidePage:
             f"GTD {self.library.data['content_version']} · {self.library.data['updated']} · {tr('全部资料在菜单内展示','All content shown in this menu')}")
         row=center.row(body);query=tk.StringVar(center.root,value=self.state['query']);self.variables['query']=query
         center.label(row,tr('搜索  ','Search  '),10,T.MUTED).pack(side='left')
-        entry=tk.Entry(row,textvariable=query,bg=T.FIELD,fg=T.FG,insertbackground=T.ACCENT,relief='flat',font=(T.FONT,11))
-        entry.pack(side='left',fill='x',expand=True,ipady=10);self.search_entry=entry
+        entry=Field(row,textvariable=query,font=(T.FONT,11))
+        entry.pack(side='left',fill='x',expand=True);self.search_entry=entry.entry
         self.query_trace=query.trace_add('write',lambda *_:self.filter_changed())
         class_values={tr('全部组别','All classes'):'','LMGT3':'LMGT3','Hypercar':'Hypercar'}
         car_values={tr('全部车型','All cars'):'',**{item['name']:item['slug'] for item in self.library.data['cars'].values()}}

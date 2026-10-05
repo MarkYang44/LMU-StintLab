@@ -61,3 +61,9 @@ Download and extract the portable Windows x64 release, then double-click **LMU-S
 This is an independent community project, not affiliated with Studio 397, Motorsport Games, Fanatec or BMW. The schematic steering wheel uses original drawing code; no commercial artwork is included. Project source: MIT; upstream notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 赛道指南与车型图鉴：完整图文直接显示在控制中心菜单，支持 18 条赛道、24 台车型、144 条推荐、42 张官方来源图片、收藏与 2–3 项原生对比。单列宽松卡片，每页 3 条；推荐按需展开，图片滚出视野后释放。深浅终末地主题和中英切换均保留，无需浏览器或服务器。收藏与语言仅保存到本地 `data/guide_settings.json`。
+
+## Windows 快捷启动与表单操作
+
+控制中心 **运行与 HUD → Windows 快捷启动 → 添加 / 更新开始菜单** 会创建当前用户的 `LMU StintLab` 快捷方式。之后可在 Windows 搜索中输入 `StintLab` 或 `LMU`，也可从开始菜单的所有应用启动；无需管理员权限。可右键搜索结果固定到开始菜单或任务栏。移动便携文件夹后，重新打开 EXE 点击更新入口即可；移除入口不会删除程序或个人数据。首次解压仍需保留完整 `_internal` 文件夹。
+
+表单使用统一的切角输入框与下拉面板：黄绿焦点描边、短展开过渡、平滑选项高亮，兼容深浅主题。下拉框支持方向键、Home / End、输入前缀跳转、Enter 确认、Escape 取消和 Tab 切换；长列表可滚动。动画仅在交互时运行，离开页面会清理弹层与回调。

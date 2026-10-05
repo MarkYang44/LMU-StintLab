@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import tkinter as tk
+from control_fields import Select,Field
 from control_theme import T
 from tkinter import ttk,messagebox,filedialog
 from library import inventory,save_note
@@ -64,9 +65,9 @@ def show_library(app,root,render_review,make_report):
     search=tk.StringVar();track=tk.StringVar(value='全部赛道');car=tk.StringVar(value='全部车辆');source=tk.StringVar(value='全部来源')
     tk.Label(filterbar,text='搜索阶段 / 日期 / 车手 / 备注',bg=T.BG,fg=T.MUTED).pack(side='left')
     tk.Entry(filterbar,textvariable=search,width=24).pack(side='left',padx=6)
-    trackbox=ttk.Combobox(filterbar,textvariable=track,state='readonly',width=26);trackbox.pack(side='left',padx=5)
-    carbox=ttk.Combobox(filterbar,textvariable=car,state='readonly',width=24);carbox.pack(side='left',padx=5)
-    sourcebox=ttk.Combobox(filterbar,textvariable=source,state='readonly',width=15,values=['全部来源','Logs','ImportedLogs','RecoveredLogs','DemoLogs']);sourcebox.pack(side='left',padx=5)
+    trackbox=Select(filterbar,textvariable=track,state='readonly',width=26);trackbox.pack(side='left',padx=5)
+    carbox=Select(filterbar,textvariable=car,state='readonly',width=24);carbox.pack(side='left',padx=5)
+    sourcebox=Select(filterbar,textvariable=source,state='readonly',width=15,values=['全部来源','Logs','ImportedLogs','RecoveredLogs','DemoLogs']);sourcebox.pack(side='left',padx=5)
     tableframe=tk.Frame(window);tableframe.pack(fill='both',expand=True,padx=15)
     columns=('date','session_type','track','vehicle','best','stable','source','status','note')
     tree=ttk.Treeview(tableframe,columns=columns,show='headings',selectmode='extended',style='Scope.Treeview')
@@ -198,7 +199,7 @@ def show_lap_selection(app,root,folder):
         row=tk.Frame(window,bg=T.BG);row.pack(fill='x',padx=18,pady=6)
         tk.Label(row,text='圈 '+key,bg=T.BG,fg='#c6def5',font=('Segoe UI',11),width=6,anchor='w').pack(side='left')
         vars[key]=tk.StringVar(window)
-        boxes[key]=ttk.Combobox(row,textvariable=vars[key],state='disabled',font=('Segoe UI',11),height=12)
+        boxes[key]=Select(row,textvariable=vars[key],state='disabled',font=('Segoe UI',11),height=12)
         boxes[key].pack(side='left',fill='x',expand=True)
     tk.Label(window,text='仅列出起终点、采样和距离完整的圈。无效 / 进站标记会保留；\n此类圈可查看数据，但不生成驾驶改进建议，也不能用作 HUD 参考。',
         bg=T.BG,fg='#91abc8',justify='left',anchor='w',wraplength=670).pack(fill='x',padx=18,pady=12)
