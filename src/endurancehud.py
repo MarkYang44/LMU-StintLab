@@ -23,7 +23,7 @@ class Panels:
     def hide(self,kind):getattr(self.app,kind+'_on').set(False);self.toggle(kind)
 
     def create(self,kind):
-        app=self.app;w=tk.Toplevel(app.root);w.title('StintLab · '+TITLES[kind]+' HUD')
+        app=self.app;w=tk.Toplevel(app.root);w.title('Stintrix · '+TITLES[kind]+' HUD')
         x,y=app.endurance_settings.get(kind+'_position',[1160,70+list(TITLES).index(kind)*225])
         w.geometry(f'370x210{int(x):+d}{int(y):+d}');w.configure(bg=T.BG);w.overrideredirect(True)
         w.attributes('-topmost',app.top.get());w.attributes('-alpha',.97);w.protocol('WM_DELETE_WINDOW',lambda:self.hide(kind))

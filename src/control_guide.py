@@ -14,6 +14,8 @@ class GuidePage:
     def __init__(self,center,view):
         self.center=center;self.view=view;self.job=None;self.closed=False
         self.library=Library(catalog(),center.data_path/'guide_settings.json')
+        import i18n
+        self.library.language=i18n.language
         self.state=center.guide_state.setdefault(view,{})
         for key,value in dict(query='',group='',car='',favorite='',page=0,comparison=[],mode='browse').items():self.state.setdefault(key,value)
         self.state.setdefault('expanded',[])
@@ -137,10 +139,7 @@ class GuidePage:
         self.variables['query'].set('')
         for key,values in self.choices.items():self.variables[key].set(next(iter(values)))
         self.filter_changed()
-    def language(self):
-        try:self.library.set_language('en' if self.library.language=='zh' else 'zh')
-        except OSError as error:self.center.status.set(str(error));return
-        self.center.show_page(5 if self.view=='tracks' else 6)
+    def language(self):self.center.toggle_language()
     def turn(self,delta):
         self.state['mode']='browse';self.state['page']+=delta;self.render();self.center.scroll.yview_moveto(0)
     def jump(self,view,slug):

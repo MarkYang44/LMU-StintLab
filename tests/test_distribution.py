@@ -62,13 +62,13 @@ class DistributionTests(unittest.TestCase):
 
     def test_environment_override_beats_machine_settings(self):
         with tempfile.TemporaryDirectory() as directory:
-            with patch.dict(os.environ,{'LMU_STINTLAB_DATA_DIR':directory}),patch.object(paths,'local_settings',return_value={'data_directory':'another'}):
+            with patch.dict(os.environ,{'LMU_STINTRIX_DATA_DIR':directory}),patch.object(paths,'local_settings',return_value={'data_directory':'another'}):
                 self.assertEqual(paths.data_directory(),Path(directory).resolve())
 
     def test_frozen_assets_use_internal_but_data_uses_exe_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);module=root/'_internal'
-            with patch.object(sys,'frozen',True,create=True),patch.object(sys,'_MEIPASS',str(module),create=True),patch.object(sys,'executable',str(root/'LMU-StintLab.exe')):
+            with patch.object(sys,'frozen',True,create=True),patch.object(sys,'_MEIPASS',str(module),create=True),patch.object(sys,'executable',str(root/'LMU-Stintrix.exe')):
                 spec=importlib.util.spec_from_file_location('frozen_paths',ROOT/'src'/'paths.py')
                 loaded=importlib.util.module_from_spec(spec);spec.loader.exec_module(loaded)
             self.assertEqual(loaded.APP_ROOT,root);self.assertEqual(loaded.ASSETS,module/'src')
@@ -137,7 +137,7 @@ class DistributionTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform=='win32','Windows path alias regression')
     def test_migration_with_real_windows_short_source_and_destination_paths(self):
-        with tempfile.TemporaryDirectory(prefix='StintLab_LongPath_Test_') as directory:
+        with tempfile.TemporaryDirectory(prefix='Stintrix_LongPath_Test_') as directory:
             root=Path(directory).resolve();source=root/'Long Source Folder';target=root/'Long Destination Folder'
             (source/'src').mkdir(parents=True);(source/'src'/'inputscope.py').write_text('')
             folder=source/'Logs'/'fixture';folder.mkdir(parents=True)

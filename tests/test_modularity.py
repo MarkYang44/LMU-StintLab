@@ -84,7 +84,7 @@ class ModularityTests(unittest.TestCase):
         code="import sys;sys.path.insert(0,'src');import inputscope,engine,recorder,telemetry;assert 'tkinter' not in sys.modules;inputscope.main()"
         result=subprocess.run([sys.executable,'-c',code,'--version'],cwd=ROOT,capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertIn('LMU StintLab',result.stdout)
+        self.assertIn('LMU Stintrix',result.stdout)
 
     def test_workers_never_invoke_callbacks_until_owner_drains(self):
         owner=threading.get_ident();calls=[];tasks=BackgroundTasks()
@@ -179,7 +179,7 @@ assert callbacks==[owner] and out.read_text()=='complete'
 assert not app.tasks.busy
 '''
         with tempfile.TemporaryDirectory(dir=ROOT) as folder:
-            env=dict(os.environ,LMU_STINTLAB_DATA_DIR=str(Path(folder)/'data'))
+            env=dict(os.environ,LMU_STINTRIX_DATA_DIR=str(Path(folder)/'data'))
             result=subprocess.run([sys.executable,'-c',code,str(Path(folder)/'export.txt')],cwd=ROOT,
                 env=env,capture_output=True,text=True,timeout=20)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
@@ -231,7 +231,7 @@ assert phase[0]==2 and len(opened)==1 and app.reference_locked.get()
 assert app.engine.reference is not None
 '''
         with tempfile.TemporaryDirectory(dir=ROOT) as folder:
-            env=dict(os.environ,LMU_STINTLAB_DATA_DIR=str(Path(folder)/'data'))
+            env=dict(os.environ,LMU_STINTRIX_DATA_DIR=str(Path(folder)/'data'))
             result=subprocess.run([sys.executable,'-c',code],cwd=ROOT,env=env,
                 capture_output=True,text=True,timeout=20)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)

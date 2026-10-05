@@ -1,4 +1,5 @@
 """Responsive desktop frame and animated navigation, separate from session logic."""
+from i18n import tr,Label
 import tkinter as tk
 from control_theme import T
 from tkinter import ttk,font as tkfont
@@ -49,15 +50,15 @@ class Navigation(tk.Canvas):
             if i==self.hovered and i!=self.selected:
                 rounded(self,4*s,i*self.step+9*s,w-9*s,self.step-18*s,8*s,fill=T.HOVER,outline='');color=T.FG
             symbol(self,i,19*s,y-10*s,s,T.ACCENT if i==self.selected else color)
-            self.create_text(57*s,y,text=name,anchor='w',fill=color,font=(T.FONT,11,'bold' if i==self.selected else 'normal'))
-            self.create_text(w-12*s,y,text=f'{i+1:02}',anchor='e',fill=T.ACCENT if i==self.selected else T.MUTED,font=('Consolas',8))
+            self.create_text(57*s,y,text=tr(name),anchor='w',fill=color,font=(T.FONT,11,'bold' if i==self.selected else 'normal'))
+            self.create_text(w-12*s,y,text=f'{i + 1:02}',anchor='e',fill=T.ACCENT if i==self.selected else T.MUTED,font=('Consolas',8))
 
 
 class Shell:
-    def __init__(self,root,names,command,status,on_theme=None):
+    def __init__(self,root,names,command,status,on_theme=None,on_language=None):
         self.root=root;self.s=s=scale(root);self.compact=False
         self.brand_font=tkfont.Font(root,family='Segoe UI',size=23,weight='bold')
-        self.rail_width=max(round(252*s),self.brand_font.measure('StintLab')+round(48*s))
+        self.rail_width=max(round(252*s),max(self.brand_font.measure('Stintrix'),*(tkfont.Font(root,family=T.FONT,size=11,weight='bold').measure(tr(name)) for name in names))+round(100*s))
         available_w=max(800,root.winfo_screenwidth()-round(70*s));available_h=max(600,root.winfo_screenheight()-round(100*s))
         root.geometry(f'{min(round(1240*s),available_w)}x{min(round(850*s),available_h)}')
         root.minsize(min(round(1060*s),available_w),min(round(700*s),available_h))
@@ -71,22 +72,25 @@ class Shell:
         except tk.TclError:pass
         self.navigation=Navigation(side,names,command);self.navigation.pack(fill='x',padx=round(16*s))
         foot=tk.Frame(side,bg=T.RAIL);foot.pack(side='bottom',fill='x',padx=round(25*s),pady=round(26*s))
-        tk.Label(foot,text='●  LOCAL & PRIVATE',bg=T.RAIL,fg=T.ACCENT,font=('Segoe UI',9,'bold'),anchor='w').pack(fill='x')
-        tk.Label(foot,text='排位 / 正赛自动记录\n练习 / Warmup 仅实时显示',bg=T.RAIL,fg=T.MUTED,font=(T.FONT,9),anchor='w',justify='left',pady=12).pack(fill='x')
+        Label(foot,text='●  LOCAL & PRIVATE',bg=T.RAIL,fg=T.ACCENT,font=('Segoe UI',9,'bold'),anchor='w').pack(fill='x')
+        Label(foot,text='排位 / 正赛自动记录\n练习 / Warmup 仅实时显示',bg=T.RAIL,fg=T.MUTED,font=(T.FONT,9),anchor='w',justify='left',pady=12,wraplength=self.rail_width-round(50*s)).pack(fill='x')
         self.footer=foot;side.bind('<Configure>',self.layout_sidebar)
         self.main=main=tk.Frame(root,bg=T.BG);main.pack(side='left',fill='both',expand=True,padx=round(28*s),pady=(round(26*s),round(14*s)))
         self.motion=Motion(main)
         head=tk.Frame(main,bg=T.BG);head.pack(fill='x',pady=(0,round(22*s)))
         top=tk.Frame(head,bg=T.BG);top.pack(fill='x')
-        self.breadcrumb=tk.Label(top,text='STINTLAB  /  CONTROL CENTER',font=('Segoe UI',9,'bold'),bg=T.BG,fg=T.ACCENT,anchor='w');self.breadcrumb.pack(side='left')
+        self.breadcrumb=Label(top,text='STINTRIX  /  CONTROL CENTER',font=('Segoe UI',9,'bold'),bg=T.BG,fg=T.ACCENT,anchor='w');self.breadcrumb.pack(side='left')
         self.theme_button=Pill(top,'◐  浅色主题' if T.mode=='dark' else '◑  深色主题',on_theme or (lambda:None),115)
         self.theme_button.configure(height=round(32*s));self.theme_button.pack(side='right')
-        self.title=tk.Label(head,font=(T.FONT,25,'bold'),bg=T.BG,fg=T.FG,anchor='w');self.title.pack(fill='x',pady=(round(10*s),round(3*s)))
-        self.subtitle=tk.Label(head,font=(T.FONT,10),bg=T.BG,fg=T.MUTED,anchor='w');self.subtitle.pack(fill='x')
+        import i18n
+        self.language_button=Pill(top,'EN / 中文' if i18n.language=='zh' else '中文 / EN',on_language or (lambda:None),115)
+        self.language_button.configure(height=round(32*s));self.language_button.pack(side='right',padx=round(8*s))
+        self.title=Label(head,font=(T.FONT,25,'bold'),bg=T.BG,fg=T.FG,anchor='w');self.title.pack(fill='x',pady=(round(10*s),round(3*s)))
+        self.subtitle=Label(head,font=(T.FONT,10),bg=T.BG,fg=T.MUTED,anchor='w');self.subtitle.pack(fill='x')
         self.subtitle.bind('<Configure>',lambda e:self.subtitle.configure(wraplength=e.width))
         footer=tk.Frame(main,bg=T.BG);footer.pack(side='bottom',fill='x',pady=(round(12*s),0))
-        tk.Label(footer,textvariable=status,font=(T.FONT,9),bg=T.BG,fg=T.MUTED,anchor='w').pack(side='left',fill='x',expand=True)
-        tk.Label(footer,text='STINTLAB  //  LOCAL',font=('Consolas',8),bg=T.BG,fg=T.MUTED).pack(side='right')
+        Label(footer,textvariable=status,font=(T.FONT,9),bg=T.BG,fg=T.MUTED,anchor='w').pack(side='left',fill='x',expand=True)
+        Label(footer,text='STINTRIX  //  LOCAL',font=('Consolas',8),bg=T.BG,fg=T.MUTED).pack(side='right')
         viewport=tk.Frame(main,bg=T.BG);viewport.pack(fill='both',expand=True)
         self.scroll=tk.Canvas(viewport,bg=T.BG,highlightthickness=0)
         self.scroller=SmoothScroll(self.scroll,lambda:self.scroll.canvasy(0),
@@ -101,7 +105,7 @@ class Shell:
     def paint_brand(self,_=None):
         c=self.brand;s=self.s;c.delete('all')
         if self.logo:c.create_image(0,0,image=self.logo,anchor='nw')
-        c.create_text(0,82*s,text='StintLab',font=self.brand_font,fill=T.FG,anchor='w')
+        c.create_text(0,82*s,text='Stintrix',font=self.brand_font,fill=T.FG,anchor='w')
         c.create_text(1*s,114*s,text='LE MANS ULTIMATE',font=('Segoe UI',9,'bold'),fill=T.MUTED,anchor='w')
         right=c.winfo_width();c.create_text(right-2*s,25*s,text='SYS / 01',font=('Consolas',8),fill=T.ACCENT,anchor='e')
         line=(132 if self.compact else 153)*s
@@ -117,7 +121,7 @@ class Shell:
         if abs(step-self.navigation.step)>.5:
             self.navigation.step=step;self.navigation.configure(height=round(step*len(self.navigation.names)));self.navigation.paint()
     def select(self,index):
-        self.navigation.select(index);self.breadcrumb.configure(text=f'STINTLAB  / 0{index+1}')
+        self.navigation.select(index);self.breadcrumb.configure(text=f'STINTRIX  / 0{index + 1}')
         def frame(t):
             self.scroll.coords(self.item,0,round((1-t)*14*self.s))
             self.title.configure(fg=blend(T.MUTED,T.FG,t))

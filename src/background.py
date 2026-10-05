@@ -5,7 +5,7 @@ from queue import Empty, SimpleQueue
 
 class BackgroundTasks:
     def __init__(self, workers=2):
-        self._executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix='StintLab-task')
+        self._executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix='Stintrix-task')
         self._completed = SimpleQueue()
         self._futures = set()
         self._closed = False

@@ -38,7 +38,7 @@ def adapt(model):
         track=meta.get('track',''),session={'Qualify':'排位赛','Race':'正赛','Practice':'练习赛'}.get(model['session_type'],model['session_type']),
         session_code=meta.get('session'),driver=meta.get('driver',''),vehicle=meta.get('vehicle',''),team=summary.get('team',''),
         start_place=summary.get('grid_place'),finish_place=None if finish_text else summary.get('finish_place'),
-        observed_finish_place=summary.get('finish_place'),finish_flag=finish_flag,stintlab_finish_text=finish_text,
+        observed_finish_place=summary.get('finish_place'),finish_flag=finish_flag,stintrix_finish_text=finish_text,
         session_best_lap=summary.get('session_best_lap'),session_best_driver=summary.get('session_best_driver',''),
         impact_count=summary.get('impact_count') if model['scoring_available'] else '未知',
         # This is explicitly an estimate, never a Race Control warning count.
@@ -92,7 +92,7 @@ def write_inputs(folder,model):
     header += [f'{label}：{value[key]}' for label,key in [('日期','date'),('赛道','track'),('类型','session'),('车手','driver'),('车型','vehicle'),('车队','team')]]
     header += [f"比赛圈数：{len(value['laps'])}",f"发生碰撞：{value['impact_count']}次",
         # No digits in the TXT field: original loader takes our labelled JSON value.
-        '超出赛道限制：未知',f"发车位置：{position(value['start_place'])}",f"结束名次：{value['stintlab_finish_text'] or position(value['finish_place'])}",
+        '超出赛道限制：未知',f"发车位置：{position(value['start_place'])}",f"结束名次：{value['stintrix_finish_text'] or position(value['finish_place'])}",
         f"全场最快单圈：{lap_time(value['session_best_lap'])} - {value['session_best_driver'] or '未知'}",
         f"个人最速单圈：{lap_time(fastest['time'])} - in Lap {fastest['num']}" if fastest else '个人最速单圈：未知',
         '-'*64,'圈速表','-'*64]

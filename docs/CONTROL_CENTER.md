@@ -1,6 +1,6 @@
 # 控制中心与 RaceCom 原版报告
 
-直接双击 `LMU-StintLab.exe`（兼容 `Start.cmd`） 打开控制中心。`--hud`、`--demo`、`--clean`、`--clean-controls` 保留直接启动 HUD 的方式。
+直接双击 `LMU-Stintrix.exe`（兼容 `Start.cmd`） 打开控制中心。`--hud`、`--demo`、`--clean`、`--clean-controls` 保留直接启动 HUD 的方式。
 
 | 页面 | 操作 |
 | --- | --- |
@@ -18,6 +18,8 @@
 
 原版会重算最快圈。PIT、部分记录、缺圈、有效性未知的圈导出为 **统计无效**，保留 `game_valid` 原始标志，仅排除报告统计，不代表游戏处罚；排除原因显示在备注和时间线中。分段、名次缺失显示原版空值符号；出界边界估算不会充当官方警告数。
 
-公开包未附带 RaceCom EXE、商标或车型照片；配置只在 `data/renderer_settings.json`。未配置不自动切到不同版式；选择 `native` 才使用 StintLab 兼容样式，演示例外。
+公开包未附带 RaceCom EXE、商标或车型照片；配置只在 `data/renderer_settings.json`。未配置不自动切到不同版式；选择 `native` 才使用 Stintrix 兼容样式，演示例外。
 
 窗口按系统 DPI 和品牌字宽布局，宽屏设置卡片并排，窄屏自动纵向排列。页面、导航、按钮、滚动与开关使用短过渡动画；过渡完成取消帧调度。内容不使用整窗透明，避免背后文字透入。
+
+控制中心顶部 **EN / 中文** 可切换整个菜单语言，重启后保留；主题和语言分别保存到本机 `data/interface_settings.json`。赛道指南与车型图鉴随菜单语言切换，赛事记录、配置值和文件名不因语言切换而改变。

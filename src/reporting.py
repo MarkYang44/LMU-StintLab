@@ -105,7 +105,7 @@ def _block(out,identifier,chunks):
 
 def write_page(path,source,blocks):
     path=Path(path);pending=path.with_name(path.name+'.'+str(threading.get_ident())+'.pending')
-    before,after=source.split('/*STINTLAB_BLOCKS*/',1)
+    before,after=source.split('/*STINTRIX_BLOCKS*/',1)
     try:
         with pending.open('w',encoding='utf-8',newline='') as out:
             out.write(before)
@@ -135,5 +135,5 @@ def render_review(folder,assets,track_js,fastest=None,output=None):
     for marker,text in [('/*DATA_VIEW_JS*/',script(assets)),('/*TRACK_VIEW_JS*/',track_js),
         ('/*VEHICLE_VIEW_JS*/',(assets/'vehicleview.js').read_text(encoding='utf-8')),
         ('/*ENDURANCE_VIEW_JS*/',(assets/'enduranceview.js').read_text(encoding='utf-8')),
-        ('/*SESSION_DATA*/null','await StintLabData.jsonBlock("stintlab-meta")')]:source=source.replace(marker,text)
-    write_page(output or folder/'review.html',source,[('stintlab-meta',json_chunks(payload)),('stintlab-inputs',review_records(folder/'inputs.csv'))])
+        ('/*SESSION_DATA*/null','await StintrixData.jsonBlock("stintrix-meta")')]:source=source.replace(marker,text)
+    write_page(output or folder/'review.html',source,[('stintrix-meta',json_chunks(payload)),('stintrix-inputs',review_records(folder/'inputs.csv'))])

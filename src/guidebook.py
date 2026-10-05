@@ -12,7 +12,7 @@ from control_theme import T,PALETTES
 @lru_cache(maxsize=1)
 def catalog(assets=None):
     value=json.loads((Path(assets or ASSETS)/'guide/catalog.json').read_text(encoding='utf-8'))
-    if value.get('format')!='stintlab.guide' or value.get('version')!=1:raise ValueError('指南资料格式无效')
+    if value.get('format')!='stintrix.guide' or value.get('version')!=1:raise ValueError('指南资料格式无效')
     return value
 
 

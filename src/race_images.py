@@ -10,7 +10,7 @@ BG='#0b1320';CARD='#142235';MUTED='#9ab0ca';GREEN='#34e59a';RED='#ff6577';BLUE='
 def header(c,model,title,page,total):
     m=model['session'];c.clear(BG);c.fill(55,52,8,63,GREEN)
     c.text(title,83,43,1200,85,56,bold=True)
-    c.text('LMU STINTLAB',1390,55,345,48,26,MUTED,align=2)
+    c.text('LMU STINTRIX',1390,55,345,48,26,MUTED,align=2)
     c.text(f"{model['session_type']}  ·  {m.get('track','未知赛道')}",58,139,1660,64,35,bold=True)
     c.text(f"{m.get('driver','未知车手')}  /  {m.get('vehicle','未知车辆')}",58,204,1680,43,27)
     c.text(str(m.get('started_utc','时间未知'))+'  ·  '+('官方圈号' if model['lap_number_source']=='official' else '遥测圈号'),58,251,1590,38,23,MUTED)

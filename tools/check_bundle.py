@@ -15,14 +15,14 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--smoke',action='store_true')
     parser.add_argument('--archive',type=Path);args=parser.parse_args()
     version=(ROOT/'VERSION').read_text().strip()
-    archive=args.archive or ROOT/'dist'/f'LMU-StintLab-v{version}-windows-x64.zip'
+    archive=args.archive or ROOT/'dist'/f'LMU-Stintrix-v{version}-windows-x64.zip'
     target=ROOT/'_local'/'validation'/uuid.uuid4().hex[:12];target.mkdir(parents=True)
     with zipfile.ZipFile(archive) as source:
         for name in source.namelist():
             resolved=(target/name).resolve()
             if not resolved.is_relative_to(target.resolve()):raise ValueError('Unsafe ZIP member')
         source.extractall(target)
-    bundle=target/'LMU-StintLab';bundle_audit(bundle)
+    bundle=target/'LMU-Stintrix';bundle_audit(bundle)
     manifest=json.loads((bundle/'build-manifest.json').read_text(encoding='utf-8'))
     assert manifest['version']==version
     actual={p.relative_to(bundle).as_posix() for p in bundle.rglob('*') if p.is_file() and p.name!='build-manifest.json'}
@@ -33,7 +33,7 @@ def main():
             for block in iter(lambda:stream.read(1048576),b''):h.update(block)
         assert h.hexdigest()==digest,name
     from PyInstaller.archive.readers import CArchiveReader
-    archive=CArchiveReader(str(bundle/'LMU-StintLab.exe'))
+    archive=CArchiveReader(str(bundle/'LMU-Stintrix.exe'))
     modules=set()
     for name in archive.toc:
         if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
@@ -41,14 +41,14 @@ def main():
     assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
     assert {'control_fields','windows_integration','control_shell','control_motion','control_list','control_theme','branding','guidebook','control_guide','guide_library','guide_cards','PIL.ImageTk','PIL.WebPImagePlugin'}<=modules
     import pefile
-    executable=pefile.PE(str(bundle/'LMU-StintLab.exe'))
+    executable=pefile.PE(str(bundle/'LMU-Stintrix.exe'))
     resources={entry.id:entry for entry in executable.DIRECTORY_ENTRY_RESOURCE.entries}
     icons=[]
     for entry in resources[3].directory.entries:
         data=entry.directory.entries[0].data.struct
         icons.append(executable.get_data(data.OffsetToData,data.Size))
     import struct
-    ico=(bundle/'_internal/src/branding/stintlab.ico').read_bytes();count=struct.unpack_from('<H',ico,4)[0];expected=[]
+    ico=(bundle/'_internal/src/branding/stintrix.ico').read_bytes();count=struct.unpack_from('<H',ico,4)[0];expected=[]
     for i in range(count):
         length,offset=struct.unpack_from('<II',ico,6+i*16+8);expected.append(ico[offset:offset+length])
     assert set(icons)==set(expected) and count==6,'EXE icon differs from reviewed GTD icon'

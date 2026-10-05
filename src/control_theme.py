@@ -37,7 +37,11 @@ def load(path):
 def save(path,mode):
     from storage import atomic_json
     if mode not in PALETTES:raise ValueError('Unknown interface theme')
-    atomic_json(path,dict(version=1,theme=mode))
+    from race_model import read_json
+    value=read_json(path,{})
+    if not isinstance(value,dict):value={}
+    value.update(version=2,theme=mode)
+    atomic_json(path,value)
 
 
 def recolor(widget,previous):

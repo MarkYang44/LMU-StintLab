@@ -62,7 +62,7 @@ def generate(folder,car_directory=None,renderer=None):
             for name in ('圈速单.png','比赛日志.png','race_log.json','race_log.txt','race_images.json'):
                 if (folder/name).is_file() and not (backup/name).exists():shutil.copy2(folder/name,backup/name)
         atomic_json(folder/'race_log.json',model)
-        lines=['LMU STINTLAB · 比赛日志',f"{model['session_type']} / {meta.get('track','')} / {meta.get('vehicle','')}",
+        lines=['LMU STINTRIX · 比赛日志',f"{model['session_type']} / {meta.get('track','')} / {meta.get('vehicle','')}",
             f"车手：{meta.get('driver','')}  开始：{meta.get('started_utc','')}",model['note'],'','圈速单：']
         lines += [f"Lap {lap['num']}  {lap_time(lap['time'])}  S1 {lap['s1']}  S2 {lap['s2']}  S3 {lap['s3']}  {lap_status(lap)}" for lap in model['laps']]
         lines += ['','时间线：']+[elapsed(e['time']-model['origin'])+'  '+describe(e) for e in model['events']]
@@ -77,7 +77,7 @@ def generate(folder,car_directory=None,renderer=None):
                 finally:pending.unlink(missing_ok=True)
                 files[name]=digest(folder/name)
         for name in ('race_log.json','race_log.txt'):files[name]=digest(folder/name)
-        receipt=dict(version=1,status='complete',generator='RaceCom original / light' if config['mode']=='racecom' else 'StintLab compatibility / Windows GDI+',fingerprint=fingerprint,
+        receipt=dict(version=1,status='complete',generator='RaceCom original / light' if config['mode']=='racecom' else 'Stintrix compatibility / Windows GDI+',fingerprint=fingerprint,
             files=files,lap_count=len(model['laps']),event_count=len(model['events']),original_files_retained=True,
             car_image='private calibrated artwork' if art else 'unavailable')
         atomic_json(folder/'race_images.json',receipt)

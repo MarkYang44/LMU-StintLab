@@ -1,4 +1,5 @@
 """Industrial surfaces and animated controls, using the lightweight Tk runtime."""
+from i18n import tr
 import ctypes
 import tkinter as tk
 from control_theme import T
@@ -20,7 +21,7 @@ def rounded(canvas,x,y,w,h,r,**kwargs):
 class Pill(tk.Canvas):
     def __init__(self,parent,text,command,width=140,primary=False):
         self.s=scale(parent);self.font=tkfont.Font(parent,family=T.FONT,size=10,weight='bold')
-        width=max(width*self.s,self.font.measure(text)+36*self.s)
+        width=max(width*self.s,self.font.measure(tr(text))+36*self.s)
         super().__init__(parent,width=round(width),height=px(parent,46),bg=parent.cget('bg'),highlightthickness=0,cursor='hand2',takefocus=True)
         self.primary=primary;self.command=command;self.label=text;self.amount=0;self.pressed=False;self.focused=False;self.motion=Motion(self)
         self.bind('<Configure>',lambda _:self.paint())
@@ -44,7 +45,7 @@ class Pill(tk.Canvas):
         rounded(self,2*s,4*s,w-4*s,h-7*s,7*s,fill=T.BG,outline='')
         rounded(self,2*s,2*s+shift,w-4*s,h-7*s,7*s,fill=color,outline=T.ACCENT if self.focused else (T.ACCENT if self.primary else T.EDGE))
         if not self.primary:self.create_line(10*s,3*s+shift,30*s+24*s*self.amount,3*s+shift,fill=T.ACCENT,width=2*s)
-        self.create_text(w/2,h/2-1*s+shift,text=self.label,fill=T.INK if self.primary else T.FG,font=self.font)
+        self.create_text(w/2,h/2-1*s+shift,text=tr(self.label),fill=T.INK if self.primary else T.FG,font=self.font)
 
 
 class GlassCard(tk.Canvas):
@@ -86,7 +87,7 @@ class Switch(tk.Canvas):
         self.motion.animate('toggle',frame,190)
     def paint(self):
         self.delete('all');s=self.s;w=self.winfo_width();h=self.winfo_height();x=w-54*s;y=(h-25*s)/2
-        self.create_text(0,h/2,text=self.text,anchor='w',font=(T.FONT,10),fill=T.FG)
+        self.create_text(0,h/2,text=tr(self.text),anchor='w',font=(T.FONT,10),fill=T.FG)
         rounded(self,x,y,48*s,25*s,4*s,fill=blend(T.FIELD,T.SELECT,self.value),outline=T.ACCENT if self.focus_get() is self else T.EDGE)
         cx=x+(13+22*self.value)*s
         self.create_rectangle(cx-8*s,y+4*s,cx+8*s,y+21*s,fill=blend(T.MUTED,T.ACCENT,self.value),outline='')

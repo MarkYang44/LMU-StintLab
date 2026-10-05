@@ -13,7 +13,8 @@ def local_settings():
     except (OSError,ValueError):return {}
 
 def data_directory():
-    configured=os.environ.get('LMU_STINTLAB_DATA_DIR') or local_settings().get('data_directory')
+    from legacy_identity import DATA_ENV
+    configured=os.environ.get('LMU_STINTRIX_DATA_DIR') or os.environ.get(DATA_ENV) or local_settings().get('data_directory')
     path=Path(configured).expanduser() if configured else APP_ROOT/'data'
     return (path if path.is_absolute() else APP_ROOT/path).resolve()
 

@@ -9,7 +9,7 @@ import subprocess
 import time
 
 
-def close_demo(process,title_expected='LMU StintLab · DEMO'):
+def close_demo(process,title_expected='LMU Stintrix · DEMO'):
     """Send a normal close only to the synthetic HUD this test launched."""
     if process.poll() is not None:return
     user=ctypes.WinDLL('user32',use_last_error=True)
@@ -37,15 +37,15 @@ def close_demo(process,title_expected='LMU StintLab · DEMO'):
 
 def run(bundle,root):
     bundle=Path(bundle).resolve();root=Path(root).resolve();root.mkdir(parents=True,exist_ok=False)
-    environment=dict(os.environ,LMU_STINTLAB_DATA_DIR=str(root))
+    environment=dict(os.environ,LMU_STINTRIX_DATA_DIR=str(root))
     startup=subprocess.STARTUPINFO();startup.dwFlags|=subprocess.STARTF_USESHOWWINDOW;startup.wShowWindow=0
-    menu=subprocess.Popen([str(bundle/'LMU-StintLab.exe')],cwd=bundle,env=environment,startupinfo=startup,
+    menu=subprocess.Popen([str(bundle/'LMU-Stintrix.exe')],cwd=bundle,env=environment,startupinfo=startup,
         stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
         deadline=time.monotonic()+20
         while True:
             if menu.poll() is not None:raise RuntimeError('Portable control center failed to start')
-            try:close_demo(menu,'LMU StintLab · 控制中心');break
+            try:close_demo(menu,'LMU Stintrix · 控制中心');break
             except RuntimeError:
                 if time.monotonic()>deadline:raise
                 time.sleep(.1)
@@ -54,7 +54,7 @@ def run(bundle,root):
         idle=not (root/'Logs').exists() and not (root/'DemoLogs').exists()
     finally:
         if menu.poll() is None:menu.terminate();menu.wait(timeout=10)
-    process=subprocess.Popen([str(bundle/'LMU-StintLab.exe'),'--demo'],cwd=bundle,
+    process=subprocess.Popen([str(bundle/'LMU-Stintrix.exe'),'--demo'],cwd=bundle,
         env=environment,startupinfo=startup,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     try:
         deadline=time.monotonic()+30

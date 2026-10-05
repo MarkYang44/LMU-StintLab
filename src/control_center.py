@@ -1,4 +1,5 @@
 """Local launchpad: HUD, categorized preferences and direct session actions."""
+from i18n import tr,Label
 import json
 import os
 import threading
@@ -30,8 +31,10 @@ class ControlCenter:
     def __init__(self,root=None,hud=None):
         self.root=root or tk.Tk();self.hud=hud;self.closing=False;self.attached=hud is not None
         self.data_path=ROOT;self.guide_page=None;self.guide_state={};self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
+        import i18n
+        i18n.load(ROOT/'interface_settings.json')
         control_theme.load(ROOT/'interface_settings.json')
-        self.root.title('LMU StintLab · 控制中心');self.root.configure(bg=T.BG)
+        self.root.title(tr('LMU Stintrix · 控制中心'));self.root.configure(bg=T.BG)
         self.root.protocol('WM_DELETE_WINDOW',self.hide if self.attached else self.close)
         from race_model import read_json
         self.reference_settings=read_json(ROOT/'reference_settings.json',{})
@@ -40,7 +43,7 @@ class ControlCenter:
         self.reference_auto=tk.BooleanVar(self.root,value=bool(self.reference_settings.get('automatic',True)))
         self.reference_locked=tk.BooleanVar(self.root,value=bool(self.reference_settings.get('locked',False)))
         self.engine=SimpleNamespace(lock=threading.Lock(),reference=None,aligner=None)
-        self.status=tk.StringVar(self.root,value='就绪 · 记录仅保存在本机')
+        self.status=tk.StringVar(self.root,value=tr('就绪 · 记录仅保存在本机'))
         self.build_shell()
         branding.apply(self.root)
         # Bind to this toplevel only, leaving the HUD's high-rate event loop alone.
@@ -68,7 +71,7 @@ class ControlCenter:
         style.map('Lab.TCombobox',fieldbackground=[('readonly',T.FIELD)],foreground=[('readonly',T.FG)],selectbackground=[('readonly',T.FIELD)],selectforeground=[('readonly',T.FG)])
         self.root.option_add('*TCombobox*Listbox.background',T.FIELD);self.root.option_add('*TCombobox*Listbox.foreground',T.FG)
         self.root.option_add('*TCombobox*Listbox.selectBackground',T.SELECT)
-        self.shell=Shell(self.root,PAGES,self.show_page,self.status,self.toggle_theme)
+        self.shell=Shell(self.root,PAGES,self.show_page,self.status,self.toggle_theme,self.toggle_language)
         self.scroll=self.shell.scroll;self.content=self.shell.content;self.content_item=self.shell.item
         self.title=self.shell.title;self.subtitle=self.shell.subtitle
     def toggle_theme(self):self.set_theme('light' if T.mode=='dark' else 'dark')
@@ -76,14 +79,32 @@ class ControlCenter:
     def set_theme(self,mode):
         if mode==T.mode:return
         try:control_theme.save(ROOT/'interface_settings.json',mode)
-        except (OSError,ValueError) as error:self.status.set('主题未保存：'+str(error));return
-        previous=T.mode;page=self.page;geometry=self.root.geometry();fraction=self.scroll.yview()[0]
+        except (OSError,ValueError) as error:self.status.set(tr('主题未保存：') + str(error));return
+        previous=T.mode
+        control_theme.set_mode(mode)
+        self.rebuild_interface()
+        backdrop(self.root)
+        control_theme.recolor(self.root,previous)
+        if self.active():self.hud.apply_theme()
+
+    def toggle_language(self):
+        import i18n
+        target='en' if i18n.language=='zh' else 'zh'
+        try:i18n.save(ROOT/'interface_settings.json',target)
+        except (OSError,ValueError) as error:self.status.set(tr('语言未保存：')+str(error));return
+        self.rebuild_interface()
+        self.root.title(tr('LMU Stintrix · 控制中心'))
+        self.status.set(tr('就绪 · 记录仅保存在本机'))
+        i18n.refresh(self.root)
+
+    def rebuild_interface(self):
+        page=self.page;geometry=self.root.geometry();fraction=self.scroll.yview()[0]
         state={name:value.get() for name,value in vars(self).items() if isinstance(value,tk.Variable)}
         query=self.search.get() if self.tree else ''
         selected=self.tree.selection() if self.tree else ()
         table_position=self.tree.offset if self.tree else 0
         self.shell.motion.cancel();self.shell.scroller.cancel();self.shell.navigation.motion.cancel()
-        self.shell.side.destroy();self.shell.main.destroy();control_theme.set_mode(mode);self.root.configure(bg=T.BG)
+        self.shell.side.destroy();self.shell.main.destroy();self.root.configure(bg=T.BG)
         self.build_shell();self.root.geometry(geometry);self.show_page(page)
         for name,value in state.items():
             variable=getattr(self,name,None)
@@ -91,12 +112,9 @@ class ControlCenter:
         if self.tree:self.search.set(query);self.populate(selected)
         self.root.update_idletasks();self.scroll.yview_moveto(fraction)
         if self.tree:self.tree.scroller.move(table_position)
-        backdrop(self.root)
-        control_theme.recolor(self.root,previous)
-        if self.active():self.hud.apply_theme()
 
     def label(self,parent,text,size=10,color=None,bold=False):
-        return tk.Label(parent,text='' if isinstance(text,tk.Variable) else text,textvariable=text if isinstance(text,tk.Variable) else None,
+        return Label(parent,text='' if isinstance(text,tk.Variable) else text,textvariable=text if isinstance(text,tk.Variable) else None,
             bg=parent.cget('bg'),fg=color or T.FG,font=('Microsoft YaHei UI',size,'bold' if bold else 'normal'),anchor='w',justify='left')
 
     def card(self,title,subtitle='',parent=None):
@@ -117,9 +135,20 @@ class ControlCenter:
         row=tk.Frame(parent,bg=parent.cget('bg'));row.pack(fill='x',pady=5);return row
 
     def choice(self,parent,label,var,choices,command=None):
-        row=self.row(parent);self.label(row,label,10,T.MUTED).pack(side='left')
+        row=self.row(parent);caption=self.label(row,label,10,T.MUTED);caption.pack(side='left')
         box=Select(row,textvariable=var,values=choices,state='readonly',width=26)
-        box.pack(side='right',padx=4);box.bind('<<ComboboxSelected>>',lambda _:command() if command else None);return box
+        box.pack(side='right',padx=4);box.bind('<<ComboboxSelected>>',lambda _:command() if command else None)
+        row.stacked=False
+        def layout(event):
+            stacked=event.width<caption.winfo_reqwidth()+box.winfo_reqwidth()+px(row,14)
+            if stacked==row.stacked:return
+            row.stacked=stacked;caption.pack_forget();box.pack_forget()
+            if stacked:
+                caption.pack(anchor='w',pady=(0,4));box.pack(fill='x',padx=4)
+            else:
+                caption.pack(side='left');box.pack(side='right',padx=4)
+        row.bind('<Configure>',layout)
+        return box
 
     def wheel(self,event):
         if str(event.widget).startswith(str(self.content)) and not isinstance(event.widget,(ttk.Treeview,ttk.Combobox,Select)):
@@ -172,7 +201,7 @@ class ControlCenter:
             value=tk.BooleanVar(self.root,value=(vehicle if module=='vehicle' else end)[key+'_enabled'])
             Switch(body,title,value,lambda m=module,k=key,v=value:self.update_module(m,{k+'_enabled':v.get()})).pack(fill='x',pady=2)
 
-        body=self.card('Windows 快捷启动','添加后可在开始菜单 / Windows 搜索中输入 StintLab 或 LMU 启动；迁移程序后可再次更新入口')
+        body=self.card('Windows 快捷启动','添加后可在开始菜单 / Windows 搜索中输入 Stintrix 或 LMU 启动；迁移程序后可再次更新入口')
         row=self.row(body)
         self.button(row,'添加 / 更新开始菜单',self.register_app,False,185)
         self.button(row,'移除开始菜单入口',lambda:self.register_app(True),False,170)
@@ -183,35 +212,35 @@ class ControlCenter:
         self.work(lambda:register(remove,verify=True),self.registration_result)
 
     def registration_result(self,result):
-        if result['removed']:self.status.set('开始菜单入口已移除，程序和数据仍保留')
-        elif result.get('recognized'):self.status.set('Windows 应用目录已识别 LMU StintLab · 可从开始菜单打开')
-        else:self.status.set('快捷方式已更新，但 Windows 尚未列出应用；可稍后再次更新入口')
+        if result['removed']:self.status.set(tr('开始菜单入口已移除，程序和数据仍保留'))
+        elif result.get('recognized'):self.status.set(tr('Windows 应用目录已识别 LMU Stintrix · 可从开始菜单打开'))
+        else:self.status.set(tr('快捷方式已更新，但 Windows 尚未列出应用；可稍后再次更新入口'))
 
     def repair_windows_entry(self):
         from windows_integration import needs_repair,register
         if self.attached or not needs_repair():return
         def done(result,error):
             if self.closing:return
-            if error:self.status.set('开始菜单入口未更新：'+error)
+            if error:self.status.set(tr('开始菜单入口未更新：') + error)
             else:self.registration_result(result)
         self.run_background(lambda:register(verify=True),done)
 
     def start(self,demo=False):
-        if self.active():self.hud.root.lift();self.status.set('HUD 已在运行；请先停止后切换真实 / 演示模式');return
-        if self.hud is not None and self.hud.root.winfo_exists():self.status.set('正在保存上一场记录，请稍候');return
+        if self.active():self.hud.root.lift();self.status.set(tr('HUD 已在运行；请先停止后切换真实 / 演示模式'));return
+        if self.hud is not None and self.hud.root.winfo_exists():self.status.set(tr('正在保存上一场记录，请稍候'));return
         from hud import App
         self.hud=App(demo,root=tk.Toplevel(self.root),on_menu=self.show)
         if hasattr(self,'mode_label'):
             mode={'标准面板':'normal','纯净 · 仅曲线':'curves','纯净 · 曲线 + 踏板 / 方向盘':'controls'}[self.mode_label.get()]
             self.hud.hud_mode.set(mode);self.hud.apply_clean_mode();self.hud.window.set(self.window.get())
-        self.status.set('DEMO · 合成数据' if demo else 'HUD 已启动 · 等待 LMU 遥测')
+        self.status.set(tr('DEMO · 合成数据') if demo else tr('HUD 已启动 · 等待 LMU 遥测'))
 
     def stop_hud(self):
-        if self.active():self.status.set('正在结束录制并生成报告…');self.hud.close()
+        if self.active():self.status.set(tr('正在结束录制并生成报告…'));self.hud.close()
 
     def hud_action(self,method):
         if self.active():getattr(self.hud,method)()
-        else:self.status.set('请先启动 HUD，再打开这项实时功能')
+        else:self.status.set(tr('请先启动 HUD，再打开这项实时功能'))
 
     def set_hud(self,key,value):
         if key=='channel':self.update_module('sampling',{'input_channel':value})
@@ -221,11 +250,11 @@ class ControlCenter:
 
     def run_background(self,work,done):return self.tasks.submit(work,done)
     def work(self,work,done=None):
-        self.status.set('正在处理…')
+        self.status.set(tr('正在处理…'))
         def finish(result,error):
-            if error:self.status.set('操作未完成：'+error);messagebox.showerror('StintLab',error,parent=self.root)
+            if error:self.status.set(tr('操作未完成：') + error);messagebox.showerror('Stintrix',error,parent=self.root)
             else:
-                self.status.set('已完成 · 数据保存在本机')
+                self.status.set(tr('已完成 · 数据保存在本机'))
                 if done:done(result)
         self.run_background(work,finish)
 
@@ -258,7 +287,7 @@ class ControlCenter:
             if error:self.status.set(error);return
             selected={self.items[int(i)]['folder'] for i in self.tree.selection()} if self.tree else set()
             self.items=result;chosen=[str(i) for i,item in enumerate(result) if item['folder'] in selected]
-            self.populate(chosen);self.status.set(f'{len(result)} 场本地记录 · 旧 Practice 记录仍保留')
+            self.populate(chosen);self.status.set(f"{len(result)}{tr(' 场本地记录 · 旧 Practice 记录仍保留')}")
         self.run_background(lambda:inventory(ROOT),done)
 
     def populate(self,selected=None):
@@ -317,7 +346,7 @@ class ControlCenter:
 
     def toggle_reference(self):
         if self.active():self.hud.reference_on.set(not self.hud.reference_on.get());self.hud.apply_reference()
-        else:self.status.set('请先启动 HUD')
+        else:self.status.set(tr('请先启动 HUD'))
 
     def selected_laps(self):
         from management import show_lap_selection
@@ -346,7 +375,7 @@ class ControlCenter:
         self.reference_settings.update(enabled=self.reference_on.get(),automatic=self.reference_auto.get(),
             locked=self.reference_locked.get(),kind=self.reference_kind.get())
         atomic_json(ROOT/'reference_settings.json',self.reference_settings)
-        self.status.set('参考圈已保存，启动 HUD 时自动载入')
+        self.status.set(tr('参考圈已保存，启动 HUD 时自动载入'))
 
     def form(self,body,module,specs,choices=()):
         source={'sampling':sampling,'vehicle':vehiclelab,'endurance':endurance}[module].load_settings(ROOT/({'sampling':'settings.json','vehicle':'vehicle_settings.json','endurance':'endurance_settings.json'}[module]))
@@ -360,11 +389,11 @@ class ControlCenter:
         row=self.row(body)
         def save():
             try:self.update_module(module,{key:variables[key].get() for key in variables})
-            except (ValueError,OSError) as e:messagebox.showerror('设置未保存',str(e),parent=self.root)
+            except (ValueError,OSError) as e:messagebox.showerror(tr('设置未保存'),str(e),parent=self.root)
         self.button(row,'应用并保存',save,True,145)
 
     def update_module(self,module,values):
-        control_settings.apply(module,values,self.hud if self.active() else None);self.status.set('设置已保存'+('并应用到 HUD' if self.active() else '，启动 HUD 时生效'))
+        control_settings.apply(module,values,self.hud if self.active() else None);self.status.set(tr('设置已保存') + (tr('并应用到 HUD') if self.active() else tr('，启动 HUD 时生效')))
 
     def settings_page(self):
         body=self.card('输入采样与 HUD 刷新','1–4000 Hz · sync 跟随采样目标；有效数据频率由游戏和硬件决定')
@@ -387,45 +416,45 @@ class ControlCenter:
         self.choice(body,'生成方式',self.renderer_mode,['racecom','native'])
         entry=Field(body,textvariable=self.renderer_path,font=('Segoe UI',10));entry.pack(fill='x',pady=8)
         def choose():
-            path=filedialog.askopenfilename(parent=self.root,title='选择 RaceCom 的 Image Generate.exe',filetypes=[('RaceCom 图像生成器','*.exe')])
+            path=filedialog.askopenfilename(parent=self.root,title=tr('选择 RaceCom 的 Image Generate.exe'),filetypes=[('RaceCom 图像生成器','*.exe')])
             if path:self.renderer_path.set(path)
         def save():
-            try:renderer_config.save(dict(mode=self.renderer_mode.get(),executable=self.renderer_path.get()));self.status.set('图像生成器已配置；下一场结束自动生成到赛事文件夹')
-            except (ValueError,OSError) as e:messagebox.showerror('配置未保存',str(e),parent=self.root)
+            try:renderer_config.save(dict(mode=self.renderer_mode.get(),executable=self.renderer_path.get()));self.status.set(tr('图像生成器已配置；下一场结束自动生成到赛事文件夹'))
+            except (ValueError,OSError) as e:messagebox.showerror(tr('配置未保存'),str(e),parent=self.root)
         row=self.row(body);self.button(row,'选择生成器',choose,False,140);self.button(row,'保存配置',save,True,140)
-        self.label(body,'racecom = 原版版式；native = StintLab 兼容版式。\nGitHub 下载包不包含 RaceCom 程序、商标图片或个人记录。',9,T.MUTED).pack(anchor='w',pady=8)
+        self.label(body,'racecom = 原版版式；native = Stintrix 兼容版式。\nGitHub 下载包不包含 RaceCom 程序、商标图片或个人记录。',9,T.MUTED).pack(anchor='w',pady=8)
         body=self.card('赛事包 / ZIP','勾选多场或全选当前列表，一次导出；每场一个 ZIP，导入时校验并新建记录')
         self.sessions(body,True,True);row=self.row(body);self.button(row,'批量导出选中赛事',self.export_package,True,180);self.button(row,'导入赛事包',self.import_package,False,145)
         self.button(row,'导入官方遥测',self.import_native,False,155)
 
     def export_package(self):
         from session_archive import export_session,transfer_batch
-        if getattr(self,'exporting',False):self.status.set('赛事包正在导出，请等待完成');return
+        if getattr(self,'exporting',False):self.status.set(tr('赛事包正在导出，请等待完成'));return
         def action(items):
-            directory=filedialog.askdirectory(parent=self.root,title='选择赛事包导出目录')
+            directory=filedialog.askdirectory(parent=self.root,title=tr('选择赛事包导出目录'))
             if not directory:return
             keys=[item['key'] for item in items];self.exporting=True
-            self.status.set(f'正在导出 {len(keys)} 场赛事，每场一个 ZIP…')
+            self.status.set(f"{tr('正在导出 ')}{len(keys)}{tr(' 场赛事，每场一个 ZIP…')}")
             def done(result,error):
                 self.exporting=False
-                if error:self.status.set('导出未完成：'+error);messagebox.showerror('StintLab',error,parent=self.root);return
-                self.status.set(f"已导出 {len(result['items'])} 场赛事 · 失败 {len(result['errors'])} 场")
+                if error:self.status.set(tr('导出未完成：') + error);messagebox.showerror('Stintrix',error,parent=self.root);return
+                self.status.set(f"{tr('已导出 ')}{len(result['items'])}{tr(' 场赛事 · 失败 ')}{len(result['errors'])}{tr(' 场')}")
                 if result['items']:os.startfile(directory)
                 if result['errors']:
                     details='\n'.join(v['item']+'：'+v['error'] for v in result['errors'][:10])
-                    messagebox.showwarning('部分赛事未导出',details,parent=self.root)
+                    messagebox.showwarning(tr('部分赛事未导出'),details,parent=self.root)
             self.run_background(lambda:transfer_batch(keys,lambda key:export_session(ROOT,key,Path(directory))),done)
         self.with_selection(action,None)
 
     def import_package(self):
         from session_archive import import_session
-        path=filedialog.askopenfilename(parent=self.root,title='导入赛事包',filetypes=[('赛事 ZIP','*.zip')])
+        path=filedialog.askopenfilename(parent=self.root,title=tr('导入赛事包'),filetypes=[('赛事 ZIP','*.zip')])
         if path:self.work(lambda:import_session(ROOT,path),lambda _:self.refresh())
 
     def import_native(self):
         from telemetry_import import import_recording
         from session_reports import make_report
-        path=filedialog.askopenfilename(parent=self.root,title='导入 LMU 官方遥测（只读）',filetypes=[('LMU 遥测','*.duckdb')])
+        path=filedialog.askopenfilename(parent=self.root,title=tr('导入 LMU 官方遥测（只读）'),filetypes=[('LMU 遥测','*.duckdb')])
         if path:
             def work():
                 folder=import_recording(path,ROOT);make_report(folder);return folder
@@ -436,16 +465,16 @@ class ControlCenter:
         if self.hud and not self.hud.root.winfo_exists():self.hud=None
         for done,result,error in self.tasks.completions():
             try:done(result,error)
-            except (OSError,ValueError,tk.TclError) as e:self.status.set('操作未完成：'+str(e))
+            except (OSError,ValueError,tk.TclError) as e:self.status.set(tr('操作未完成：') + str(e))
         if self.page==0 and self.active():
             engine=self.hud.engine;poll,fresh=engine.actual_rates()
-            self.live_label.configure(text=f'{engine.status} · 读取 {poll:.0f} / 有效 {fresh:.0f} Hz')
+            self.live_label.configure(text=f"{engine.status}{tr(' · 读取 ')}{poll:.0f}{tr(' / 有效 ')}{fresh:.0f} Hz")
             values=[(self.channel,'游戏过滤后' if self.hud.input_channel.get()=='filtered' else '原始输入'),
                 (self.mode_label,{'normal':'标准面板','curves':'纯净 · 仅曲线','controls':'纯净 · 曲线 + 踏板 / 方向盘'}[self.hud.hud_mode.get()]),
                 (self.window,self.hud.window.get())]
             for variable,value in values:
                 if variable.get()!=value:variable.set(value)
-        elif self.page==0:self.live_label.configure(text='已停止' if self.hud else '等待启动')
+        elif self.page==0:self.live_label.configure(text=tr('已停止') if self.hud else tr('等待启动'))
         self.job=self.root.after(100,self.tick)
 
     def close(self):

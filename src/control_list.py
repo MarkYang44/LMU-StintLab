@@ -3,6 +3,7 @@
     Only visible rows are drawn; complete recording data never enters this view.
     A small Treeview-compatible surface keeps existing session actions unchanged.
 """
+from i18n import tr
 import math
 import tkinter as tk
 from control_theme import T
@@ -47,7 +48,7 @@ class SessionList(tk.Frame):
             try:self.after_cancel(self.pending)
             except tk.TclError:pass
             self.pending=None
-    def heading(self,key,text):self.labels[key]=text;self.schedule()
+    def heading(self,key,text):self.labels[key]=tr(text);self.schedule()
     def column(self,key,width,minwidth,stretch):
         self.widths[key]=width;self.minimum[key]=minwidth
         if stretch:self.stretch.add(key)

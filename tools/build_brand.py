@@ -20,8 +20,8 @@ def render(destination=None):
         w,h,_,_,planes,bits,length,offset=struct.unpack_from('<BBBBHHII',blob,6+index*16)
         frame=blob[offset:offset+length]
         if (w or 256,h or 256,bits)!=(size,size,32) or planes not in (0,1) or frame[:8]!=b'\x89PNG\r\n\x1a\n':raise ValueError('Invalid icon frame')
-        (target/f'stintlab-{size}.png').write_bytes(frame)
-    shutil.copyfile(source/'gtd.ico',target/'stintlab.ico')
+        (target/f'stintrix-{size}.png').write_bytes(frame)
+    shutil.copyfile(source/'gtd.ico',target/'stintrix.ico')
     shutil.copyfile(source/'gtd-menu.png',target/'menu-icon.png')
     return target
 

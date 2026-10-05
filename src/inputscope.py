@@ -1,4 +1,4 @@
-"""CLI entry point and compatibility exports for existing StintLab integrations.
+"""CLI entry point and compatibility exports for existing Stintrix integrations.
 
 Collection, recording and presentation live in independent modules. The public
 class/function names remain available here; patch their owning modules in tests.
@@ -33,7 +33,7 @@ def main():
         from windows_integration import register
         register('--unregister-app' in sys.argv,verify=True);return
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.14');return
+        print('LMU Stintrix 0.2.0');return
     if '--race-images' in sys.argv:
         index=sys.argv.index('--race-images')
         if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')

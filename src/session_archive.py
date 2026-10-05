@@ -13,7 +13,8 @@ import zipfile
 from library import inventory,session_label
 from laps import safe_name
 
-FORMAT='stintlab.session-archive'
+from legacy_identity import ARCHIVE_FORMAT
+FORMAT='stintrix.session-archive'
 COLLECTIONS=('Logs','ImportedLogs','RecoveredLogs','DemoLogs')
 LOCAL_FILES={'_archive_receipt.json','_archive_note.json'}
 CHUNK=1048576
@@ -78,7 +79,7 @@ def export_session(root,key,destination):
     files=_files(folder)
     item=next(v for v in inventory(root) if v['key']==str(folder.relative_to(root)))
     note=dict(text=item['note'],traffic=item['traffic'])
-    fd,pending=tempfile.mkstemp(prefix='.stintlab-',suffix='.pending',dir=destination);os.close(fd)
+    fd,pending=tempfile.mkstemp(prefix='.stintrix-',suffix='.pending',dir=destination);os.close(fd)
     pending=Path(pending);entries={}
     try:
         with zipfile.ZipFile(pending,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6,allowZip64=True) as out:
@@ -103,7 +104,7 @@ def export_session(root,key,destination):
             for name,entry in entries.items():_verify_member(archive,'session/'+name,entry)
         label='_'.join((safe_name(meta.get('started_utc','')[:19]),session_label(meta.get('session')),
                         safe_name(meta.get('track','')),safe_name(meta.get('vehicle',''))))
-        target=destination/(label+'_'+manifest['archive_id'][:12]+'.stintlab.zip')
+        target=destination/(label+'_'+manifest['archive_id'][:12]+'.stintrix.zip')
         # Unique existing exports are kept. A rename is atomic and fails if the target exists on Windows.
         if target.exists():target=target.with_name(target.stem+'_'+uuid.uuid4().hex[:8]+'.zip')
         pending.rename(target)
@@ -126,9 +127,9 @@ def _validate(archive):
         total+=info.file_size;names[folded]=info
     if total>MAX_BYTES:raise ValueError('比赛包展开后超过 32 GiB')
     info=names.get('manifest.json')
-    if info is None or info.filename!='manifest.json' or info.file_size>MAX_MANIFEST:raise ValueError('不是有效的 StintLab 比赛包')
+    if info is None or info.filename!='manifest.json' or info.file_size>MAX_MANIFEST:raise ValueError('不是有效的 Stintrix 比赛包')
     manifest=json.loads(archive.read(info).decode('utf-8'))
-    if not isinstance(manifest,dict) or manifest.get('format')!=FORMAT or manifest.get('version')!=1:
+    if not isinstance(manifest,dict) or manifest.get('format') not in (FORMAT,ARCHIVE_FORMAT) or manifest.get('version')!=1:
         raise ValueError('比赛包格式或版本不支持')
     files=manifest.get('files');note=manifest.get('note')
     if not isinstance(files,dict) or not files or not isinstance(note,dict) or not isinstance(note.get('text'),str) or len(note['text'])>2000 or not isinstance(note.get('traffic'),bool):
@@ -176,7 +177,7 @@ def import_session(root,package):
         # Stage the entire verified session first. Damaged packages leave no library entry.
         if shutil.disk_usage(collection).free<sum(e['bytes'] for e in manifest['files'].values())+16*CHUNK:
             raise OSError('可用磁盘空间不足以导入比赛包')
-        with tempfile.TemporaryDirectory(prefix='.stintlab-import-',dir=collection) as temporary:
+        with tempfile.TemporaryDirectory(prefix='.stintrix-import-',dir=collection) as temporary:
             stage=Path(temporary)/'session';stage.mkdir()
             for name,entry in manifest['files'].items():
                 path=stage/name;path.parent.mkdir(parents=True,exist_ok=True)

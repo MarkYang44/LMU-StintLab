@@ -1,5 +1,5 @@
 /* Exact offline numeric storage; compressed payloads use the browser's gzip stream. */
-const StintLabData=(()=>{
+const StintrixData=(()=>{
  class Table{
   constructor(values,width){this.values=values;this.width=width;this.length=values.length/width;if(!Number.isInteger(this.length))throw Error('遥测矩阵长度无效');return new Proxy(this,{get:(t,p)=>typeof p==='string'&&/^\d+$/.test(p)?t.at(Number(p)):Reflect.get(t,p)})}
   at(i){if(i<0)i+=this.length;if(i<0||i>=this.length)return undefined;return this.values.subarray(i*this.width,(i+1)*this.width)}

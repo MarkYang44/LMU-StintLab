@@ -33,7 +33,7 @@ class App:
         self.root = root if root is not None else tk.Tk()
         control_theme.load(ROOT/'interface_settings.json')
         self.on_menu=on_menu
-        self.root.title('LMU StintLab' + (' · DEMO' if demo else ''))
+        self.root.title('LMU Stintrix' + (' · DEMO' if demo else ''))
         from branding import apply
         apply(self.root)
         self.root.geometry('640x228+70+70')
@@ -429,7 +429,7 @@ class App:
         self.engine.reference_enabled = self.reference_on.get()
         self.reference_match_key = None
         self.render_wake.set()
-        self.root.title('LMU StintLab' + (' · DEMO' if demo else ''))
+        self.root.title('LMU Stintrix' + (' · DEMO' if demo else ''))
 
     def show_sampling_settings(self):
         if self.settings_dialog and self.settings_dialog.winfo_exists():
@@ -559,7 +559,7 @@ class App:
         c.create_rectangle(0,0,w,h,fill=T.BG,outline='',tags='chrome')
         self.rounded(1, 1, w-1, h-1, 16*s, fill='', outline=T.EDGE, width=1, tags='chrome')
         c.create_line(23*s, 1, w-23*s, 1, fill=T.ACCENT, tags='chrome')
-        c.create_text(18*s, 18*s, text='STINTLAB', fill=T.FG, anchor='w',
+        c.create_text(18*s, 18*s, text='STINTRIX', fill=T.FG, anchor='w',
                       font=('Segoe UI', -max(10,round(12*s)), 'bold'), tags='chrome')
         self.rounded(w-74*s, 7*s, w-40*s, 29*s, 10*s, fill=T.FIELD, outline=T.EDGE, tags='chrome')
         c.create_text(w-57*s, 17*s, text='•••', fill=T.FG, font=('Segoe UI', -round(13*s)), tags='chrome')

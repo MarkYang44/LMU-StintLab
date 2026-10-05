@@ -1,4 +1,4 @@
-/* GTD editorial snapshot in the StintLab industrial shell. All runtime content is local. */
+/* GTD editorial snapshot in the Stintrix industrial shell. All runtime content is local. */
 (() => {
  'use strict';
  const aliases={'bahrain':'巴林','barcelona':'巴塞罗那 加泰罗尼亚','le-mans':'勒芒 萨尔特','paul-ricard':'保罗里卡尔','cota':'美洲 奥斯汀','daytona':'代托纳','fuji':'富士','imola':'伊莫拉','interlagos':'英特拉格斯 因特拉格斯','lusail':'卢赛尔 罗赛尔','monza':'蒙扎','portimao':'波尔蒂芒 阿尔加维','sebring':'赛百灵 塞布林','silverstone-international':'银石','spa':'斯帕 弗朗科尔尚','laguna-seca':'拉古纳塞卡','road-atlanta':'亚特兰大之路 罗德亚特兰大','long-beach':'长滩'};
@@ -23,11 +23,11 @@
  const api={esc,safeURL,favorites,rows};
  if(typeof module!=='undefined'&&module.exports)module.exports=api;
  if(typeof document==='undefined')return;
- const data=JSON.parse(document.getElementById('guide-data').textContent),palettes=window.StintLabGuidePalettes;
- const $=id=>document.getElementById(id),root=document.documentElement,key='stintlab-guide-favorites';
+ const data=JSON.parse(document.getElementById('guide-data').textContent),palettes=window.StintrixGuidePalettes;
+ const $=id=>document.getElementById(id),root=document.documentElement,key='stintrix-guide-favorites';
  const query=new URLSearchParams(location.hash.slice(1));let view=query.get('view')==='cars'?'cars':'tracks',lang='zh',theme=query.get('theme')==='light'?'light':'dark';
  let favs={tracks:[],cars:[]},storage=false,selected=new Set(),returnFocus=null,requested=query.get('item')||'',limit=false;
- try{favs=favorites(JSON.parse(localStorage.getItem(key)),data);lang=localStorage.getItem('stintlab-guide-language')==='en'?'en':'zh';}catch{storage=true;}
+ try{favs=favorites(JSON.parse(localStorage.getItem(key)),data);lang=localStorage.getItem('stintrix-guide-language')==='en'?'en':'zh';}catch{storage=true;}
  const tr=(zh,en)=>lang==='en'?en:zh,copy=(item,key)=>item[lang==='en'?key:key+'_zh']||item[key]||'';
  const recs=new Map();for(const track of Object.values(data.tracks))for(const rec of track.recommendations)recs.set('rec:'+rec.key,{track,rec,car:data.cars[rec.car_slug]});
  const links=(url,label)=>{const href=safeURL(url);return href?`<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`:'';};
@@ -76,7 +76,7 @@
   $('theme').textContent=theme==='dark'?tr('◐ 浅色主题','◐ Light theme'):tr('◑ 深色主题','◑ Dark theme');
  }
  function translations(){
-  root.lang=lang==='en'?'en':'zh-CN';document.title=tr('StintLab · ','StintLab · ')+(view==='cars'?tr('车型图鉴','Car catalog'):tr('赛道指南','Circuit guide'));
+  root.lang=lang==='en'?'en':'zh-CN';document.title=tr('Stintrix · ','Stintrix · ')+(view==='cars'?tr('车型图鉴','Car catalog'):tr('赛道指南','Circuit guide'));
   $('title').textContent=view==='cars'?tr('车型图鉴','Car catalog'):tr('赛道指南','Circuit guide');
   $('intro').textContent=view==='cars'?tr('逐台查看车型优点、注意事项和推荐赛道，选择 2–3 台并排对比。','Explore car strengths, caveats, and recommended circuits; compare 2–3 cars side by side.'):tr('以赛道特性为起点，查看 LMGT3 与 Hypercar 推荐及 Sleeper 之选。','Explore each circuit with LMGT3 and Hypercar recommendations and Sleeper Picks.');
   $('version').textContent=tr('GTD 内容版本：','GTD content release: ')+data.content_version+' · '+tr('资料更新：','Updated: ')+data.updated+' · '+tr('实测验证：','Build-validated: ')+data.validated_recommendations+'/'+data.total_recommendations+' · '+tr('资料参考：','Reference: ')+data.game_reference;
@@ -121,10 +121,10 @@
  $('clear').onclick=()=>{selected.clear();limit=false;renderComparison();};
  $('compare').onclick=()=>{if(selected.size<2)return;returnFocus=document.activeElement;dialogCards();$('comparison').showModal();$('close').focus();};
  $('close').onclick=()=>$('comparison').close();$('comparison').addEventListener('close',()=>{if(returnFocus?.isConnected)returnFocus.focus();else $('compare').focus();});
- $('language').onclick=()=>{lang=lang==='zh'?'en':'zh';try{localStorage.setItem('stintlab-guide-language',lang);}catch{storage=true;}translations();};
+ $('language').onclick=()=>{lang=lang==='zh'?'en':'zh';try{localStorage.setItem('stintrix-guide-language',lang);}catch{storage=true;}translations();};
  $('theme').onclick=()=>{applyTheme(theme==='dark'?'light':'dark');renderCards();history.replaceState(null,'','#'+new URLSearchParams({view,theme,...(requested?{item:requested}:{})}));};
  window.addEventListener('hashchange',()=>{const query=new URLSearchParams(location.hash.slice(1));if(['dark','light'].includes(query.get('theme')))theme=query.get('theme');switchView(query.get('view'),query.get('item')||'');});
  window.addEventListener('storage',event=>{if(event.key===key){try{favs=favorites(JSON.parse(event.newValue),data);renderCards();renderComparison();}catch{}}});
- window.StintLabGuide={data,get view(){return view;},get selected(){return [...selected];},get favorites(){return favs;}};
+ window.StintrixGuide={data,get view(){return view;},get selected(){return [...selected];},get favorites(){return favs;}};
  switchView(view,requested);
 })();

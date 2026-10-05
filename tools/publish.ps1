@@ -10,7 +10,7 @@ if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { throw 'Install G
 $gitProjectArgs = @('-c', 'safe.directory=', '-c', ('safe.directory=' + $projectRoot.Replace('\', '/')))
 $remote = & git @gitProjectArgs remote get-url origin
 if ($LASTEXITCODE -ne 0) { throw 'Git could not read origin. See the Git error above; no upload was attempted.' }
-if ($remote -ne 'https://github.com/MarkYang44/LMU-StintLab.git') { throw 'Unexpected origin. Verify the repository URL before publishing.' }
+if ($remote -ne 'https://github.com/MarkYang44/LMU-Stintrix.git') { throw 'Unexpected origin. Verify the repository URL before publishing.' }
 $branch = & git @gitProjectArgs branch --show-current
 if ($LASTEXITCODE -ne 0) { throw 'Git could not read the current branch. No upload was attempted.' }
 if ($branch -ne 'main') { throw 'Publish.cmd only publishes the reviewed main branch.' }
@@ -29,4 +29,4 @@ if ($CheckOnly) { Write-Host 'Publication checks passed. No upload requested.'; 
 # No force push; private data is excluded before this step.
 & git @gitProjectArgs -c http.sslBackend=openssl push -u origin main
 if ($LASTEXITCODE -ne 0) { throw 'GitHub push failed. Complete Git for Windows authentication and rerun Publish.cmd.' }
-Write-Host 'Public source uploaded to https://github.com/MarkYang44/LMU-StintLab' -ForegroundColor Green
+Write-Host 'Public source uploaded to https://github.com/MarkYang44/LMU-Stintrix' -ForegroundColor Green

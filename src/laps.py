@@ -253,14 +253,14 @@ def write_compare(path, template, laps=(), status=None,reference_id=None,view_st
             if key not in ('laps','status','reference_id'):value[key]=item
     template = Path(template)
     from control_theme import web_script
-    source = template.read_text(encoding='utf-8').replace('/*INTERFACE_THEME_JS*/',web_script(template.parent)).replace('/*LAP_DATA*/null','await StintLabData.jsonBlock("stintlab-laps")')
+    source = template.read_text(encoding='utf-8').replace('/*INTERFACE_THEME_JS*/',web_script(template.parent)).replace('/*LAP_DATA*/null','await StintrixData.jsonBlock("stintrix-laps")')
     source = source.replace('/*DATA_VIEW_JS*/',reporting.script(template.parent))
     if '/*TRACK_VIEW_JS*/' in source:
         source = source.replace('/*TRACK_VIEW_JS*/',track_script(template.parent))
     if '/*VEHICLE_VIEW_JS*/' in source:
         from vehiclelab import script
         source=source.replace('/*VEHICLE_VIEW_JS*/',script(template.parent))
-    reporting.write_page(path,source,[('stintlab-laps',reporting.json_chunks(value))])
+    reporting.write_page(path,source,[('stintrix-laps',reporting.json_chunks(value))])
 
 
 def track_script(folder):

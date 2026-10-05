@@ -37,7 +37,7 @@ class LightweightTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT) as t:
             folder=fixtures.Tests().lap_csv(Path(t)/'session');before={p:p.read_bytes() for p in folder.iterdir() if p.is_file()}
             inputscope.render_review(folder)
-            actual=block(folder/'review.html','stintlab-inputs');expected=b''.join(reporting.review_records(folder/'inputs.csv'))
+            actual=block(folder/'review.html','stintrix-inputs');expected=b''.join(reporting.review_records(folder/'inputs.csv'))
             self.assertEqual(actual,expected);self.assertEqual(len(actual)%104,0)
             with (folder/'inputs.csv').open(newline='',encoding='utf-8') as f:
                 source=list(csv.DictReader(f))
@@ -48,7 +48,7 @@ class LightweightTests(unittest.TestCase):
                     if text.get(key) not in ('',None):self.assertEqual(numeric[i],float(text[key]))
                     elif i>=10:self.assertTrue(math.isnan(numeric[i]))
             self.assertEqual(values[3],float(source[0]['throttle']));self.assertEqual(values[6],float(source[0]['filtered_throttle']))
-            self.assertEqual(json.loads(block(folder/'review.html','stintlab-meta'))['meta'],json.loads((folder/'session.json').read_text()))
+            self.assertEqual(json.loads(block(folder/'review.html','stintrix-meta'))['meta'],json.loads((folder/'session.json').read_text()))
             self.assertEqual({p:p.read_bytes() for p in before},before)
 
     def test_streaming_sidecar_matches_loaded_vehicle_bundle_and_absent_values(self):

@@ -1,8 +1,8 @@
-# LMU StintLab
+# LMU Stintrix
 
 Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windows x64.
 
-实时油门 / 刹车 / 转向 HUD、比赛记录、完整圈对比与耐力赛遥测分析。界面以中文为主，所有记录默认保存在本机。
+实时油门 / 刹车 / 转向 HUD、比赛记录、完整圈对比与耐力赛遥测分析。界面支持中文 / English，所有记录默认保存在本机。
 
 控制中心提供 **深色 / 浅色** 两套工业风主题：炭黑或暖灰白底色、黄绿强调色、切角面板。右上角一键切换并保存在本机；赛事列表支持像素平滑滚动、选择过渡及键盘操作。应用图标沿用 GTD 菜单图标。
 
@@ -10,11 +10,11 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 ## 下载与一键启动
 
-**便携版（推荐）**：从 [Releases](https://github.com/MarkYang44/LMU-StintLab/releases) 下载 `LMU-StintLab-v*-windows-x64.zip`，完整解压到可写目录，双击 **`LMU-StintLab.exe`**。不需要安装 Python；`Demo.cmd` 可在不开游戏时演示。不要只移动 EXE，保留 `_internal` 文件夹。
+**便携版（推荐）**：从 [Releases](https://github.com/MarkYang44/LMU-Stintrix/releases) 下载 `LMU-Stintrix-v*-windows-x64.zip`，完整解压到可写目录，双击 **`LMU-Stintrix.exe`**。不需要安装 Python；`Demo.cmd` 可在不开游戏时演示。不要只移动 EXE，保留 `_internal` 文件夹。
 
 **源码版**：点击 GitHub **Code → Download ZIP**，完整解压，双击 `Setup.cmd`，完成后双击 `Start.cmd`。首次配置需要联网：脚本查找 64 位 Python 3.13；没有时使用 winget 为当前用户安装官方 Python，然后创建独立 `.venv`、校验固定版本依赖并安装。没有 winget 时，请手动安装带 Tcl/Tk 的 [Python 3.13](https://www.python.org/downloads/windows/)，然后重试。
 
-`LMU-StintLab.exe` 默认打开分类控制中心（源码启动脚本同样适用），点击 **启动 HUD** 后读取 LMU 的 `LMU_Data` 共享内存。**只自动记录排位赛和正赛；Practice / Warmup 保留实时 HUD，不写比赛文件。** 无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。LMU StintLab 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
+`LMU-Stintrix.exe` 默认打开分类控制中心（源码启动脚本同样适用），点击 **启动 HUD** 后读取 LMU 的 `LMU_Data` 共享内存。**只自动记录排位赛和正赛；Practice / Warmup 保留实时 HUD，不写比赛文件。** 无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。LMU Stintrix 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
 
 ## 功能
 
@@ -45,7 +45,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 开发测试集中在 `tests/`，自检、构建与发布工具集中在 `tools/`；根目录只保留日常启动与源码安装入口。便携 ZIP 不包含这些开发文件或开发文档，保留原有各个启动模式、操作说明和必要许可证。
 
-双击 `tools/Build.cmd` 安装固定构建依赖并生成 `dist/LMU-StintLab-v0.1.4-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
+双击 `tools/Build.cmd` 安装固定构建依赖并生成 `dist/LMU-Stintrix-v*-windows-x64.zip` 和 SHA256 文件。源码无需商业运行包，SDK 的 MIT 源码已包含。Python 3.13 x64 是当前验证的构建环境。
 
 ```powershell
 .venv\Scripts\python.exe tools/run_tests.py
@@ -56,7 +56,7 @@ Windows CI 检查公开文件、运行隔离测试并构建便携 ZIP；推送�
 
 ## English quick start
 
-Download and extract the portable Windows x64 release, then double-click **LMU-StintLab.exe**. For source ZIPs, run **Setup.cmd** first; it provisions Python 3.13 and verified dependencies. **Demo.cmd** uses synthetic telemetry only. No files are installed in the game directory. All racing data stays in `data/` locally. The UI is primarily Chinese. Read-only LMU shared memory is supplied by the bundled MIT-licensed SDK.
+Download and extract the portable Windows x64 release, then double-click **LMU-Stintrix.exe**. For source ZIPs, run **Setup.cmd** first; it provisions Python 3.13 and verified dependencies. **Demo.cmd** uses synthetic telemetry only. No files are installed in the game directory. All racing data stays in `data/` locally. Use the EN / 中文 switch at the top of the control center to select English or Chinese. Read-only LMU shared memory is supplied by the bundled MIT-licensed SDK.
 
 This is an independent community project, not affiliated with Studio 397, Motorsport Games, Fanatec or BMW. The schematic steering wheel uses original drawing code; no commercial artwork is included. Project source: MIT; upstream notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -64,8 +64,10 @@ This is an independent community project, not affiliated with Studio 397, Motors
 
 ## Windows 快捷启动与表单操作
 
-控制中心 **运行与 HUD → Windows 快捷启动 → 添加 / 更新开始菜单** 会创建当前用户的 `LMU StintLab` 快捷方式。程序会核验 Windows 应用目录，确认识别后可在 Windows 搜索中输入 `StintLab` 或 `LMU`，也可从开始菜单的所有应用启动；无需管理员权限。可右键搜索结果固定到开始菜单或任务栏。移动便携文件夹后，重新打开 EXE 点击更新入口即可；移除入口不会删除程序或个人数据。首次解压仍需保留完整 `_internal` 文件夹。
+控制中心 **运行与 HUD → Windows 快捷启动 → 添加 / 更新开始菜单** 会创建当前用户的 `LMU Stintrix` 快捷方式。程序会核验 Windows 应用目录，确认识别后可在 Windows 搜索中输入 `Stintrix` 或 `LMU`，也可从开始菜单的所有应用启动；无需管理员权限。可右键搜索结果固定到开始菜单或任务栏。移动便携文件夹后，重新打开 EXE 点击更新入口即可；移除入口不会删除程序或个人数据。首次解压仍需保留完整 `_internal` 文件夹。
 
 表单使用统一的切角输入框与下拉面板：黄绿焦点描边、短展开过渡、平滑选项高亮，兼容深浅主题。下拉框支持方向键、Home / End、输入前缀跳转、Enter 确认、Escape 取消和 Tab 切换；长列表可滚动。动画仅在交互时运行，离开页面会清理弹层与回调。
 
 已启用的入口在新版启动时会按当前登录用户检查并修复；检查在后台进行。若显示“Windows 尚未列出应用”，可稍后再次点击更新。入口识别状态保存在本机 `data/desktop_registration.json`，不参与发布。
+
+控制中心顶部 **EN / 中文** 可切换整个菜单语言，重启后保留；主题和语言分别保存到本机 `data/interface_settings.json`。赛道指南与车型图鉴随菜单语言切换，赛事记录、配置值和文件名不因语言切换而改变。

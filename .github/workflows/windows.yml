@@ -31,7 +31,7 @@ jobs:
         run: python tools/check_bundle.py --smoke
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: LMU-StintLab-windows-x64
+          name: LMU-Stintrix-windows-x64
           path: |
             dist/*.zip
             dist/*.sha256
@@ -48,7 +48,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
         with:
-          name: LMU-StintLab-windows-x64
+          name: LMU-Stintrix-windows-x64
           path: dist
       - name: Publish verified Release for a version tag
         env:
@@ -56,4 +56,12 @@ jobs:
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
           if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag must match VERSION' }
-          gh release create $env:GITHUB_REF_NAME "dist/LMU-StintLab-v$version-windows-x64.zip" "dist/LMU-StintLab-v$version-windows-x64.zip.sha256" --verify-tag --latest --title "LMU StintLab v$version" --notes-file docs/RELEASE_NOTES.md
+          gh release view $env:GITHUB_REF_NAME --json id 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:GITHUB_REF_NAME "dist/LMU-Stintrix-v$version-windows-x64.zip" "dist/LMU-Stintrix-v$version-windows-x64.zip.sha256" --clobber
+            if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
+            gh release edit $env:GITHUB_REF_NAME --latest --title "LMU Stintrix v$version" --notes-file docs/RELEASE_NOTES.md
+          } else {
+            gh release create $env:GITHUB_REF_NAME "dist/LMU-Stintrix-v$version-windows-x64.zip" "dist/LMU-Stintrix-v$version-windows-x64.zip.sha256" --verify-tag --latest --title "LMU Stintrix v$version" --notes-file docs/RELEASE_NOTES.md
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

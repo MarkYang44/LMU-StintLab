@@ -2,7 +2,7 @@
 (() => {
  const palettes=/*UI_PALETTES*/null, fallback=/*UI_MODE*/'dark';
  let mode=palettes[document.documentElement.dataset.theme]?document.documentElement.dataset.theme:fallback;
- try {const saved=localStorage.getItem('stintlab-interface-theme');if(palettes[saved])mode=saved;} catch {}
+ try {const saved=localStorage.getItem('stintrix-interface-theme');if(palettes[saved])mode=saved;} catch {}
  const sheet=document.createElement('style');sheet.textContent=`
  html{color-scheme:dark}html[data-theme=light]{color-scheme:light}
  body{background:var(--sl-bg)!important;color:var(--sl-fg)!important}
@@ -18,7 +18,7 @@
  @keyframes sl-enter{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
  `;document.head.append(sheet);
- const theme=window.StintLabTheme={mode,color:key=>palettes[theme.mode][key]};
+ const theme=window.StintrixTheme={mode,color:key=>palettes[theme.mode][key]};
  function apply(value){
   mode=theme.mode=value;document.documentElement.dataset.theme=value;
   for(const [key,color] of Object.entries(palettes[value]))document.documentElement.style.setProperty('--sl-'+key.toLowerCase().replace('_','-'),color);
@@ -28,7 +28,7 @@
  apply(mode);
  document.addEventListener('DOMContentLoaded',()=>{
   const button=document.getElementById('sl-theme')||document.createElement('button');button.id='sl-theme';button.type='button';button.setAttribute('aria-label','切换深色 / 浅色主题');
-  button.onclick=()=>{const next=theme.mode==='dark'?'light':'dark';try{localStorage.setItem('stintlab-interface-theme',next)}catch{}apply(next)};
+  button.onclick=()=>{const next=theme.mode==='dark'?'light':'dark';try{localStorage.setItem('stintrix-interface-theme',next)}catch{}apply(next)};
   (document.querySelector('header')||document.body).append(button);apply(theme.mode);
  });
 })();

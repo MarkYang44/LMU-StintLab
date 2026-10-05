@@ -113,7 +113,7 @@ def build_model(folder):
         and abs(o['data']['start']-e['data']['start'])<.3 for o in official)]
     events.sort(key=lambda e:e['time'])
     origin=min([e['time'] for e in events]+[lap['observed_start'] for lap in laps if 'observed_start' in lap],default=0)
-    return dict(format='stintlab.race-report',version=1,session=meta,session_type=session_label(meta.get('session')),
+    return dict(format='stintrix.race-report',version=1,session=meta,session_type=session_label(meta.get('session')),
         summary=summary,laps=laps,events=events,origin=origin,fastest=fastest,sector_bests=sectors,
         scoring_available=bool(summary.get('available')),lap_number_source='official' if official else 'telemetry',
         note='分段 / 名次来自游戏；缺失字段显示未知。出界仅为边界估算，非官方警告；碰撞按接触事件合并。')

@@ -3,7 +3,7 @@ param([string]$GameDirectory = '', [switch]$BuildTools)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $projectRoot
-if (-not [Environment]::Is64BitOperatingSystem) { throw 'LMU StintLab requires 64-bit Windows.' }
+if (-not [Environment]::Is64BitOperatingSystem) { throw 'LMU Stintrix requires 64-bit Windows.' }
 
 function Find-Python313 {
     foreach ($entry in @(@{Name='py.exe';Args=@('-3.13')}, @{Name='python.exe';Args=@()})) {

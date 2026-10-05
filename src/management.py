@@ -1,4 +1,5 @@
 """Focused Tk windows, shared by the existing HUD. Local operations only."""
+from i18n import tr,Label
 import json
 import os
 from pathlib import Path
@@ -15,7 +16,7 @@ from paths import ASSETS
 
 
 def panel(app,title,width,height):
-    window=tk.Toplevel(app.root);window.title(title);window.geometry(f'{width}x{height}')
+    window=tk.Toplevel(app.root);window.title(tr(title));window.geometry(f'{width}x{height}')
     window.configure(bg=T.BG);window.attributes('-topmost',True)
     style=ttk.Style(window);style.theme_use('clam')
     style.configure('Scope.Treeview',background=T.CARD,foreground=T.FG,fieldbackground=T.CARD,rowheight=29)
@@ -25,8 +26,8 @@ def panel(app,title,width,height):
 
 
 def show_diagnostics(app,root):
-    window=panel(app,'StintLab · 性能诊断',680,465)
-    label=tk.Label(window,bg=T.BG,fg=T.FG,justify='left',anchor='nw',font=('Consolas',11));label.pack(fill='both',expand=True,padx=20,pady=18)
+    window=panel(app,'Stintrix · 性能诊断',680,465)
+    label=Label(window,bg=T.BG,fg=T.FG,justify='left',anchor='nw',font=('Consolas',11));label.pack(fill='both',expand=True,padx=20,pady=18)
     snapshot={}
     def collect():
         nonlocal snapshot
@@ -54,16 +55,16 @@ def show_diagnostics(app,root):
         label.config(text='\n'.join(rows));window.after(500,display)
     def export():
         path=Path(root)/'Diagnostics'/'latest.json';path.parent.mkdir(exist_ok=True)
-        atomic_json(path,collect());messagebox.showinfo('诊断已导出',str(path),parent=window)
-    tk.Button(window,text='导出当前诊断 JSON',command=export).pack(pady=10);display();return window
+        atomic_json(path,collect());messagebox.showinfo(tr('诊断已导出'),str(path),parent=window)
+    tk.Button(window,text=tr('导出当前诊断 JSON'),command=export).pack(pady=10);display();return window
 
 
 def show_library(app,root,render_review,make_report):
-    root=Path(root);window=panel(app,'StintLab · 比赛记录管理',1160,675)
-    state={'items':[],'busy':False};status=tk.StringVar(value='扫描记录中…')
+    root=Path(root);window=panel(app,'Stintrix · 比赛记录管理',1160,675)
+    state={'items':[],'busy':False};status=tk.StringVar(value=tr('扫描记录中…'))
     filterbar=tk.Frame(window,bg=T.BG);filterbar.pack(fill='x',padx=15,pady=12)
     search=tk.StringVar();track=tk.StringVar(value='全部赛道');car=tk.StringVar(value='全部车辆');source=tk.StringVar(value='全部来源')
-    tk.Label(filterbar,text='搜索阶段 / 日期 / 车手 / 备注',bg=T.BG,fg=T.MUTED).pack(side='left')
+    Label(filterbar,text='搜索阶段 / 日期 / 车手 / 备注',bg=T.BG,fg=T.MUTED).pack(side='left')
     tk.Entry(filterbar,textvariable=search,width=24).pack(side='left',padx=6)
     trackbox=Select(filterbar,textvariable=track,state='readonly',width=26);trackbox.pack(side='left',padx=5)
     carbox=Select(filterbar,textvariable=car,state='readonly',width=24);carbox.pack(side='left',padx=5)
@@ -72,12 +73,12 @@ def show_library(app,root,render_review,make_report):
     columns=('date','session_type','track','vehicle','best','stable','source','status','note')
     tree=ttk.Treeview(tableframe,columns=columns,show='headings',selectmode='extended',style='Scope.Treeview')
     for k,label,width in [('date','记录日期',175),('session_type','阶段',85),('track','赛道',210),('vehicle','车辆',165),('best','最快圈 s',95),('stable','稳定性 σ s',100),('source','来源',100),('status','状态',90),('note','备注 / 交通',200)]:
-        tree.heading(k,text=label);tree.column(k,width=width,minwidth=70)
+        tree.heading(k,text=tr(label));tree.column(k,width=width,minwidth=70)
     ys=ttk.Scrollbar(tableframe,orient='vertical',command=tree.yview);xs=ttk.Scrollbar(tableframe,orient='horizontal',command=tree.xview)
     tree.configure(yscrollcommand=ys.set,xscrollcommand=xs.set);tree.grid(row=0,column=0,sticky='nsew');ys.grid(row=0,column=1,sticky='ns');xs.grid(row=1,column=0,sticky='ew');tableframe.rowconfigure(0,weight=1);tableframe.columnconfigure(0,weight=1)
     note=tk.StringVar();traffic=tk.BooleanVar();note_row=tk.Frame(window,bg=T.BG);note_row.pack(fill='x',padx=15,pady=10)
-    tk.Label(note_row,text='练习备注',bg=T.BG,fg=T.MUTED).pack(side='left');tk.Entry(note_row,textvariable=note).pack(side='left',fill='x',expand=True,padx=8)
-    tk.Checkbutton(note_row,text='交通影响（人工标记）',variable=traffic,bg=T.BG,fg=T.MUTED,selectcolor=T.FIELD).pack(side='left')
+    Label(note_row,text='练习备注',bg=T.BG,fg=T.MUTED).pack(side='left');tk.Entry(note_row,textvariable=note).pack(side='left',fill='x',expand=True,padx=8)
+    tk.Checkbutton(note_row,text=tr('交通影响（人工标记）'),variable=traffic,bg=T.BG,fg=T.MUTED,selectcolor=T.FIELD).pack(side='left')
     def selected():return [v for v in state['items'] if v['key'] in tree.selection()]
     def fill(*_):
         tree.delete(*tree.get_children());q=search.get().casefold()
@@ -89,10 +90,10 @@ def show_library(app,root,render_review,make_report):
             tree.insert('', 'end',iid=v['key'],values=(v['date'][:19].replace('T',' '),v['session_type'],v['track'],v['vehicle'],
                 f"{v['time_s']:.3f}" if v['time_s'] else '—',f"{v['stability_s']:.3f}" if v['stability_s'] is not None else '未分析',
                 v['source'],v['status'],('交通 · ' if v['traffic'] else '')+v['note']))
-        status.set(f"显示 {len(tree.get_children())} / 共 {len(state['items'])} 场；按 Ctrl 多选，最多六圈对比。")
+        status.set(f"{tr('显示 ')}{len(tree.get_children())}{tr(' / 共 ')}{len(state['items'])}{tr(' 场；按 Ctrl 多选，最多六圈对比。')}")
     def background(work,done):
-        if state['busy']:status.set('上一个任务仍在处理，请稍候');return
-        state['busy']=True;status.set('后台处理中…')
+        if state['busy']:status.set(tr('上一个任务仍在处理，请稍候'));return
+        state['busy']=True;status.set(tr('后台处理中…'))
         def finish(value,error):
             state['busy']=False
             if app.closing:return
@@ -121,10 +122,10 @@ def show_library(app,root,render_review,make_report):
     def lock_reference(ref):
         with app.engine.lock:app.engine.reference=ref;app.engine.aligner=DistanceAligner()
         app.reference_settings['path']=ref.path;app.reference_locked.set(True);app.reference_on.set(True);app.reference_auto.set(False);app.apply_reference()
-        status.set('已锁定第 '+str(ref.info['number'])+' 圈为 HUD 参考')
+        status.set(tr('已锁定第 ') + str(ref.info['number']) + tr(' 圈为 HUD 参考'))
     def compare():
         values=selected()
-        if not 1<=len(values)<=6:status.set('请选择 1–6 场记录');return
+        if not 1<=len(values)<=6:status.set(tr('请选择 1–6 场记录'));return
         kind=app.reference_kind.get()
         def work():
             records=[]
@@ -151,18 +152,18 @@ def show_library(app,root,render_review,make_report):
         status.set(text)
         (messagebox.showwarning if errors else messagebox.showinfo)('比赛包'+kind,text,parent=window)
     def export_packages():
-        if state['busy']:status.set('上一个任务仍在处理，请稍候');return
+        if state['busy']:status.set(tr('上一个任务仍在处理，请稍候'));return
         values=selected()
-        if not values:status.set('请选择一场或多场比赛；Ctrl / Shift 可多选');return
-        destination=filedialog.askdirectory(title='选择比赛包导出目录（每场一个 ZIP）',parent=window)
+        if not values:status.set(tr('请选择一场或多场比赛；Ctrl / Shift 可多选'));return
+        destination=filedialog.askdirectory(title=tr('选择比赛包导出目录（每场一个 ZIP）'),parent=window)
         if not destination:return
         from session_archive import export_session,transfer_batch
         background(lambda:transfer_batch([v['key'] for v in values],lambda key:export_session(root,key,destination)),
                    lambda result:transferred(result,'导出'))
     def import_packages():
-        if state['busy']:status.set('上一个任务仍在处理，请稍候');return
-        packages=filedialog.askopenfilenames(title='选择一个或多个 StintLab 比赛包',parent=window,
-                                            filetypes=[('StintLab 比赛包','*.stintlab.zip'),('ZIP 文件','*.zip')])
+        if state['busy']:status.set(tr('上一个任务仍在处理，请稍候'));return
+        packages=filedialog.askopenfilenames(title=tr('选择一个或多个 Stintrix 比赛包'),parent=window,
+                                            filetypes=[('Stintrix 比赛包','*.stintrix.zip'),('ZIP 文件','*.zip')])
         if not packages:return
         from session_archive import import_session,transfer_batch
         background(lambda:transfer_batch(packages,lambda package:import_session(root,package)),
@@ -172,13 +173,13 @@ def show_library(app,root,render_review,make_report):
         folder=Path(v['folder']);generate(folder);return folder
     transferbar=tk.Frame(window,bg=T.BG);transferbar.pack(fill='x',padx=15)
     for text,command in [('导出比赛包（可多选）',export_packages),('导入比赛包（可多选）',import_packages)]:
-        tk.Button(transferbar,text=text,command=command).pack(side='left',padx=3,pady=3)
-    tk.Button(transferbar,text='圈速单 / 比赛日志',command=lambda:action(race_images,os.startfile)).pack(side='left',padx=3,pady=3)
-    tk.Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg=T.BG,fg='#8fabc9').pack(side='left',padx=10)
+        tk.Button(transferbar,text=tr(text),command=command).pack(side='left',padx=3,pady=3)
+    tk.Button(transferbar,text=tr('圈速单 / 比赛日志'),command=lambda:action(race_images,os.startfile)).pack(side='left',padx=3,pady=3)
+    Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg=T.BG,fg='#8fabc9').pack(side='left',padx=10)
     buttons=tk.Frame(window,bg=T.BG);buttons.pack(fill='x',padx=15)
-    for text,command in [('刷新',refresh),('分析 / 完整复盘',lambda:action(analyze,lambda path:(os.startfile(path),refresh()))),('同场圈 A／B',same_session),('最快圈页',lambda:action(lambda v:Path(v['folder'])/'fastest_lap.html',os.startfile)),('多选对比',compare),('设为锁定参考',lambda:action(choose_reference,lock_reference)),('保存备注',save),('压缩备份',lambda:action(lambda v:compress_session(v['folder']),lambda v:status.set(f"已校验压缩备份：{v['compressed_bytes']/1048576:.2f} MB；保留原 CSV"))),('恢复中断记录',lambda:action(recover,lambda path:refresh()))]:
-        tk.Button(buttons,text=text,command=command).pack(side='left',padx=3,pady=8)
-    tk.Label(window,textvariable=status,bg=T.BG,fg='#8fabc9',anchor='w',wraplength=1110).pack(fill='x',padx=15,pady=8)
+    for text,command in [('刷新',refresh),('分析 / 完整复盘',lambda:action(analyze,lambda path:(os.startfile(path),refresh()))),('同场圈 A／B',same_session),('最快圈页',lambda:action(lambda v:Path(v['folder'])/'fastest_lap.html',os.startfile)),('多选对比',compare),('设为锁定参考',lambda:action(choose_reference,lock_reference)),('保存备注',save),('压缩备份',lambda:action(lambda v:compress_session(v['folder']),lambda v:status.set(f"{tr('已校验压缩备份：')}{v['compressed_bytes'] / 1048576:.2f}{tr(' MB；保留原 CSV')}"))),('恢复中断记录',lambda:action(recover,lambda path:refresh()))]:
+        tk.Button(buttons,text=tr(text),command=command).pack(side='left',padx=3,pady=8)
+    Label(window,textvariable=status,bg=T.BG,fg='#8fabc9',anchor='w',wraplength=1110).pack(fill='x',padx=15,pady=8)
     for variable in (search,track,car,source):variable.trace_add('write',fill)
     refresh();return window
 
@@ -190,18 +191,18 @@ def show_lap_selection(app,root,folder):
     if dialogs is None:dialogs=app.lap_selection_windows={}
     existing=dialogs.get(str(folder))
     if existing is not None and existing.winfo_exists():existing.lift();existing.focus_force();return existing
-    window=panel(app,'StintLab · 同场完整圈对比',720,395);dialogs[str(folder)]=window
-    title=tk.Label(window,text=folder.name,bg=T.BG,fg='#dce9fb',font=('Segoe UI',11),wraplength=670,justify='left',anchor='w')
+    window=panel(app,'Stintrix · 同场完整圈对比',720,395);dialogs[str(folder)]=window
+    title=Label(window,text=folder.name,bg=T.BG,fg='#dce9fb',font=('Segoe UI',11),wraplength=670,justify='left',anchor='w')
     title.pack(fill='x',padx=18,pady=(15,10))
-    status=tk.StringVar(window,value='后台扫描完整圈…');state={'busy':False,'laps':{},'output':None}
+    status=tk.StringVar(window,value=tr('后台扫描完整圈…'));state={'busy':False,'laps':{},'output':None}
     vars={};boxes={}
     for key in ('A','B'):
         row=tk.Frame(window,bg=T.BG);row.pack(fill='x',padx=18,pady=6)
-        tk.Label(row,text='圈 '+key,bg=T.BG,fg='#c6def5',font=('Segoe UI',11),width=6,anchor='w').pack(side='left')
+        Label(row,text='圈 '+key,bg=T.BG,fg='#c6def5',font=('Segoe UI',11),width=6,anchor='w').pack(side='left')
         vars[key]=tk.StringVar(window)
         boxes[key]=Select(row,textvariable=vars[key],state='disabled',font=('Segoe UI',11),height=12)
         boxes[key].pack(side='left',fill='x',expand=True)
-    tk.Label(window,text='仅列出起终点、采样和距离完整的圈。无效 / 进站标记会保留；\n此类圈可查看数据，但不生成驾驶改进建议，也不能用作 HUD 参考。',
+    Label(window,text='仅列出起终点、采样和距离完整的圈。无效 / 进站标记会保留；\n此类圈可查看数据，但不生成驾驶改进建议，也不能用作 HUD 参考。',
         bg=T.BG,fg='#91abc8',justify='left',anchor='w',wraplength=670).pack(fill='x',padx=18,pady=12)
     actions=tk.Frame(window,bg=T.BG);actions.pack(fill='x',padx=18,pady=6);buttons={}
     def enable(*_):
@@ -214,14 +215,14 @@ def show_lap_selection(app,root,folder):
         buttons['folder'].configure(state='normal' if state['output'] else 'disabled')
     def background(work,done):
         if state['busy']:return
-        state['busy']=True;status.set('后台处理中…');enable()
+        state['busy']=True;status.set(tr('后台处理中…'));enable()
         def finish(result,error):
             if app.closing or not window.winfo_exists():return
             state['busy']=False
             if error:status.set(error)
             else:
                 try:done(result)
-                except OSError as e:status.set('文件已生成，打开失败：'+str(e))
+                except OSError as e:status.set(tr('文件已生成，打开失败：') + str(e))
             enable()
         app.run_background(work,finish)
     def selected(keys):
@@ -230,30 +231,29 @@ def show_lap_selection(app,root,folder):
     def export(keys,compare=False):
         try:numbers=selected(keys)
         except ValueError as e:status.set(str(e));return
-        if len(set(numbers))!=len(numbers):status.set('圈 A 和圈 B 必须选择不同圈');return
+        if len(set(numbers))!=len(numbers):status.set(tr('圈 A 和圈 B 必须选择不同圈'));return
         def done(result):
-            state['output']=result['folder'];status.set('已提取第 '+(' / '.join(map(str,numbers)))+' 圈；JSON 与完整 CSV 保存到：\n'+result['folder'])
+            state['output']=result['folder'];status.set(tr('已提取第 ') + ' / '.join(map(str, numbers)) + tr(' 圈；JSON 与完整 CSV 保存到：\n') + result['folder'])
             if result['comparison']:os.startfile(result['comparison'])
         background(lambda:export_selected_laps(folder,numbers,ASSETS/'compare.html' if compare else None),done)
     for key,text,command in [('A','提取圈 A',lambda:export(['A'])),('B','提取圈 B',lambda:export(['B'])),
             ('compare','提取两圈并对比',lambda:export(['A','B'],True)),('folder','打开提取目录',lambda:os.startfile(state['output']))]:
-        buttons[key]=tk.Button(actions,text=text,command=command,state='disabled');buttons[key].pack(side='left',padx=(0,9),pady=5)
-    tk.Label(window,textvariable=status,bg=T.BG,fg='#9dc7e9',anchor='nw',justify='left',wraplength=670).pack(fill='both',expand=True,padx=18,pady=12)
+        buttons[key]=tk.Button(actions,text=tr(text),command=command,state='disabled');buttons[key].pack(side='left',padx=(0,9),pady=5)
+    Label(window,textvariable=status,bg=T.BG,fg='#9dc7e9',anchor='nw',justify='left',wraplength=670).pack(fill='both',expand=True,padx=18,pady=12)
     for box in boxes.values():box.bind('<<ComboboxSelected>>',enable)
     def loaded(result):
-        metadata,scan=result;title.config(text=metadata.get('track','')+' · '+metadata.get('vehicle','')+'\n'+folder.name)
+        metadata,scan=result;title.config(text=metadata.get('track', '') + ' · ' + metadata.get('vehicle', '') + '\n' + folder.name)
         labels=[]
         for v in scan['laps']:
             minutes=int(v['time_s']//60);seconds=v['time_s']-minutes*60
             flags=[]
-            if v.get('lap_invalidated'):flags.append('无效标记')
-            if v.get('in_pits'):flags.append('进站标记')
-            if not flags:flags.append('有效性已记录' if v['validity']=='verified' else '有效性未验证')
-            label=f"第 {v['number']} 圈  ·  {minutes}:{seconds:06.3f}  ·  "+' / '.join(flags)
+            if v.get('lap_invalidated'):flags.append(tr('无效标记'))
+            if v.get('in_pits'):flags.append(tr('进站标记'))
+            if not flags:flags.append(tr('有效性已记录' if v['validity']=='verified' else '有效性未验证'))
+            label=f"{tr('第 ')}{v['number']}{tr(' 圈  ·  ')}{minutes}:{seconds:06.3f}  ·  "+' / '.join(flags)
             state['laps'][label]=v;labels.append(label)
         for box in boxes.values():box['values']=labels
         if labels:vars['A'].set(labels[0])
         if len(labels)>1:vars['B'].set(labels[1])
-        status.set(f"找到 {len(labels)} 个完整圈，排除 {len(scan['candidates'])-len(labels)} 个不完整或圈号不明确的记录。"+
-            ('请选择圈 A／圈 B，再提取或对比。' if len(labels)>1 else '两圈对比需要至少两个完整圈。')+((' '+scan['error']) if scan['error'] else ''))
+        status.set(f"{tr('找到 ')}{len(labels)}{tr(' 个完整圈，排除 ')}{len(scan['candidates']) - len(labels)}{tr(' 个不完整或圈号不明确的记录。')}" + (tr('请选择圈 A／圈 B，再提取或对比。') if len(labels) > 1 else tr('两圈对比需要至少两个完整圈。')) + (' ' + scan['error'] if scan['error'] else ''))
     background(lambda:(finished_metadata(folder),complete_laps(folder)),loaded);return window

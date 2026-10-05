@@ -29,7 +29,7 @@ class DesktopTests(unittest.TestCase):
                 while time.monotonic()<end:root.update();time.sleep(.005)
             def key(name,char='',state=0):return SimpleNamespace(keysym=name,char=char,state=state)
             try:
-                pump();box.open();pump()
+                root.focus_force();pump();box.open();pump()
                 self.assertIsNotNone(box.popup);self.assertIsNone(box.grab_current())
                 box.key(key('End'));self.assertEqual(box.active,24);self.assertEqual(box.offset,18)
                 box.key(key('Return'));pump();self.assertEqual(variable.get(),'item 24');self.assertEqual(selected,['item 24'])
@@ -83,7 +83,7 @@ class DesktopTests(unittest.TestCase):
             # Use actual bound mouse events, rather than calling choose directly.
             panel=second.panel;panel.event_generate('<ButtonPress-1>',x=20,y=second.row_h+10);root.update()
             self.assertEqual(second.get(),'D');self.assertIsNone(second.popup)
-            self.assertIsNone(root._stintlab_active_select)
+            self.assertIsNone(root._stintrix_active_select)
             for _ in range(15):first.open();root.update();first.close();root.update()
             self.assertIsNone(first.owner_click);self.assertIsNone(first.owner_focus)
             self.assertFalse(errors)
@@ -94,8 +94,8 @@ class DesktopTests(unittest.TestCase):
         (ROOT/'_local').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT/'_local') as folder:
             directory=Path(folder)/"测试 folder '$ literal";directory.mkdir()
-            exe=directory/'LMU-StintLab.exe';exe.write_bytes(b'fixture-not-executed')
-            link=directory/'LMU StintLab.lnk'
+            exe=directory/'LMU-Stintrix.exe';exe.write_bytes(b'fixture-not-executed')
+            link=directory/'LMU Stintrix.lnk'
             with patch.object(integration,'executable',return_value=exe),patch.object(integration,'shortcut_path',return_value=link):
                 first=integration.register();self.assertTrue(link.is_file())
                 self.assertEqual(Path(first['target']),exe);self.assertEqual(Path(first['path']),link)
@@ -106,20 +106,20 @@ class DesktopTests(unittest.TestCase):
                 with self.assertRaises(OSError):integration.register()
                 with self.assertRaises(OSError):integration.register(True)
                 self.assertEqual(link.read_bytes(),original)
-                self.assertFalse(list(directory.glob('StintLab-*.lnk')))
+                self.assertFalse(list(directory.glob('Stintrix-*.lnk')))
 
     def test_catalog_verification_and_scoped_current_user_repair(self):
         import windows_integration as integration
         import paths,json
         from tools.audit_publication import allowed
         with tempfile.TemporaryDirectory(dir=ROOT/'_local') as folder:
-            directory=Path(folder);exe=directory/'LMU-StintLab.exe';exe.write_bytes(b'fixture')
-            link=directory/'LMU StintLab.lnk';private=directory/'private';private.mkdir()
+            directory=Path(folder);exe=directory/'LMU-Stintrix.exe';exe.write_bytes(b'fixture')
+            link=directory/'LMU Stintrix.lnk';private=directory/'private';private.mkdir()
             with patch.object(integration,'executable',return_value=exe),patch.object(integration,'shortcut_path',return_value=link),patch.object(paths,'data_directory',return_value=private),patch.object(sys,'frozen',True,create=True),patch.object(integration.os,'getlogin',return_value='fixture-user'):
                 self.assertFalse(integration.needs_repair())
                 with patch.object(integration,'catalog_entry',return_value=None):result=integration.register(verify=True)
                 self.assertFalse(result['recognized']);self.assertTrue(integration.needs_repair())
-                with patch.object(integration,'catalog_entry',return_value={'Name':'LMU StintLab','AppID':integration.APP_ID}):
+                with patch.object(integration,'catalog_entry',return_value={'Name':'LMU Stintrix','AppID':integration.APP_ID}):
                     result=integration.register(verify=True)
                 self.assertTrue(result['recognized']);self.assertFalse(integration.needs_repair())
                 with patch.object(integration.os,'getlogin',return_value='other-user'):self.assertTrue(integration.needs_repair())

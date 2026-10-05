@@ -26,7 +26,7 @@ class Panels:
         getattr(self.app,kind+'_on').set(False);self.toggle(kind)
 
     def create(self,kind):
-        w=tk.Toplevel(self.app.root);w.title('StintLab · '+('四轮轮胎 HUD' if kind=='tyres' else '燃油与能量 HUD'))
+        w=tk.Toplevel(self.app.root);w.title('Stintrix · '+('四轮轮胎 HUD' if kind=='tyres' else '燃油与能量 HUD'))
         width,height=(400,300) if kind=='tyres' else (400,280)
         x,y=self.app.vehicle_settings.get(kind+'_position',[740,70 if kind=='tyres' else 395])
         w.geometry(f'{width}x{height}{int(x):+d}{int(y):+d}');w.configure(bg=T.BG);w.overrideredirect(True);w.attributes('-topmost',True);w.attributes('-alpha',.97)
@@ -105,7 +105,7 @@ class Panels:
     def settings_dialog(self):
         if self.dialog is not None and self.dialog.winfo_exists():self.dialog.lift();return
         from management import panel
-        app=self.app;window=panel(app,'StintLab · 轮胎阈值与燃油策略',620,720);self.dialog=window
+        app=self.app;window=panel(app,'Stintrix · 轮胎阈值与燃油策略',620,720);self.dialog=window
         config=copy.deepcopy(app.vehicle_settings);latest=app.engine.latest
         car=tk.StringVar(window,value=latest['vehicle'] if latest else '*');p=config['profiles'].get(car.get(),config['profiles'].get('*',vehiclelab.DEFAULT_PROFILE))
         frame=tk.Frame(window,bg=T.BG);frame.pack(fill='both',expand=True,padx=18,pady=15)

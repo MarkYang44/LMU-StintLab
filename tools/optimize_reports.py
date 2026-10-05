@@ -62,7 +62,10 @@ def comparison_payload(path):
         for line in f:
             if line.startswith('const initial='):
                 text=line[len('const initial='):]
-                if text.startswith('await '):return json.loads(b''.join(embedded_chunks(path,'stintlab-laps')))
+                if text.startswith('await '):
+                    from legacy_identity import BLOCK_PREFIX
+                    identifier='stintrix-laps' if 'stintrix-laps' in text else BLOCK_PREFIX+'laps'
+                    return json.loads(b''.join(embedded_chunks(path,identifier)))
                 return json.JSONDecoder().raw_decode(text)[0]
     raise ValueError('Unrecognized comparison page')
 
@@ -90,8 +93,8 @@ def upgrade(data,backup=None):
             summary=page.parent/'fastest_lap_summary.json'
             fastest=json.loads(summary.read_text(encoding='utf-8')) if summary.exists() else None
             reporting.render_review(page.parent,ASSETS,track_js,fastest,output=target)
-            if digest(embedded_chunks(target,'stintlab-inputs'))!=source_sha:raise ValueError('Review samples changed')
-            payload=json.loads(b''.join(embedded_chunks(target,'stintlab-meta')))
+            if digest(embedded_chunks(target,'stintrix-inputs'))!=source_sha:raise ValueError('Review samples changed')
+            payload=json.loads(b''.join(embedded_chunks(target,'stintrix-meta')))
             if payload['meta']!=json.loads((page.parent/'session.json').read_text(encoding='utf-8')):raise ValueError('Session metadata changed')
             for key,name in [('analysis','session_analysis.json'),('native_channels','native_channels.json'),('endurance','endurance_analysis.json')]:
                 p=page.parent/name;expected=json.loads(p.read_text(encoding='utf-8')) if p.exists() else None
@@ -101,7 +104,7 @@ def upgrade(data,backup=None):
             except (ValueError,UnicodeError):result['skipped'].append(rel.as_posix());continue
             if not isinstance(value,dict):result['skipped'].append(rel.as_posix());continue
             write_compare(target,ASSETS/'compare.html',value.get('laps',()),value.get('status'),value.get('reference_id'),view_state=value)
-            actual=json.loads(b''.join(embedded_chunks(target,'stintlab-laps')))
+            actual=json.loads(b''.join(embedded_chunks(target,'stintrix-laps')))
             if actual!=value:raise ValueError('Comparison data or replay state changed')
         before,after=page.stat().st_size,target.stat().st_size
         if after>=before:

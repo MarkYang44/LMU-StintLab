@@ -56,7 +56,7 @@ class ControlTests(unittest.TestCase):
             model['summary'].update(finish_flag=flag,finish_place=5)
             value=adapt(model)
             self.assertIsNone(value['finish_place']);self.assertEqual(value['observed_finish_place'],5)
-            self.assertEqual(value['stintlab_finish_text'],text)
+            self.assertEqual(value['stintrix_finish_text'],text)
             self.assertIn(text,describe(dict(event='recording_end',data={'finish_flag':flag})))
 
     def test_renderer_pair_failure_retains_both_existing_images(self):

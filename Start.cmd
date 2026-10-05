@@ -1,7 +1,7 @@
 @echo off
 setlocal
-if exist "%~dp0LMU-StintLab.exe" (
-  start "" "%~dp0LMU-StintLab.exe" %*
+if exist "%~dp0LMU-Stintrix.exe" (
+  start "" "%~dp0LMU-Stintrix.exe" %*
   exit /b 0
 )
 if not exist "%~dp0.venv\Scripts\pythonw.exe" (

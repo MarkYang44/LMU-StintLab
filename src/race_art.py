@@ -1,4 +1,4 @@
-"""Optional, private car artwork. No third-party artwork ships with StintLab."""
+"""Optional, private car artwork. No third-party artwork ships with Stintrix."""
 import json
 import math
 from pathlib import Path

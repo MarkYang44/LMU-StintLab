@@ -12,13 +12,13 @@ import sys
 import uuid
 from paths import APP_ROOT
 
-DESCRIPTION='LMU StintLab | Local telemetry, HUD and lap analysis'
-APP_ID='LMU.StintLab.Desktop'
+DESCRIPTION='LMU Stintrix | Local telemetry, HUD and lap analysis'
+APP_ID='LMU.Stintrix.Desktop'
 
 
 def executable():
-    path=Path(sys.executable) if getattr(sys,'frozen',False) else APP_ROOT/'LMU-StintLab.exe'
-    if not path.is_file() or path.name.casefold()!='lmu-stintlab.exe':
+    path=Path(sys.executable) if getattr(sys,'frozen',False) else APP_ROOT/'LMU-Stintrix.exe'
+    if not path.is_file() or path.name.casefold()!='lmu-stintrix.exe':
         raise ValueError('请先下载并完整解压 Windows 便携版，再添加开始菜单入口')
     return path.resolve()
 
@@ -26,7 +26,7 @@ def executable():
 def shortcut_path():
     appdata=os.environ.get('APPDATA')
     if not appdata:raise OSError('Windows 未提供当前用户的开始菜单目录')
-    return Path(appdata)/'Microsoft/Windows/Start Menu/Programs/LMU StintLab.lnk'
+    return Path(appdata)/'Microsoft/Windows/Start Menu/Programs/LMU Stintrix.lnk'
 
 
 def guid(value):return (C.c_ubyte*16).from_buffer_copy(uuid.UUID(value).bytes_le)
@@ -110,11 +110,11 @@ def catalog_entry(target):
     """Read the current user's Start application catalog, without a console."""
     script=r'''
 [Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
-$items=@(Get-StartApps | Where-Object { $_.AppID -eq $env:STINTLAB_EXPECTED_ID -or $_.AppID -eq $env:STINTLAB_EXPECTED_EXE })
+$items=@(Get-StartApps | Where-Object { $_.AppID -eq $env:STINTRIX_EXPECTED_ID -or $_.AppID -eq $env:STINTRIX_EXPECTED_EXE })
 ConvertTo-Json -InputObject $items -Compress
 '''
     command=base64.b64encode(script.encode('utf-16le')).decode('ascii')
-    environment=dict(os.environ,STINTLAB_EXPECTED_ID=APP_ID,STINTLAB_EXPECTED_EXE=str(target))
+    environment=dict(os.environ,STINTRIX_EXPECTED_ID=APP_ID,STINTRIX_EXPECTED_EXE=str(target))
     powershell=Path(os.environ.get('SystemRoot','C:/Windows'))/'System32/WindowsPowerShell/v1.0/powershell.exe'
     try:
         result=subprocess.run([str(powershell),'-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',command],
@@ -123,6 +123,21 @@ ConvertTo-Json -InputObject $items -Compress
         items=json.loads(result.stdout.decode('utf-8-sig'))
         return items[0] if isinstance(items,list) and items else None
     except (OSError,ValueError,subprocess.TimeoutExpired):return None
+
+
+def legacy_shortcut():
+    from legacy_identity import LINK_NAME
+    return shortcut_path().with_name(LINK_NAME)
+
+def owns_legacy_link():
+    from legacy_identity import LINK_DESCRIPTION,EXE_NAME,REPO_NAME
+    try:
+        path=legacy_shortcut()
+        if not path.is_file():return False
+        info=inspect(path);target=Path(info['target'])
+        return (info['description']==LINK_DESCRIPTION and target.name==EXE_NAME
+                and target.parent in (APP_ROOT,APP_ROOT.with_name(REPO_NAME)))
+    except (OSError,ValueError):return False
 
 
 def needs_repair():
@@ -134,14 +149,14 @@ def needs_repair():
     if os.name!='nt' or not getattr(sys,'frozen',False):return False
     try:
         path=shortcut_path()
-        if not path.is_file():return False
+        if not path.is_file():return owns_legacy_link()
         info=inspect(path)
         if info['description']!=DESCRIPTION or Path(info['target'])!=executable():return False
     except (OSError,ValueError,AttributeError):return False
     try:
         from paths import data_directory
         previous=json.loads((data_directory()/'desktop_registration.json').read_text(encoding='utf-8'))
-        return not (previous.get('recognized') and previous.get('revision')==2 and previous.get('target')==str(executable())
+        return not (previous.get('recognized') and previous.get('revision')==3 and previous.get('target')==str(executable())
                     and previous.get('user')==os.getlogin() and previous.get('link_mtime_ns')==path.stat().st_mtime_ns)
     except (OSError,ValueError,AttributeError):return True
 
@@ -157,7 +172,7 @@ def register(remove=False,verify=False):
         notify_path(path,4)  # SHCNE_DELETE
     else:
         path.parent.mkdir(parents=True,exist_ok=True)
-        pending=path.with_name('StintLab-'+uuid.uuid4().hex+'.lnk')
+        pending=path.with_name('Stintrix-'+uuid.uuid4().hex+'.lnk')
         try:
             with ShellLink() as link:link.configure(target);link.save(pending)
             stored=inspect(pending)
@@ -171,11 +186,15 @@ def register(remove=False,verify=False):
     result=dict(path=str(path),target=str(target),removed=bool(remove))
     if verify:
         entry=None if remove else catalog_entry(target)
-        result.update(recognized=bool(entry),entry=entry,revision=2)
+        result.update(recognized=bool(entry),entry=entry,revision=3)
+        if entry and owns_legacy_link():
+            previous=legacy_shortcut();previous.unlink();notify_path(previous,4)
+            notify_path(previous.parent,0x1000)
         try:result['user']=os.getlogin()
         except OSError:result['user']=None
         result['link_mtime_ns']=path.stat().st_mtime_ns if path.exists() else None
         from paths import data_directory
         from storage import atomic_json
-        atomic_json(data_directory()/'desktop_registration.json',result)
+        directory=data_directory();directory.mkdir(parents=True,exist_ok=True)
+        atomic_json(directory/'desktop_registration.json',result)
     return result

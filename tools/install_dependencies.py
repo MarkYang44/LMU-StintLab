@@ -19,7 +19,7 @@ def choose_wheel(files):
 def fetch(url):
     if not url.startswith(('https://pypi.org/','https://files.pythonhosted.org/')):
         raise ValueError('Unexpected dependency host')
-    request=urllib.request.Request(url,headers={'User-Agent':'LMU-StintLab-Setup/0.1.4'})
+    request=urllib.request.Request(url,headers={'User-Agent':'LMU-Stintrix-Setup/0.1.4'})
     with urllib.request.urlopen(request,timeout=30) as response:return response.read()
 
 def main():

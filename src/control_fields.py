@@ -1,4 +1,5 @@
 """Native industrial form controls. Transitions stop completely when idle."""
+from i18n import tr
 import tkinter as tk
 from tkinter import font as tkfont
 from control_theme import T
@@ -118,7 +119,7 @@ class Select(tk.Canvas):
         if self.edit:
             self.coords(self.edit_item,14*s,h/2);self.itemconfigure(self.edit_item,width=max(1,w-60*s));self.tag_lower('surface')
         else:
-            text=str(self.variable.get());maximum=max(1,w-66*s)
+            text=tr(str(self.variable.get()));maximum=max(1,w-66*s)
             if self.font.measure(text)>maximum:
                 while text and self.font.measure(text+'…')>maximum:text=text[:-1]
                 text+='…'
@@ -131,9 +132,9 @@ class Select(tk.Canvas):
     def open(self):
         if self.popup or self.state=='disabled' or not self.values:return 'break'
         self.owner=self.winfo_toplevel()
-        previous=getattr(self.owner,'_stintlab_active_select',None)
+        previous=getattr(self.owner,'_stintrix_active_select',None)
         if previous is not None and previous is not self:previous.close(False)
-        self.owner._stintlab_active_select=self
+        self.owner._stintrix_active_select=self
         self.focus_set();self.active=max(0,self.current());self.visible=min(self.rows,len(self.values))
         self.offset=max(0,min(len(self.values)-self.visible,self.active-self.visible+1))
         self.row_h=px(self,42);self.full_h=self.row_h*self.visible+px(self,12)
@@ -141,7 +142,7 @@ class Select(tk.Canvas):
         self.panel=tk.Canvas(self.popup,bg=T.CARD,highlightthickness=1,highlightbackground=T.EDGE)
         self.panel.pack(fill='both',expand=True);self.popup_motion=Motion(self.panel)
         availablew=self.owner.winfo_width();availableh=self.owner.winfo_height()
-        width=min(availablew-px(self,24),max(self.winfo_width(),min(px(self,620),max(self.font.measure(str(v)) for v in self.values)+px(self,66))))
+        width=min(availablew-px(self,24),max(self.winfo_width(),min(px(self,620),max(self.font.measure(tr(str(v))) for v in self.values)+px(self,66))))
         originx=self.winfo_rootx()-self.owner.winfo_rootx();originy=self.winfo_rooty()-self.owner.winfo_rooty()
         x=max(px(self,12),min(availablew-width-px(self,12),originx));bottom=originy+self.winfo_height()+px(self,5)
         self.above=bottom+self.full_h>availableh-px(self,16)
@@ -185,7 +186,7 @@ class Select(tk.Canvas):
                 except tk.TclError:pass
                 setattr(self,name,None)
         owner=getattr(self,'owner',None)
-        if owner is not None and getattr(owner,'_stintlab_active_select',None) is self:owner._stintlab_active_select=None
+        if owner is not None and getattr(owner,'_stintrix_active_select',None) is self:owner._stintrix_active_select=None
         if self.query_job:
             try:self.after_cancel(self.query_job)
             except tk.TclError:pass
@@ -206,7 +207,7 @@ class Select(tk.Canvas):
             y=px(self,6)+row*self.row_h;chosen=self.values[index]==self.variable.get()
             if chosen:panel.create_rectangle(5*s,y,w-5*s,y+self.row_h,fill=T.SELECT,outline='')
             if chosen:panel.create_rectangle(5*s,y+9*s,8*s,y+self.row_h-9*s,fill=T.ACCENT,outline='')
-            panel.create_text(19*s,y+self.row_h/2,text=str(self.values[index]),anchor='w',font=self.font,fill=T.FG)
+            panel.create_text(19*s,y+self.row_h/2,text=tr(str(self.values[index])),anchor='w',font=self.font,fill=T.FG)
             if chosen:panel.create_text(w-24*s,y+self.row_h/2,text='✓',font=(T.FONT,11),fill=T.ACCENT)
         panel.create_rectangle(5*s,self.highlight_y+9*s,8*s,self.highlight_y+self.row_h-9*s,fill=T.ACCENT,outline='')
         if self.offset>0:panel.create_line(w-12*s,3*s,w-34*s,3*s,fill=T.ACCENT,width=2*s)

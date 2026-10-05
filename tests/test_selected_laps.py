@@ -44,7 +44,7 @@ class SelectedLapTests(unittest.TestCase):
                 self.assertIn('steering',rows[0]);self.assertIn('filtered_steering',rows[0]);self.assertEqual(rows[0]['vehicle'],'BMW M4 LMGT3')
             self.assertEqual({p:p.read_bytes() for p in before},before)
             html=Path(result['comparison']).read_text(encoding='utf-8')
-            block=re.search(r'id="stintlab-laps" data-bytes="\d+">([^<]+)</script>',html).group(1)
+            block=re.search(r'id="stintrix-laps" data-bytes="\d+">([^<]+)</script>',html).group(1)
             self.assertEqual(json.loads(gzip.decompress(base64.b64decode(block)))['reference_id'],'session:1')
 
     def test_partial_pair_fails_before_creating_outputs(self):

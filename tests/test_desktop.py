@@ -57,11 +57,11 @@ class DesktopTests(unittest.TestCase):
     def test_generated_icon_contains_all_real_png_sizes(self):
         from tools.build_brand import render,SIZES
         with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory:
-            folder=render(directory);blob=(folder/'stintlab.ico').read_bytes()
+            folder=render(directory);blob=(folder/'stintrix.ico').read_bytes()
             self.assertEqual(struct.unpack_from('<HHH',blob),(0,1,len(SIZES)))
             for i,size in enumerate(SIZES):
                 w,h,_,_,planes,bits,length,offset=struct.unpack_from('<BBBBHHII',blob,6+i*16)
-                png=blob[offset:offset+length];self.assertEqual(png,(folder/f'stintlab-{size}.png').read_bytes())
+                png=blob[offset:offset+length];self.assertEqual(png,(folder/f'stintrix-{size}.png').read_bytes())
                 self.assertEqual((w or 256,h or 256,bits),(size,size,32));self.assertIn(planes,(0,1))
                 self.assertEqual(png[:8],b'\x89PNG\r\n\x1a\n');self.assertEqual(struct.unpack_from('>II',png,16),(size,size))
                 self.assertGreater(length,200)
@@ -70,7 +70,7 @@ class DesktopTests(unittest.TestCase):
         for name in PUBLIC_ASSETS:
             self.assertTrue(allowed(name));self.assertTrue(audit([name],lambda n:(ROOT/n).read_bytes())['ok'])
             self.assertFalse(audit([name],lambda _:b'personal image substituted')['ok'])
-        for name in ('src/branding/personal.svg','src/branding/private.png','data/stintlab.svg','src/branding/stintlab.svg','src/interface_settings.json'):
+        for name in ('src/branding/personal.svg','src/branding/private.png','data/stintrix.svg','src/branding/stintrix.svg','src/interface_settings.json'):
             self.assertFalse(allowed(name))
 
     def pump(self,root,seconds=.6):
@@ -198,8 +198,8 @@ global.document={documentElement:{dataset:{},style:{setProperty(k,v){colors[k]=v
  querySelector(){return {append(v){elements[v.id]=v;buttons.push(v)}}},addEventListener(k,v){events[k]=v}};
 """
         after="""
-events.DOMContentLoaded();const first=StintLabTheme.mode;buttons[0].onclick();
-process.stdout.write(JSON.stringify({first,mode:StintLabTheme.mode,bg:colors['--sl-bg'],fg:StintLabTheme.color('FG'),resize}));
+events.DOMContentLoaded();const first=StintrixTheme.mode;buttons[0].onclick();
+process.stdout.write(JSON.stringify({first,mode:StintrixTheme.mode,bg:colors['--sl-bg'],fg:StintrixTheme.color('FG'),resize}));
 """
         result=subprocess.run([shutil.which('node'),'-'],input=fixture+source+after,capture_output=True,text=True,encoding='utf-8',timeout=15)
         self.assertEqual(result.returncode,0,result.stderr);value=json.loads(result.stdout)
