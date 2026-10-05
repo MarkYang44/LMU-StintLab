@@ -40,8 +40,15 @@ def main():
     build_id=uuid.uuid4().hex[:12]
     work=ROOT/'_local'/'build'/build_id;stage=ROOT/'dist'/('stage-'+build_id)
     work.mkdir(parents=True);stage.mkdir(parents=True)
+    sys.path.insert(0,str(ROOT))
+    from tools.build_brand import render
+    brand=render(work/'branding')
+    parts=tuple(int(n) for n in version.split('.'))+(0,)
+    version_file=work/'version-info.txt'
+    version_file.write_text("VSVersionInfo(ffi=FixedFileInfo(filevers="+repr(parts)+",prodvers="+repr(parts)+",mask=0x3f,flags=0,OS=0x40004,fileType=1,subtype=0,date=(0,0)),kids=[StringFileInfo([StringTable('040904B0',[StringStruct('FileDescription','LMU StintLab Control Center'),StringStruct('ProductName','LMU StintLab'),StringStruct('OriginalFilename','LMU-StintLab.exe'),StringStruct('FileVersion','"+version+"'),StringStruct('ProductVersion','"+version+"')])]),VarFileInfo([VarStruct('Translation',[1033,1200])])])",encoding='utf-8')
     args=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--onedir','--windowed',
         '--noupx','--name','LMU-StintLab','--paths',str(ROOT/'src'),
+        '--icon',str(brand/'stintlab.ico'),'--version-file',str(version_file),
         '--workpath',str(work/'work'),'--specpath',str(work),'--distpath',str(stage),
         '--hidden-import','pyLMUSharedMemory.lmu_data','--collect-all','duckdb',
         '--exclude-module','doctor','--exclude-module','release_smoke',
@@ -49,6 +56,8 @@ def main():
     for name in ASSET_NAMES:
         relative=Path(name)
         args.extend(['--add-data',str(ROOT/'src'/relative)+';'+(Path('src')/relative.parent).as_posix()])
+    for name in ('stintlab.ico','stintlab-32.png','stintlab-48.png','stintlab-64.png','stintlab-128.png'):
+        args.extend(['--add-data',str(brand/name)+';src/branding'])
     args.append(str(ROOT/'src'/'inputscope.py'))
     subprocess.run(args,cwd=ROOT,check=True)
     bundle=stage/'LMU-StintLab'

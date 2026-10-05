@@ -24,6 +24,7 @@ def git_command(*args):
 def allowed(name):
     path=PurePosixPath(name);parts=[p.casefold() for p in path.parts]
     if any(p in PRIVATE_PARTS for p in parts) or path.name.casefold() in PRIVATE_NAMES:return False
+    if name=='src/branding/stintlab.svg':return True
     if path.suffix.casefold() in DENIED_SUFFIXES or name.endswith('.lap.json'):return False
     if len(path.parts)==1:return name in ROOT_FILES
     return (path.parts[0]=='src' and path.suffix in ('.py','.js','.html','.json','.txt')) or (path.parts[0]=='tools' and path.suffix in ('.py','.ps1','.cmd')) or (path.parts[0]=='tests' and path.suffix=='.py') or (path.parts[0]=='docs' and path.suffix=='.md') or (path.parts[0]=='.github' and path.suffix in ('.yml','.yaml','.md'))

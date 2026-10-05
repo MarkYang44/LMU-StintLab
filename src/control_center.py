@@ -8,8 +8,10 @@ import tkinter as tk
 from tkinter import ttk,filedialog,messagebox
 from app_config import ROOT
 from background import BackgroundTasks
-from control_widgets import BG,CARD,FG,MUTED,ACCENT,GlassCard,Pill,backdrop
+from control_widgets import BG,CARD,FG,MUTED,ACCENT,GlassCard,Pill,Switch,CardGrid,LaunchArtwork,backdrop,px
 from paths import ASSETS
+from control_shell import Shell
+import branding
 import control_settings
 import renderer_config
 import sampling
@@ -24,7 +26,7 @@ class ControlCenter:
     def __init__(self,root=None,hud=None):
         self.root=root or tk.Tk();self.hud=hud;self.closing=False;self.attached=hud is not None
         self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
-        self.root.title('LMU StintLab · 控制中心');self.root.geometry('1160x800');self.root.minsize(980,680);self.root.configure(bg=BG)
+        self.root.title('LMU StintLab · 控制中心');self.root.configure(bg=BG)
         self.root.protocol('WM_DELETE_WINDOW',self.hide if self.attached else self.close)
         from race_model import read_json
         self.reference_settings=read_json(ROOT/'reference_settings.json',{})
@@ -35,32 +37,18 @@ class ControlCenter:
         self.engine=SimpleNamespace(lock=threading.Lock(),reference=None,aligner=None)
         self.status=tk.StringVar(self.root,value='就绪 · 记录仅保存在本机')
         style=ttk.Style(self.root);style.theme_use('clam')
-        style.configure('Lab.Treeview',background=CARD,foreground=FG,fieldbackground=CARD,rowheight=38,borderwidth=0,font=('Microsoft YaHei UI',9))
+        style.configure('Lab.Treeview',background=CARD,foreground=FG,fieldbackground=CARD,rowheight=px(self.root,40),borderwidth=0,font=('Microsoft YaHei UI',9))
         style.configure('Lab.Treeview.Heading',background='#273c55',foreground=MUTED,relief='flat',font=('Microsoft YaHei UI',9,'bold'))
         style.map('Lab.Treeview',background=[('selected','#365777')],foreground=[('selected',FG)])
-        style.configure('Lab.TCombobox',fieldbackground='#293e57',background='#293e57',foreground=FG,arrowcolor=MUTED)
+        style.configure('Lab.TCombobox',fieldbackground='#293e57',background='#293e57',foreground=FG,arrowcolor=MUTED,padding=7,borderwidth=0,font=('Microsoft YaHei UI',10))
+        style.configure('Lab.Vertical.TScrollbar',background='#3c566c',troughcolor=BG,borderwidth=0,arrowsize=0,width=px(self.root,7))
+        style.layout('Lab.Vertical.TScrollbar',[('Vertical.Scrollbar.trough',{'sticky':'ns','children':[('Vertical.Scrollbar.thumb',{'expand':1,'sticky':'nswe'})]})])
+        style.map('Lab.Vertical.TScrollbar',background=[('active','#65879b')])
         style.map('Lab.TCombobox',fieldbackground=[('readonly','#293e57')],foreground=[('readonly',FG)],selectbackground=[('readonly','#293e57')],selectforeground=[('readonly',FG)])
-        sidebar=tk.Frame(self.root,bg='#132035',width=216);sidebar.pack(side='left',fill='y');sidebar.pack_propagate(False)
-        self.label(sidebar,'STINTLAB',23,FG,True).pack(anchor='w',padx=25,pady=(36,1))
-        self.label(sidebar,'LE MANS ULTIMATE',9,ACCENT).pack(anchor='w',padx=27,pady=(0,40))
-        self.nav=[]
-        for i,name in enumerate(PAGES):
-            button=tk.Button(sidebar,text=f'  {i+1:02}    {name}',anchor='w',font=('Microsoft YaHei UI',11),bg='#132035',fg=MUTED,
-                activebackground='#2a425d',activeforeground=FG,relief='flat',bd=0,padx=10,pady=14,cursor='hand2',command=lambda n=i:self.show_page(n))
-            button.pack(fill='x',padx=13,pady=4);self.nav.append(button)
-        foot=tk.Frame(sidebar,bg='#132035');foot.pack(side='bottom',fill='x',padx=26,pady=28)
-        self.label(foot,'LOCAL FIRST',9,ACCENT,True).pack(anchor='w')
-        self.label(foot,'Qualify + Race 录制\nPractice / Warmup 仅显示',9,MUTED).pack(anchor='w',pady=9)
-        main=tk.Frame(self.root,bg=BG);main.pack(side='left',fill='both',expand=True,padx=28,pady=(24,12))
-        header=tk.Frame(main,bg=BG);header.pack(fill='x',pady=(4,17))
-        self.title=self.label(header,'',24,FG,True);self.title.pack(anchor='w');self.subtitle=self.label(header,'',10,MUTED);self.subtitle.pack(anchor='w',pady=(5,0))
-        self.label(main,self.status,9,MUTED).pack(side='bottom',fill='x',pady=(10,0))
-        viewport=tk.Frame(main,bg=BG);viewport.pack(fill='both',expand=True)
-        self.scroll=tk.Canvas(viewport,bg=BG,highlightthickness=0);bar=ttk.Scrollbar(viewport,orient='vertical',command=self.scroll.yview)
-        bar.pack(side='right',fill='y');self.scroll.pack(side='left',fill='both',expand=True);self.scroll.configure(yscrollcommand=bar.set)
-        self.content=tk.Frame(self.scroll,bg=BG);self.content_item=self.scroll.create_window(0,0,anchor='nw',window=self.content)
-        self.scroll.bind('<Configure>',lambda e:self.scroll.itemconfigure(self.content_item,width=e.width))
-        self.content.bind('<Configure>',lambda e:self.scroll.configure(scrollregion=self.scroll.bbox('all')))
+        self.shell=Shell(self.root,PAGES,self.show_page,self.status)
+        self.scroll=self.shell.scroll;self.content=self.shell.content;self.content_item=self.shell.item
+        self.title=self.shell.title;self.subtitle=self.shell.subtitle
+        branding.apply(self.root)
         # Bind to this toplevel only, leaving the HUD's high-rate event loop alone.
         self.root.bind('<MouseWheel>',self.wheel)
         self.show_page(0);backdrop(self.root);self.job=self.root.after(50,self.tick)
@@ -69,14 +57,19 @@ class ControlCenter:
         return tk.Label(parent,text='' if isinstance(text,tk.Variable) else text,textvariable=text if isinstance(text,tk.Variable) else None,
             bg=parent.cget('bg'),fg=color,font=('Microsoft YaHei UI',size,'bold' if bold else 'normal'),anchor='w',justify='left')
 
-    def card(self,title,subtitle=''):
-        card=GlassCard(self.content);card.pack(fill='x',pady=(0,16));body=card.body
+    def card(self,title,subtitle='',parent=None):
+        card=GlassCard(parent or self.content)
+        if parent:parent.add(card)
+        else:card.pack(fill='x',pady=(0,px(self.root,18)))
+        body=card.body
         self.label(body,title,14,FG,True).pack(anchor='w',pady=(0,5))
-        if subtitle:self.label(body,subtitle,9,MUTED).pack(anchor='w',pady=(0,14))
+        if subtitle:
+            label=self.label(body,subtitle,9,MUTED);label.pack(fill='x',pady=(0,px(self.root,14)))
+            label.bind('<Configure>',lambda e:label.configure(wraplength=max(100,e.width)))
         return body
 
     def button(self,parent,text,command,primary=False,width=140):
-        button=Pill(parent,text,command,width,primary);button.pack(side='left',padx=(0,9),pady=4);return button
+        button=Pill(parent,text,command,width,primary);button.pack(side='left',padx=(0,px(self.root,9)),pady=4);return button
 
     def row(self,parent):
         row=tk.Frame(parent,bg=parent.cget('bg'));row.pack(fill='x',pady=5);return row
@@ -88,7 +81,9 @@ class ControlCenter:
 
     def wheel(self,event):
         if str(event.widget).startswith(str(self.content)) and not isinstance(event.widget,(ttk.Treeview,ttk.Combobox)):
-            self.scroll.yview_scroll(-int(event.delta/120),'units')
+            first,last=self.scroll.yview();height=max(1,self.content.winfo_height())
+            target=min(max(0,1-(last-first)),max(0,first-event.delta/120*px(self.root,65)/height))
+            self.shell.motion.animate('scroll',lambda t:self.scroll.yview_moveto(first+(target-first)*t),150)
 
     def show(self):
         self.root.deiconify();self.root.lift();self.root.focus_force()
@@ -98,17 +93,20 @@ class ControlCenter:
 
     def show_page(self,index):
         self.page=index;self.scan_generation+=1;self.tree=None
+        self.shell.motion.cancel('scroll')
         for child in self.content.winfo_children():child.destroy()
         self.title.configure(text=PAGES[index]);self.subtitle.configure(text=SUBTITLES[index]);self.scroll.yview_moveto(0)
-        for n,button in enumerate(self.nav):button.configure(bg='#2a405b' if n==index else '#132035',fg=FG if n==index else MUTED)
+        self.shell.select(index)
         (self.run_page,self.review_page,self.compare_page,self.settings_page,self.data_page)[index]()
 
     def run_page(self):
-        body=self.card('Le Mans Ultimate','连接 LMU_Data · 练习时显示 HUD，排位赛和正赛自动录制')
+        body=self.card('下一段 Stint，从这里开始','练习时显示 HUD；排位赛和正赛自动保存记录与报告')
+        LaunchArtwork(body).pack(fill='x',pady=(0,px(self.root,7)))
         self.live_label=self.label(body,'等待启动',11,ACCENT);self.live_label.pack(anchor='w',pady=(0,10))
         row=self.row(body);self.button(row,'▶  启动 HUD',self.start,True,160);self.button(row,'停止并保存',self.stop_hud,False,140)
         self.button(row,'演示模式',lambda:self.start(True),False,120)
-        body=self.card('油门 / 刹车 / 转向','原始输入与游戏过滤后输入可切换；HUD 绘制频率跟随采样设置')
+        grid=CardGrid(self.content);grid.pack(fill='x')
+        body=self.card('油门 / 刹车 / 转向','输入通道、显示模式与波形窗口',grid)
         self.mode=tk.StringVar(self.root,value=self.hud.hud_mode.get() if self.active() else 'normal')
         modes={'标准面板':'normal','纯净 · 仅曲线':'curves','纯净 · 曲线 + 踏板 / 方向盘':'controls'}
         self.mode_label=tk.StringVar(self.root,value=next(k for k,v in modes.items() if v==self.mode.get()))
@@ -119,12 +117,11 @@ class ControlCenter:
         self.choice(body,'波形窗口 / 秒',self.window,['5','10','20'],lambda:self.set_hud('window',self.window.get()))
         row=self.row(body);self.button(row,'鼠标穿透 / 解锁',lambda:self.hud_action('toggle_clickthrough'),False,172)
         self.button(row,'性能诊断',lambda:self.hud_action('show_diagnostics'),False,130)
-        body=self.card('附加遥测面板','分模块启用；窗口位置、车型阈值和策略参数沿用已有设置')
+        body=self.card('附加遥测面板','按需开启，让比赛视野保持清爽',grid)
         vehicle=vehiclelab.load_settings(ROOT/'vehicle_settings.json');end=endurance.load_settings(ROOT/'endurance_settings.json')
         for module,key,title in [('vehicle','tyres','四轮轮胎温度 / 胎压 / 胎况'),('vehicle','strategy','燃油、虚拟能量与续航策略'),('endurance','pit','进站计时与补给'),('endurance','stint','Stint 长距离节奏'),('endurance','weather','天气与赛道趋势')]:
             value=tk.BooleanVar(self.root,value=(vehicle if module=='vehicle' else end)[key+'_enabled'])
-            tk.Checkbutton(body,text=title,variable=value,command=lambda m=module,k=key,v=value:self.update_module(m,{k+'_enabled':v.get()}),
-                bg=CARD,fg=FG,selectcolor='#314860',activebackground=CARD,activeforeground=FG,font=('Microsoft YaHei UI',10),pady=5).pack(anchor='w')
+            Switch(body,title,value,lambda m=module,k=key,v=value:self.update_module(m,{k+'_enabled':v.get()})).pack(fill='x',pady=2)
 
     def start(self,demo=False):
         if self.active():self.hud.root.lift();self.status.set('HUD 已在运行；请先停止后切换真实 / 演示模式');return
@@ -165,9 +162,12 @@ class ControlCenter:
         self.button(row,'刷新记录',self.refresh,False,112)
         self.tree=ttk.Treeview(body,columns=('date','type','track','car','lap'),show='headings',height=9,
             style='Lab.Treeview',selectmode='extended' if multiple else 'browse')
-        for key,title,width in [('date','时间（UTC）',145),('type','阶段',76),('track','赛道',200),('car','车辆',175),('lap','最快圈',92)]:
-            self.tree.heading(key,text=title);self.tree.column(key,width=width,minwidth=60,stretch=key in ('track','car'))
-        self.tree.pack(fill='x',pady=(6,8));self.tree.bind('<Double-1>',lambda _:self.report('review.html'))
+        for key,title,width in [('date','时间（UTC）',180),('type','阶段',76),('track','赛道',200),('car','车辆',175),('lap','最快圈',92)]:
+            self.tree.heading(key,text=title);self.tree.column(key,width=px(self.root,width),minwidth=px(self.root,60),stretch=key in ('track','car'))
+        self.tree.tag_configure('alternate',background='#203449');self.tree.tag_configure('plain',background=CARD)
+        self.tree.pack(fill='x',pady=(6,2));
+        horizontal=ttk.Scrollbar(body,orient='horizontal',command=self.tree.xview);horizontal.pack(fill='x',pady=(0,8));self.tree.configure(xscrollcommand=horizontal.set)
+        self.tree.bind('<Double-1>',lambda _:self.report('review.html'))
         self.refresh()
 
     def refresh(self):
@@ -185,7 +185,7 @@ class ControlCenter:
         for i,value in enumerate(self.items):
             if query and query not in ' '.join(str(value.get(k,'')) for k in ('track','vehicle','session_type','date','driver')).casefold():continue
             time=value.get('time_s');lap=f'{int(time//60)}:{time%60:06.3f}' if time else '—'
-            self.tree.insert('','end',iid=str(i),values=(value['date'][:19].replace('T',' '),value['session_type'],value['track'],value['vehicle'],lap))
+            self.tree.insert('','end',iid=str(i),values=(value['date'][:19].replace('T',' '),value['session_type'],value['track'],value['vehicle'],lap),tags=('alternate' if i%2 else 'plain',))
         remaining=[s for s in selected if self.tree.exists(s)]
         if remaining:self.tree.selection_set(remaining)
 
@@ -355,7 +355,7 @@ class ControlCenter:
 
     def close(self):
         if not self.closing:
-            self.closing=True;self.tasks.close();self.root.after_cancel(self.job)
+            self.closing=True;self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel()
             if self.active():self.hud.close()
         if self.tasks.busy or (self.hud and self.hud.root.winfo_exists()):self.root.after(50,self.close);return
         for _ in self.tasks.completions():pass

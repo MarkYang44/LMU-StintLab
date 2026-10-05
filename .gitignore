@@ -74,6 +74,7 @@
 *.png
 *.jpg
 *.svg
+!/src/branding/stintlab.svg
 **/FastestLapCompare.html
 **/DemoFastestLapCompare.html
 **/review.html

@@ -39,6 +39,20 @@ def main():
         if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
     assert {'library','laps','session_archive'}<=modules
     assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
+    assert {'control_shell','control_motion','branding'}<=modules
+    import pefile
+    executable=pefile.PE(str(bundle/'LMU-StintLab.exe'))
+    resources={entry.id:entry for entry in executable.DIRECTORY_ENTRY_RESOURCE.entries}
+    icons=[]
+    for entry in resources[3].directory.entries:
+        data=entry.directory.entries[0].data.struct
+        icons.append(executable.get_data(data.OffsetToData,data.Size))
+    import struct
+    ico=(bundle/'_internal/src/branding/stintlab.ico').read_bytes();count=struct.unpack_from('<H',ico,4)[0];expected=[]
+    for i in range(count):
+        length,offset=struct.unpack_from('<II',ico,6+i*16+8);expected.append(ico[offset:offset+length])
+    assert set(icons)==set(expected) and count==9,'EXE icon differs from reviewed brand'
+    executable.close()
     print('Portable manifest, privacy and development-code exclusion: PASS',flush=True)
     if args.smoke:
         from tests.portable_smoke import run

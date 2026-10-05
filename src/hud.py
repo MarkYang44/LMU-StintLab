@@ -30,6 +30,8 @@ class App:
         self.root = root if root is not None else tk.Tk()
         self.on_menu=on_menu
         self.root.title('LMU StintLab' + (' · DEMO' if demo else ''))
+        from branding import apply
+        apply(self.root)
         self.root.geometry('640x228+70+70')
         self.root.minsize(440, 160)
         self.root.overrideredirect(True)

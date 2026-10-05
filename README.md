@@ -8,11 +8,11 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 ## 下载与一键启动
 
-**便携版（推荐）**：从 [Releases](https://github.com/MarkYang44/LMU-StintLab/releases) 下载 `LMU-StintLab-v*-windows-x64.zip`，完整解压到可写目录，双击 `Start.cmd`。不需要安装 Python；`Demo.cmd` 可在不开游戏时演示。不要只移动 EXE，保留 `_internal` 文件夹。
+**便携版（推荐）**：从 [Releases](https://github.com/MarkYang44/LMU-StintLab/releases) 下载 `LMU-StintLab-v*-windows-x64.zip`，完整解压到可写目录，双击 **`LMU-StintLab.exe`**。不需要安装 Python；`Demo.cmd` 可在不开游戏时演示。不要只移动 EXE，保留 `_internal` 文件夹。
 
 **源码版**：点击 GitHub **Code → Download ZIP**，完整解压，双击 `Setup.cmd`，完成后双击 `Start.cmd`。首次配置需要联网：脚本查找 64 位 Python 3.13；没有时使用 winget 为当前用户安装官方 Python，然后创建独立 `.venv`、校验固定版本依赖并安装。没有 winget 时，请手动安装带 Tcl/Tk 的 [Python 3.13](https://www.python.org/downloads/windows/)，然后重试。
 
-`Start.cmd` 默认打开分类控制中心，点击 **启动 HUD** 后读取 LMU 的 `LMU_Data` 共享内存。**只自动记录排位赛和正赛；Practice / Warmup 保留实时 HUD，不写比赛文件。** 无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。LMU StintLab 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
+`LMU-StintLab.exe` 默认打开分类控制中心（源码启动脚本同样适用），点击 **启动 HUD** 后读取 LMU 的 `LMU_Data` 共享内存。**只自动记录排位赛和正赛；Practice / Warmup 保留实时 HUD，不写比赛文件。** 无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。LMU StintLab 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
 
 ## 功能
 
@@ -54,6 +54,6 @@ Windows CI 检查公开文件、运行隔离测试并构建便携 ZIP；推送�
 
 ## English quick start
 
-Download and extract the portable Windows x64 release, then double-click **Start.cmd**. For source ZIPs, run **Setup.cmd** first; it provisions Python 3.13 and verified dependencies. **Demo.cmd** uses synthetic telemetry only. No files are installed in the game directory. All racing data stays in `data/` locally. The UI is primarily Chinese. Read-only LMU shared memory is supplied by the bundled MIT-licensed SDK.
+Download and extract the portable Windows x64 release, then double-click **LMU-StintLab.exe**. For source ZIPs, run **Setup.cmd** first; it provisions Python 3.13 and verified dependencies. **Demo.cmd** uses synthetic telemetry only. No files are installed in the game directory. All racing data stays in `data/` locally. The UI is primarily Chinese. Read-only LMU shared memory is supplied by the bundled MIT-licensed SDK.
 
 This is an independent community project, not affiliated with Studio 397, Motorsport Games, Fanatec or BMW. The schematic steering wheel uses original drawing code; no commercial artwork is included. Project source: MIT; upstream notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -30,7 +30,7 @@ def __getattr__(name):
 
 def main():
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.5');return
+        print('LMU StintLab 0.1.6');return
     if '--race-images' in sys.argv:
         index=sys.argv.index('--race-images')
         if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')
@@ -46,6 +46,8 @@ def main():
     # Keep the high-rate reader from holding Python's GIL for the default 5 ms
     # timeslice while the GUI is trying to draw a submillisecond frame.
     sys.setswitchinterval(0.0005)
+    from branding import taskbar
+    taskbar()
     # Opt in before creating Tk windows; render to real pixels instead of bitmap scaling.
     dpi = ctypes.WinDLL('user32', use_last_error=True)
     try:

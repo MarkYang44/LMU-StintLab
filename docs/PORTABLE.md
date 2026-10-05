@@ -1,12 +1,12 @@
 # LMU StintLab · Windows x64 便携版
 
-完整解压到可写文件夹，双击 **Start.cmd** 打开控制中心，再点击 **启动 HUD**。无需安装 Python，无需往游戏目录复制文件。请保留 EXE 旁的 **_internal** 文件夹。
+完整解压到可写文件夹，双击 **LMU-StintLab.exe** 打开控制中心，再点击 **启动 HUD**。无需安装 Python，无需往游戏目录复制文件。请保留 EXE 旁的 **_internal** 文件夹。
 
-- **Demo.cmd / Start Demo.cmd**：不开游戏时演示合成曲线。
-- **Start Clean.cmd**：只显示曲线。
-- **Start Clean Controls.cmd**：显示曲线、油刹柱形图和方向盘。
+- 不开游戏时，在控制中心点击 **演示模式**；`Demo.cmd` 保留为快捷入口。
+- 在控制中心的 **显示模式** 选择纯曲线；`Start Clean.cmd` 保留为快捷入口。
+- 另一种纯净模式同时显示曲线、油刹柱形图和方向盘；启动脚本继续兼容。
 - 控制中心按功能分类；**赛事复盘** 直接打开圈速单、比赛日志和 Review，**曲线对比** 选择同场 A / B 或跨场最快圈。
-- HUD 标题栏菜单按钮打开控制中心；右键快捷菜单继续保留。`Start.cmd --hud` 可直接进入旧 HUD。
+- HUD 标题栏菜单按钮打开控制中心；右键快捷菜单继续保留。`LMU-StintLab.exe --hud` 可直接进入旧 HUD。
 
 仅 Qualify / Race 自动记录；Practice / Warmup 仅实时显示，旧记录保留。正常退出 HUD 会等待写入与报告完成；停止 HUD 后控制中心仍可用。记录保存在 `data/`。
 
@@ -18,4 +18,4 @@
 
 源码、更新与问题反馈：[MarkYang44/LMU-StintLab](https://github.com/MarkYang44/LMU-StintLab)。公开版不附带授权不明的赛道底图，仍可根据记录中的世界坐标 / GPS 展示实测轨迹。
 
-**English:** Fully extract, then run **Start.cmd**. Keep **_internal** next to the executable. Python is bundled. No game files are modified; all telemetry and settings stay local. Developer tests and standalone environment-check tools are excluded from this portable package.
+**English:** Fully extract, then run **LMU-StintLab.exe**. Keep **_internal** next to the executable. Python is bundled. No game files are modified; all telemetry and settings stay local. Developer tests and standalone environment-check tools are excluded from this portable package.

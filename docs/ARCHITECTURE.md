@@ -44,3 +44,5 @@ Recorder 的写盘及结束报告保留各自生命周期，App 继续等待 CSV
 CSV 字段、JSON 格式标记、原始 / 过滤后输入、采样设置和旧记录路径保持一致。入口继续导出 Engine、Recorder、SharedReader、App 及既有辅助函数；测试替换全局依赖时应 patch 实际所属模块，例如 `recorder.make_report` 或 `hud.ROOT`。
 
 开发测试只放在 tests/，开发工具只放在 tools/；便携包和编译 EXE 继续排除这些模块。发布白名单与个人数据哈希校验分别验证分享内容和本机数据保护。
+
+The desktop shell is separated into `control_shell.py` (DPI layout / navigation), `control_widgets.py` (glass surfaces / interactive controls), `control_motion.py` (cancellable elapsed-time transitions), and `branding.py` (window / taskbar identity). Build-only `tools/build_brand.py` renders the reviewed SVG using Windows GDI+ to multiresolution PNG / ICO; image and browser libraries are not added to runtime dependencies.

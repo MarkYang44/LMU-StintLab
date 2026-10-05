@@ -25,4 +25,6 @@ Installed distributions' license and notice files are copied into `licenses/` in
 
 ## Assets
 
-HUD styling, wheel drawing and report rendering are project code. Public `src/tracks/catalog.json` is empty. No RaceCom executable, extracted bytecode, vehicle artwork, circuit PDF, commercial logo, private setup, recorded trajectory or personal racing record is shipped. Demo telemetry is generated mathematically at runtime.
+HUD styling, wheel drawing and report rendering are project code. Public `src/tracks/catalog.json` is empty. No RaceCom executable, extracted bytecode, vehicle artwork, circuit PDF, original third-party logo files, private setup, recorded trajectory or personal racing record is shipped. Demo telemetry is generated mathematically at runtime.
+
+The StintLab app mark in `src/branding/stintlab.svg` is a new vector drawing inspired by the inverted industrial triangle in an Endfield Industries reference supplied by the project owner. It adds an original racing line and chequered finish motif. The reference SVG is not redistributed. StintLab is not affiliated with Endfield or its rights holders; underlying trademarks remain with their respective owners.
