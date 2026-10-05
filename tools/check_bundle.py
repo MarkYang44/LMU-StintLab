@@ -51,10 +51,12 @@ def main():
     ico=(bundle/'_internal/src/branding/stintrix.ico').read_bytes();count=struct.unpack_from('<H',ico,4)[0];expected=[]
     for i in range(count):
         length,offset=struct.unpack_from('<II',ico,6+i*16+8);expected.append(ico[offset:offset+length])
-    assert set(icons)==set(expected) and count==6,'EXE icon differs from reviewed GTD icon'
+    assert set(icons)==set(expected) and count==6,'EXE icon differs from reviewed STX icon'
     from tools.audit_publication import PUBLIC_ASSETS
-    assert hashlib.sha256(ico).hexdigest()==PUBLIC_ASSETS['src/branding/gtd.ico']
-    assert hashlib.sha256((bundle/'_internal/src/branding/menu-icon.png').read_bytes()).hexdigest()==PUBLIC_ASSETS['src/branding/gtd-menu.png']
+    from tools.build_brand import render
+    reviewed=render(target/'reviewed-branding')
+    assert ico==(reviewed/'stintrix.ico').read_bytes()
+    assert (bundle/'_internal/src/branding/menu-icon.png').read_bytes()==(reviewed/'menu-icon.png').read_bytes()
     for name,wanted in PUBLIC_ASSETS.items():
         if name.startswith('src/guide/'):assert hashlib.sha256((bundle/'_internal'/name).read_bytes()).hexdigest()==wanted,name
     guide=json.loads((bundle/'_internal/src/guide/catalog.json').read_text(encoding='utf-8'))

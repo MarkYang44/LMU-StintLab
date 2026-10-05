@@ -65,7 +65,7 @@ class DesktopTests(unittest.TestCase):
                 self.assertEqual((w or 256,h or 256,bits),(size,size,32));self.assertIn(planes,(0,1))
                 self.assertEqual(png[:8],b'\x89PNG\r\n\x1a\n');self.assertEqual(struct.unpack_from('>II',png,16),(size,size))
                 self.assertGreater(length,200)
-    def test_only_exact_reviewed_gtd_assets_are_allowed_for_publication(self):
+    def test_only_exact_reviewed_assets_are_allowed_for_publication(self):
         from tools.audit_publication import allowed,audit,PUBLIC_ASSETS
         for name in PUBLIC_ASSETS:
             self.assertTrue(allowed(name));self.assertTrue(audit([name],lambda n:(ROOT/n).read_bytes())['ok'])

@@ -67,9 +67,11 @@ class Shell:
         self.brand.bind('<Configure>',self.paint_brand)
         self.logo=None
         try:
-            self.logo=tk.PhotoImage(master=root,file=str(branding.directory()/'menu-icon.png'))
-            if s<1.6:self.logo=self.logo.subsample(2)
-        except tk.TclError:pass
+            from PIL import Image,ImageOps,ImageTk
+            with Image.open(branding.directory()/'menu-icon.png') as artwork:
+                image=ImageOps.contain(artwork.convert('RGB'),(self.rail_width-round(50*s),round(101*s)),Image.Resampling.LANCZOS)
+                self.logo=ImageTk.PhotoImage(image,master=root)
+        except (OSError,tk.TclError):pass
         self.navigation=Navigation(side,names,command);self.navigation.pack(fill='x',padx=round(16*s))
         foot=tk.Frame(side,bg=T.RAIL);foot.pack(side='bottom',fill='x',padx=round(25*s),pady=round(26*s))
         Label(foot,text='●  LOCAL & PRIVATE',bg=T.RAIL,fg=T.ACCENT,font=('Segoe UI',9,'bold'),anchor='w').pack(fill='x')
@@ -105,9 +107,9 @@ class Shell:
     def paint_brand(self,_=None):
         c=self.brand;s=self.s;c.delete('all')
         if self.logo:c.create_image(0,0,image=self.logo,anchor='nw')
-        c.create_text(0,82*s,text='Stintrix',font=self.brand_font,fill=T.FG,anchor='w')
+        if not self.logo:c.create_text(0,82*s,text='Stintrix',font=self.brand_font,fill=T.FG,anchor='w')
         c.create_text(1*s,114*s,text='LE MANS ULTIMATE',font=('Segoe UI',9,'bold'),fill=T.MUTED,anchor='w')
-        right=c.winfo_width();c.create_text(right-2*s,25*s,text='SYS / 01',font=('Consolas',8),fill=T.ACCENT,anchor='e')
+        right=c.winfo_width()
         line=(132 if self.compact else 153)*s
         c.create_line(0,line,right,line,fill=T.EDGE);c.create_line(0,line,44*s,line,fill=T.ACCENT,width=2*s)
     def scrollbar(self,*args):

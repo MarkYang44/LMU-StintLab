@@ -1,3 +1,9 @@
+## 0.2.1
+
+- 菜单采用彩色黑底 STX / STINTRIX 标识；EXE、任务栏与开始菜单统一为黑底白色 STX + STINTRIX 完整图标。
+- Windows 图标提供 16 / 32 / 48 / 64 / 128 / 256 像素，移除旧 GTD 角色图标。
+- 保留 0.2.0 的 LMU-Stintrix 更名、中文 / English 开关和旧赛事包兼容。
+
 ## 0.2.0
 
 - 项目统一更名为 LMU-Stintrix：控制中心、HUD、Windows 应用入口、EXE、报告页面、源码文档与便携包均使用新名称。

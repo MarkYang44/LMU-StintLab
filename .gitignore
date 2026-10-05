@@ -74,8 +74,8 @@
 *.png
 *.jpg
 *.svg
-!/src/branding/gtd-menu.png
-!/src/branding/gtd.ico
+!/src/branding/stx-menu.png
+!/src/branding/stx-app.png
 **/interface_settings.json
 **/FastestLapCompare.html
 **/DemoFastestLapCompare.html
