@@ -23,6 +23,8 @@ class GuidePage:
     def dispose(self,event):
         if event.widget is not self.container:return
         self.closed=True
+        try:self.variables['query'].trace_remove('write',self.query_trace)
+        except tk.TclError:pass
         if self.job:
             try:self.center.root.after_cancel(self.job)
             except tk.TclError:pass
@@ -36,7 +38,7 @@ class GuidePage:
         center.label(row,tr('搜索  ','Search  '),10,T.MUTED).pack(side='left')
         entry=tk.Entry(row,textvariable=query,bg=T.FIELD,fg=T.FG,insertbackground=T.ACCENT,relief='flat',font=(T.FONT,11))
         entry.pack(side='left',fill='x',expand=True,ipady=10);self.search_entry=entry
-        query.trace_add('write',lambda *_:self.filter_changed())
+        self.query_trace=query.trace_add('write',lambda *_:self.filter_changed())
         class_values={tr('全部组别','All classes'):'','LMGT3':'LMGT3','Hypercar':'Hypercar'}
         car_values={tr('全部车型','All cars'):'',**{item['name']:item['slug'] for item in self.library.data['cars'].values()}}
         favorite_values={tr('全部内容','All content'):'',tr('收藏的车型','Favorite cars'):'cars'}

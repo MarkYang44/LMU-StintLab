@@ -115,6 +115,6 @@ assert.equal(api.esc('<img onerror="x">'),'&lt;img onerror=&quot;x&quot;&gt;');
                 self.assertEqual(len([v for v in walk(page.results) if isinstance(v,Picture)]),9)
                 page.variables['group'].set('LMGT3');page.filter_changed();pump(center)
                 self.assertEqual(len([v for v in walk(page.results) if isinstance(v,Picture)]),5)
-                center.show_page(0);pump(center);self.assertTrue(page.closed)
+                center.show_page(0);pump(center);self.assertTrue(page.closed);self.assertEqual(page.variables["query"].trace_info(),[])
                 self.assertTrue(all(not v.photo for v in pictures));browser.assert_not_called();self.assertFalse(errors,errors)
             finally:center.close()
