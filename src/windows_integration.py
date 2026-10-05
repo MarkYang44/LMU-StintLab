@@ -1,10 +1,13 @@
-"""Per-user Unicode Shell links, without subprocesses or administrator access.
+"""Per-user Unicode Shell links and asynchronous application catalog verification.
 
 API: https://learn.microsoft.com/en-us/windows/win32/shell/links
 """
 import ctypes as C
+import base64
+import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import uuid
 from paths import APP_ROOT
@@ -94,7 +97,56 @@ def inspect(path):
     with ShellLink() as link:link.load(path);return link.read()
 
 
-def register(remove=False):
+def notify_path(path,event):
+    """Notify the real file event, not the unrelated icon-association event."""
+    notify=C.WinDLL('shell32').SHChangeNotify
+    notify.argtypes=[C.c_long,C.c_uint,C.c_void_p,C.c_void_p]
+    value=C.create_unicode_buffer(str(path))
+    # SHCNF_PATHW | SHCNF_FLUSH: retain the string until delivery completes.
+    notify(event,0x1005,C.cast(value,C.c_void_p),None)
+
+
+def catalog_entry(target):
+    """Read the current user's Start application catalog, without a console."""
+    script=r'''
+[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
+$items=@(Get-StartApps | Where-Object { $_.AppID -eq $env:STINTLAB_EXPECTED_ID -or $_.AppID -eq $env:STINTLAB_EXPECTED_EXE })
+ConvertTo-Json -InputObject $items -Compress
+'''
+    command=base64.b64encode(script.encode('utf-16le')).decode('ascii')
+    environment=dict(os.environ,STINTLAB_EXPECTED_ID=APP_ID,STINTLAB_EXPECTED_EXE=str(target))
+    powershell=Path(os.environ.get('SystemRoot','C:/Windows'))/'System32/WindowsPowerShell/v1.0/powershell.exe'
+    try:
+        result=subprocess.run([str(powershell),'-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',command],
+            capture_output=True,env=environment,timeout=8,creationflags=subprocess.CREATE_NO_WINDOW)
+        if result.returncode:return None
+        items=json.loads(result.stdout.decode('utf-8-sig'))
+        return items[0] if isinstance(items,list) and items else None
+    except (OSError,ValueError,subprocess.TimeoutExpired):return None
+
+
+def needs_repair():
+    """Repair only an already-enabled link pointing to this exact portable EXE.
+
+    Source tests and temporary bundles must never replace the installed entry.
+    Running the real menu repeats registration in the logged-in user's context.
+    """
+    if os.name!='nt' or not getattr(sys,'frozen',False):return False
+    try:
+        path=shortcut_path()
+        if not path.is_file():return False
+        info=inspect(path)
+        if info['description']!=DESCRIPTION or Path(info['target'])!=executable():return False
+    except (OSError,ValueError,AttributeError):return False
+    try:
+        from paths import data_directory
+        previous=json.loads((data_directory()/'desktop_registration.json').read_text(encoding='utf-8'))
+        return not (previous.get('recognized') and previous.get('revision')==2 and previous.get('target')==str(executable())
+                    and previous.get('user')==os.getlogin() and previous.get('link_mtime_ns')==path.stat().st_mtime_ns)
+    except (OSError,ValueError,AttributeError):return True
+
+
+def register(remove=False,verify=False):
     """Validate ownership, then stage and verify before replacing our own link."""
     if os.name!='nt':raise OSError('开始菜单入口仅适用于 Windows')
     target=executable();path=shortcut_path()
@@ -102,6 +154,7 @@ def register(remove=False):
         raise OSError('同名快捷方式属于其他应用，未修改；请先在开始菜单检查名称')
     if remove:
         path.unlink(missing_ok=True)
+        notify_path(path,4)  # SHCNE_DELETE
     else:
         path.parent.mkdir(parents=True,exist_ok=True)
         pending=path.with_name('StintLab-'+uuid.uuid4().hex+'.lnk')
@@ -112,7 +165,17 @@ def register(remove=False):
                 raise OSError('Windows 快捷方式校验失败，原入口保留')
             pending.replace(path)
         finally:pending.unlink(missing_ok=True)
-    notify=C.WinDLL('shell32').SHChangeNotify
-    notify.argtypes=[C.c_long,C.c_uint,C.c_void_p,C.c_void_p]
-    notify(0x08000000,0,None,None)
-    return dict(path=str(path),target=str(target),removed=bool(remove))
+        notify_path(path,2)  # SHCNE_CREATE
+        notify_path(path,0x2000)  # SHCNE_UPDATEITEM
+    notify_path(path.parent,0x1000)  # SHCNE_UPDATEDIR
+    result=dict(path=str(path),target=str(target),removed=bool(remove))
+    if verify:
+        entry=None if remove else catalog_entry(target)
+        result.update(recognized=bool(entry),entry=entry,revision=2)
+        try:result['user']=os.getlogin()
+        except OSError:result['user']=None
+        result['link_mtime_ns']=path.stat().st_mtime_ns if path.exists() else None
+        from paths import data_directory
+        from storage import atomic_json
+        atomic_json(data_directory()/'desktop_registration.json',result)
+    return result

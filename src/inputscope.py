@@ -31,9 +31,9 @@ def __getattr__(name):
 def main():
     if '--register-app' in sys.argv or '--unregister-app' in sys.argv:
         from windows_integration import register
-        register('--unregister-app' in sys.argv);return
+        register('--unregister-app' in sys.argv,verify=True);return
     if '--version' in sys.argv:
-        print('LMU StintLab 0.1.13');return
+        print('LMU StintLab 0.1.14');return
     if '--race-images' in sys.argv:
         index=sys.argv.index('--race-images')
         if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')

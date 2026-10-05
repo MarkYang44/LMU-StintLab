@@ -46,6 +46,7 @@ class ControlCenter:
         # Bind to this toplevel only, leaving the HUD's high-rate event loop alone.
         self.root.bind('<MouseWheel>',self.wheel)
         self.show_page(0);backdrop(self.root);self.job=self.root.after(50,self.tick)
+        self.repair_windows_entry()
 
     def build_shell(self):
         style=ttk.Style(self.root);style.theme_use('clam')
@@ -179,8 +180,21 @@ class ControlCenter:
 
     def register_app(self,remove=False):
         from windows_integration import register
-        def done(_):self.status.set('开始菜单入口已移除，程序和数据仍保留' if remove else '已添加 LMU StintLab · 可在 Windows 搜索 / 开始菜单中打开')
-        self.work(lambda:register(remove),done)
+        self.work(lambda:register(remove,verify=True),self.registration_result)
+
+    def registration_result(self,result):
+        if result['removed']:self.status.set('开始菜单入口已移除，程序和数据仍保留')
+        elif result.get('recognized'):self.status.set('Windows 应用目录已识别 LMU StintLab · 可从开始菜单打开')
+        else:self.status.set('快捷方式已更新，但 Windows 尚未列出应用；可稍后再次更新入口')
+
+    def repair_windows_entry(self):
+        from windows_integration import needs_repair,register
+        if self.attached or not needs_repair():return
+        def done(result,error):
+            if self.closing:return
+            if error:self.status.set('开始菜单入口未更新：'+error)
+            else:self.registration_result(result)
+        self.run_background(lambda:register(verify=True),done)
 
     def start(self,demo=False):
         if self.active():self.hud.root.lift();self.status.set('HUD 已在运行；请先停止后切换真实 / 演示模式');return

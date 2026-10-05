@@ -46,8 +46,8 @@ class Field(tk.Canvas):
 class Select(tk.Canvas):
     """Combobox-compatible selector with a native animated, scrollable flyout.
 
-    No global bindings, permanent frame loop or dependency on a browser runtime.
-    The popup uses a local grab only; closing/destroying always releases it.
+    The in-window popup never grabs input. Outside clicks both dismiss it and
+    continue to the intended control; temporary owner bindings are removed.
     """
     def __init__(self,parent,textvariable=None,values=(),state='readonly',width=26,
                  height=7,font=None,style=None,**kwargs):
@@ -55,7 +55,7 @@ class Select(tk.Canvas):
         self.values=list(values);self.state=state;self.rows=max(1,min(8,int(height)))
         self.font=tkfont.Font(parent,font=font or (T.FONT,10))
         self.amount=0.;self.focused=False;self.popup=None;self.offset=0;self.active=-1
-        self.popup_motion=None;self.query='';self.query_job=None;self.owner_binding=None;self.previous_grab=None;self.highlight_y=None
+        self.popup_motion=None;self.query='';self.query_job=None;self.owner_binding=None;self.owner_click=None;self.owner_focus=None;self.highlight_y=None
         super().__init__(parent,bg=parent.cget('bg'),highlightthickness=0,takefocus=True,
             cursor='hand2',width=px(parent,width*8+32),height=px(parent,42),**kwargs)
         self.motion=Motion(self);self.edit=None
@@ -130,11 +130,13 @@ class Select(tk.Canvas):
         return 'break'
     def open(self):
         if self.popup or self.state=='disabled' or not self.values:return 'break'
+        self.owner=self.winfo_toplevel()
+        previous=getattr(self.owner,'_stintlab_active_select',None)
+        if previous is not None and previous is not self:previous.close(False)
+        self.owner._stintlab_active_select=self
         self.focus_set();self.active=max(0,self.current());self.visible=min(self.rows,len(self.values))
         self.offset=max(0,min(len(self.values)-self.visible,self.active-self.visible+1))
         self.row_h=px(self,42);self.full_h=self.row_h*self.visible+px(self,12)
-        self.previous_grab=self.grab_current()
-        self.owner=self.winfo_toplevel()
         self.popup=tk.Frame(self.owner,bg=T.CARD,takefocus=True)
         self.panel=tk.Canvas(self.popup,bg=T.CARD,highlightthickness=1,highlightbackground=T.EDGE)
         self.panel.pack(fill='both',expand=True);self.popup_motion=Motion(self.panel)
@@ -149,30 +151,41 @@ class Select(tk.Canvas):
         self.popup.bind('<FocusOut>',self.lost_focus)
         self.popup.bind('<Escape>',lambda _:self.close())
         self.owner_binding=self.owner.bind('<Configure>',lambda e:self.close(False) if e.widget is self.owner else None,add='+')
+        self.owner_click=self.owner.bind('<ButtonPress-1>',self.outside_click,add='+')
+        self.owner_focus=self.owner.bind('<FocusOut>',self.window_focus_lost,add='+')
         self.highlight_y=px(self,6)+(self.active-self.offset)*self.row_h
-        self.popup.grab_set();self.popup.focus_set();self.paint();self.paint_options()
+        self.paint();self.paint_options()
         def frame(t):
             h=max(2,round(self.full_h*(.3+.7*t)));y=self.edge-h if self.above else self.edge
             self.popup.place(x=x,y=max(0,y),width=width,height=h);self.popup.lift()
         self.popup_motion.animate('reveal',frame,150)
+        self.popup.focus_set()
         return 'break'
+    def outside_click(self,event):
+        if self.popup is None:return
+        target=str(event.widget)
+        if event.widget is self or (self.edit is not None and event.widget is self.edit):return
+        if event.widget is self.popup or target.startswith(str(self.popup)+'.'):return
+        self.close(False)
+        # Intentionally do not return 'break': the outside button must work on
+        # this very click, including navigation and opening another selector.
+    def window_focus_lost(self,event):
+        if event.widget is self.owner and self.focus_get() is None:self.close(False)
     def close(self,restore=True):
         popup=self.popup;self.popup=None
         if popup:
             try:
-                if popup.grab_current() is popup:popup.grab_release()
                 popup.destroy()
                 if restore and self.winfo_exists():self.focus_set()
             except tk.TclError:pass
-        if self.owner_binding:
-            try:self.owner.unbind('<Configure>',self.owner_binding)
-            except tk.TclError:pass
-            self.owner_binding=None
-        previous=self.previous_grab;self.previous_grab=None
-        if previous:
-            try:
-                if previous.winfo_exists():previous.grab_set()
-            except tk.TclError:pass
+        for name,sequence in (('owner_binding','<Configure>'),('owner_click','<ButtonPress-1>'),('owner_focus','<FocusOut>')):
+            binding=getattr(self,name,None)
+            if binding:
+                try:self.owner.unbind(sequence,binding)
+                except tk.TclError:pass
+                setattr(self,name,None)
+        owner=getattr(self,'owner',None)
+        if owner is not None and getattr(owner,'_stintlab_active_select',None) is self:owner._stintlab_active_select=None
         if self.query_job:
             try:self.after_cancel(self.query_job)
             except tk.TclError:pass

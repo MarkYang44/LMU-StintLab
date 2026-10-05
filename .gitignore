@@ -86,3 +86,5 @@
 # Exact public GTD guide artwork; publication requires reviewed SHA256.
 !/src/guide/media/
 !/src/guide/media/**
+
+**/desktop_registration.json
