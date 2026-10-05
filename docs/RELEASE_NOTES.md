@@ -1,14 +1,13 @@
-# LMU StintLab v0.1.7 · 新桌面界面与赛车图标
+# LMU StintLab v0.1.8 · 双主题工业界面与平滑列表
 
-下载 `LMU-StintLab-v0.1.7-windows-x64.zip`，完整解压后直接双击 **LMU-StintLab.exe**。无需安装 Python，也无需通过 CMD 启动。保留 EXE 旁的 `_internal` 文件夹；更新时保留自己的 `data/` 和 `local_settings.json`。
+完整解压 `LMU-StintLab-v0.1.8-windows-x64.zip`，双击 **LMU-StintLab.exe**。保留 `_internal` 文件夹；更新时保留自己的 `data/` 和 `local_settings.json`。
 
-- 修复 StintLab 品牌文字在 Windows 缩放下被裁切：品牌按实际字体宽度布局，窗口尺寸和控件间距适配 DPI，宽屏设置卡片并排，窄屏自动纵向排列。
-- 重新设计侧栏、玻璃卡片、图标、按钮与遥测开关。增加导航滑动、页面淡入位移、悬停与按压反馈、平滑滚动和开关动画；过渡结束后不继续调度动画帧。
-- 修复页面过渡后的滚动原点，确保第一张卡片的顶部圆角和内容不会被裁切。
-- 取消整窗透明，避免桌面文字透入干扰阅读；保留深蓝玻璃层次、柔和边缘高光与 Windows 圆角。
-- 新图标以用户提供的 Endfield 工业倒三角为灵感，融入赛车走线与方格旗。EXE、任务栏、窗口和控制中心使用统一身份，并包含多分辨率图标与版本信息。
-- 原版 RaceCom 报告、赛事复盘、完整圈 A/B、赛事包、HUD 与所有遥测功能保持兼容；仍仅自动记录 Qualify / Race。个人记录、设置与游戏文件不改动。
+- 深色主题使用炭黑 + 黄绿，浅色使用暖灰白 + 石墨文字 + 黄绿；切角卡片、工业刻度、短位移与悬停反馈参考终末地风格。右上角即时切换，主题偏好只保存在本机。
+- 主题切换保留页面、搜索、赛事选择和表单，正在运行的 HUD、采集线程与记录器继续工作。纯净 HUD 保持全黑，油门 / 刹车 / 转向仍用绿 / 红 / 蓝区分，浅色面板使用更深的色调。
+- 赛事列表改为独立虚拟组件，按像素平滑滚动；连续滚轮输入累积，选中立即生效并带颜色过渡。保留 Ctrl / Shift 多选、双击或 Enter 复盘，新增方向键、Home / End / PageUp / PageDown 浏览。
+- 只绘制可见记录行，文本缓存有界；停止交互后动画不继续运行。刷新或过滤保留真实赛事身份，滚动位置随内容边界安全收敛。
+- EXE、任务栏、标题栏和侧栏改用项目所有者指定的 GTD 菜单角色图标，保留原始 ICO 的六个尺寸。构建与发布校验精确资产哈希。
+- 新生成的 Review、圈速对比与地图 / 遥测图表支持深浅主题，HTML 仍可离线分享；旧 HTML 保留。RaceCom 原版两张图的版式保持不变。
+- 个人圈速、车型照片、私有设置和 RaceCom 程序继续排除出公开仓库及便携包。仅 Qualify / Race 自动记录；无需改动游戏文件。
 
-源代码中的 SVG 可编辑；PNG / ICO 在构建时由 Windows GDI+ 生成，不引入新的浏览器或图像运行库。公开包继续排除开发测试、个人数据、RaceCom 程序与车辆照片。
-
-**English:** Launch LMU-StintLab.exe directly. This release adds a DPI-aware desktop layout, animated navigation and controls, readable glass-style surfaces, and a new racing-themed app icon. Existing telemetry, RaceCom reports and local records remain compatible.
+**English:** Two Endfield-inspired industrial themes, the requested GTD menu icon, virtualized pixel-smooth session scrolling and animated selection. Switch themes without restarting telemetry. Launch the EXE directly; existing private data and RaceCom rendering remain compatible.

@@ -25,6 +25,8 @@ Installed distributions' license and notice files are copied into `licenses/` in
 
 ## Assets
 
-HUD styling, wheel drawing and report rendering are project code. Public `src/tracks/catalog.json` is empty. No RaceCom executable, extracted bytecode, vehicle artwork, circuit PDF, original third-party logo files, private setup, recorded trajectory or personal racing record is shipped. Demo telemetry is generated mathematically at runtime.
+HUD styling, wheel drawing and report rendering are project code. Public `src/tracks/catalog.json` is empty. No RaceCom executable, extracted bytecode, vehicle artwork, circuit PDF, private setup, recorded trajectory or personal racing record is shipped. Demo telemetry is generated mathematically at runtime.
 
-The StintLab app mark in `src/branding/stintlab.svg` is a new vector drawing inspired by the inverted industrial triangle in an Endfield Industries reference supplied by the project owner. It adds an original racing line and chequered finish motif. The reference SVG is not redistributed. StintLab is not affiliated with Endfield or its rights holders; underlying trademarks remain with their respective owners.
+At the project owner's request, `src/branding/gtd.ico` and `gtd-menu.png` are exact copies of `static/icons/favicon.ico` and `static/icons/character-icon-128x128.png` from [MarkYang44/GTD](https://github.com/MarkYang44/GTD). The latter is used in GTD's menu. Build-time extraction preserves the original six icon frames; the publication audit verifies both reviewed assets by SHA-256. This use does not assert ownership of the depicted character or grant rights to other GTD assets.
+
+The charcoal, warm off-white and yellow-green palettes reference [MarkYang44/Endfield-Charge](https://github.com/MarkYang44/Endfield-Charge), particularly its `HUDView.swift` and `SettingsWindowController.swift` colours. The StintLab widgets and short transitions are independently implemented. Endfield branding artwork and code are not copied. StintLab is not affiliated with Arknights: Endfield or its rights holders; underlying trademarks remain with their respective owners.

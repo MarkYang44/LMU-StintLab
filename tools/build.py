@@ -11,7 +11,7 @@ import uuid
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
-ASSET_NAMES=('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','tracks/catalog.json')
+ASSET_NAMES=('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','interface_theme.js','tracks/catalog.json')
 STARTERS=('Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd')
 PORTABLE_DOCS=('USAGE.md','PRIVACY.md')
 PORTABLE_ROOT_FILES={'LMU-StintLab.exe','README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION','build-manifest.json',*STARTERS}
@@ -20,7 +20,7 @@ def bundle_audit(folder):
     private={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','.venv','_local','_backup','_verification','racecomrenderer','_racecom','_report_history'}
     denied={'local_settings.json','settings.json','session.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json',
         'race_log.json','race_summary.json','race_images.json','race_events_checkpoint.json','race_images_error.txt','car_calibration.json',
-        'renderer_settings.json','image_generate_config.json'}
+        'renderer_settings.json','image_generate_config.json','interface_settings.json'}
     for file in Path(folder).rglob('*'):
         if not file.is_file():continue
         rel=file.relative_to(folder)
@@ -56,7 +56,7 @@ def main():
     for name in ASSET_NAMES:
         relative=Path(name)
         args.extend(['--add-data',str(ROOT/'src'/relative)+';'+(Path('src')/relative.parent).as_posix()])
-    for name in ('stintlab.ico','stintlab-32.png','stintlab-48.png','stintlab-64.png','stintlab-128.png'):
+    for name in ('stintlab.ico','stintlab-32.png','stintlab-48.png','stintlab-64.png','stintlab-128.png','menu-icon.png'):
         args.extend(['--add-data',str(brand/name)+';src/branding'])
     args.append(str(ROOT/'src'/'inputscope.py'))
     subprocess.run(args,cwd=ROOT,check=True)

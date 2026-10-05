@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import tkinter as tk
+from control_theme import T
 from tkinter import ttk,messagebox,filedialog
 from library import inventory,save_note
 from reference import ReferenceLap,DistanceAligner
@@ -14,17 +15,17 @@ from paths import ASSETS
 
 def panel(app,title,width,height):
     window=tk.Toplevel(app.root);window.title(title);window.geometry(f'{width}x{height}')
-    window.configure(bg='#101a28');window.attributes('-topmost',True)
+    window.configure(bg=T.BG);window.attributes('-topmost',True)
     style=ttk.Style(window);style.theme_use('clam')
-    style.configure('Scope.Treeview',background='#152234',foreground='#e4edf8',fieldbackground='#152234',rowheight=29)
-    style.configure('Scope.Treeview.Heading',background='#22354b',foreground='#c7d9ee')
-    style.map('Scope.Treeview',background=[('selected','#2f5680')])
+    style.configure('Scope.Treeview',background=T.CARD,foreground=T.FG,fieldbackground=T.CARD,rowheight=29)
+    style.configure('Scope.Treeview.Heading',background=T.FIELD,foreground=T.MUTED)
+    style.map('Scope.Treeview',background=[('selected',T.SELECT)])
     return window
 
 
 def show_diagnostics(app,root):
-    window=panel(app,'InputScope · 性能诊断',680,465)
-    label=tk.Label(window,bg='#101a28',fg='#d9e8fa',justify='left',anchor='nw',font=('Consolas',11));label.pack(fill='both',expand=True,padx=20,pady=18)
+    window=panel(app,'StintLab · 性能诊断',680,465)
+    label=tk.Label(window,bg=T.BG,fg=T.FG,justify='left',anchor='nw',font=('Consolas',11));label.pack(fill='both',expand=True,padx=20,pady=18)
     snapshot={}
     def collect():
         nonlocal snapshot
@@ -57,11 +58,11 @@ def show_diagnostics(app,root):
 
 
 def show_library(app,root,render_review,make_report):
-    root=Path(root);window=panel(app,'InputScope · 比赛记录管理',1160,675)
+    root=Path(root);window=panel(app,'StintLab · 比赛记录管理',1160,675)
     state={'items':[],'busy':False};status=tk.StringVar(value='扫描记录中…')
-    filterbar=tk.Frame(window,bg='#101a28');filterbar.pack(fill='x',padx=15,pady=12)
+    filterbar=tk.Frame(window,bg=T.BG);filterbar.pack(fill='x',padx=15,pady=12)
     search=tk.StringVar();track=tk.StringVar(value='全部赛道');car=tk.StringVar(value='全部车辆');source=tk.StringVar(value='全部来源')
-    tk.Label(filterbar,text='搜索阶段 / 日期 / 车手 / 备注',bg='#101a28',fg='#c4d7ef').pack(side='left')
+    tk.Label(filterbar,text='搜索阶段 / 日期 / 车手 / 备注',bg=T.BG,fg=T.MUTED).pack(side='left')
     tk.Entry(filterbar,textvariable=search,width=24).pack(side='left',padx=6)
     trackbox=ttk.Combobox(filterbar,textvariable=track,state='readonly',width=26);trackbox.pack(side='left',padx=5)
     carbox=ttk.Combobox(filterbar,textvariable=car,state='readonly',width=24);carbox.pack(side='left',padx=5)
@@ -73,9 +74,9 @@ def show_library(app,root,render_review,make_report):
         tree.heading(k,text=label);tree.column(k,width=width,minwidth=70)
     ys=ttk.Scrollbar(tableframe,orient='vertical',command=tree.yview);xs=ttk.Scrollbar(tableframe,orient='horizontal',command=tree.xview)
     tree.configure(yscrollcommand=ys.set,xscrollcommand=xs.set);tree.grid(row=0,column=0,sticky='nsew');ys.grid(row=0,column=1,sticky='ns');xs.grid(row=1,column=0,sticky='ew');tableframe.rowconfigure(0,weight=1);tableframe.columnconfigure(0,weight=1)
-    note=tk.StringVar();traffic=tk.BooleanVar();note_row=tk.Frame(window,bg='#101a28');note_row.pack(fill='x',padx=15,pady=10)
-    tk.Label(note_row,text='练习备注',bg='#101a28',fg='#c4d7ef').pack(side='left');tk.Entry(note_row,textvariable=note).pack(side='left',fill='x',expand=True,padx=8)
-    tk.Checkbutton(note_row,text='交通影响（人工标记）',variable=traffic,bg='#101a28',fg='#c4d7ef',selectcolor='#22354b').pack(side='left')
+    note=tk.StringVar();traffic=tk.BooleanVar();note_row=tk.Frame(window,bg=T.BG);note_row.pack(fill='x',padx=15,pady=10)
+    tk.Label(note_row,text='练习备注',bg=T.BG,fg=T.MUTED).pack(side='left');tk.Entry(note_row,textvariable=note).pack(side='left',fill='x',expand=True,padx=8)
+    tk.Checkbutton(note_row,text='交通影响（人工标记）',variable=traffic,bg=T.BG,fg=T.MUTED,selectcolor=T.FIELD).pack(side='left')
     def selected():return [v for v in state['items'] if v['key'] in tree.selection()]
     def fill(*_):
         tree.delete(*tree.get_children());q=search.get().casefold()
@@ -168,15 +169,15 @@ def show_library(app,root,render_review,make_report):
     def race_images(v):
         from race_report import generate
         folder=Path(v['folder']);generate(folder);return folder
-    transferbar=tk.Frame(window,bg='#101a28');transferbar.pack(fill='x',padx=15)
+    transferbar=tk.Frame(window,bg=T.BG);transferbar.pack(fill='x',padx=15)
     for text,command in [('导出比赛包（可多选）',export_packages),('导入比赛包（可多选）',import_packages)]:
         tk.Button(transferbar,text=text,command=command).pack(side='left',padx=3,pady=3)
     tk.Button(transferbar,text='圈速单 / 比赛日志',command=lambda:action(race_images,os.startfile)).pack(side='left',padx=3,pady=3)
-    tk.Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg='#101a28',fg='#8fabc9').pack(side='left',padx=10)
-    buttons=tk.Frame(window,bg='#101a28');buttons.pack(fill='x',padx=15)
+    tk.Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg=T.BG,fg='#8fabc9').pack(side='left',padx=10)
+    buttons=tk.Frame(window,bg=T.BG);buttons.pack(fill='x',padx=15)
     for text,command in [('刷新',refresh),('分析 / 完整复盘',lambda:action(analyze,lambda path:(os.startfile(path),refresh()))),('同场圈 A／B',same_session),('最快圈页',lambda:action(lambda v:Path(v['folder'])/'fastest_lap.html',os.startfile)),('多选对比',compare),('设为锁定参考',lambda:action(choose_reference,lock_reference)),('保存备注',save),('压缩备份',lambda:action(lambda v:compress_session(v['folder']),lambda v:status.set(f"已校验压缩备份：{v['compressed_bytes']/1048576:.2f} MB；保留原 CSV"))),('恢复中断记录',lambda:action(recover,lambda path:refresh()))]:
         tk.Button(buttons,text=text,command=command).pack(side='left',padx=3,pady=8)
-    tk.Label(window,textvariable=status,bg='#101a28',fg='#8fabc9',anchor='w',wraplength=1110).pack(fill='x',padx=15,pady=8)
+    tk.Label(window,textvariable=status,bg=T.BG,fg='#8fabc9',anchor='w',wraplength=1110).pack(fill='x',padx=15,pady=8)
     for variable in (search,track,car,source):variable.trace_add('write',fill)
     refresh();return window
 
@@ -188,20 +189,20 @@ def show_lap_selection(app,root,folder):
     if dialogs is None:dialogs=app.lap_selection_windows={}
     existing=dialogs.get(str(folder))
     if existing is not None and existing.winfo_exists():existing.lift();existing.focus_force();return existing
-    window=panel(app,'InputScope · 同场完整圈对比',720,395);dialogs[str(folder)]=window
-    title=tk.Label(window,text=folder.name,bg='#101a28',fg='#dce9fb',font=('Segoe UI',11),wraplength=670,justify='left',anchor='w')
+    window=panel(app,'StintLab · 同场完整圈对比',720,395);dialogs[str(folder)]=window
+    title=tk.Label(window,text=folder.name,bg=T.BG,fg='#dce9fb',font=('Segoe UI',11),wraplength=670,justify='left',anchor='w')
     title.pack(fill='x',padx=18,pady=(15,10))
     status=tk.StringVar(window,value='后台扫描完整圈…');state={'busy':False,'laps':{},'output':None}
     vars={};boxes={}
     for key in ('A','B'):
-        row=tk.Frame(window,bg='#101a28');row.pack(fill='x',padx=18,pady=6)
-        tk.Label(row,text='圈 '+key,bg='#101a28',fg='#c6def5',font=('Segoe UI',11),width=6,anchor='w').pack(side='left')
+        row=tk.Frame(window,bg=T.BG);row.pack(fill='x',padx=18,pady=6)
+        tk.Label(row,text='圈 '+key,bg=T.BG,fg='#c6def5',font=('Segoe UI',11),width=6,anchor='w').pack(side='left')
         vars[key]=tk.StringVar(window)
         boxes[key]=ttk.Combobox(row,textvariable=vars[key],state='disabled',font=('Segoe UI',11),height=12)
         boxes[key].pack(side='left',fill='x',expand=True)
     tk.Label(window,text='仅列出起终点、采样和距离完整的圈。无效 / 进站标记会保留；\n此类圈可查看数据，但不生成驾驶改进建议，也不能用作 HUD 参考。',
-        bg='#101a28',fg='#91abc8',justify='left',anchor='w',wraplength=670).pack(fill='x',padx=18,pady=12)
-    actions=tk.Frame(window,bg='#101a28');actions.pack(fill='x',padx=18,pady=6);buttons={}
+        bg=T.BG,fg='#91abc8',justify='left',anchor='w',wraplength=670).pack(fill='x',padx=18,pady=12)
+    actions=tk.Frame(window,bg=T.BG);actions.pack(fill='x',padx=18,pady=6);buttons={}
     def enable(*_):
         ready=not state['busy'] and bool(state['laps'])
         for k in ('A','B'):
@@ -236,7 +237,7 @@ def show_lap_selection(app,root,folder):
     for key,text,command in [('A','提取圈 A',lambda:export(['A'])),('B','提取圈 B',lambda:export(['B'])),
             ('compare','提取两圈并对比',lambda:export(['A','B'],True)),('folder','打开提取目录',lambda:os.startfile(state['output']))]:
         buttons[key]=tk.Button(actions,text=text,command=command,state='disabled');buttons[key].pack(side='left',padx=(0,9),pady=5)
-    tk.Label(window,textvariable=status,bg='#101a28',fg='#9dc7e9',anchor='nw',justify='left',wraplength=670).pack(fill='both',expand=True,padx=18,pady=12)
+    tk.Label(window,textvariable=status,bg=T.BG,fg='#9dc7e9',anchor='nw',justify='left',wraplength=670).pack(fill='both',expand=True,padx=18,pady=12)
     for box in boxes.values():box.bind('<<ComboboxSelected>>',enable)
     def loaded(result):
         metadata,scan=result;title.config(text=metadata.get('track','')+' · '+metadata.get('vehicle','')+'\n'+folder.name)

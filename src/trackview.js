@@ -77,14 +77,14 @@ const InputScopeTrack=(()=>{
    if(!center||!a||!b)return xy;const dx=b[2]-a[2],dy=b[3]-a[3],n=Math.hypot(dx,dy)||1,side=(xy[0]-center[2])*(-dy/n)+(xy[1]-center[3])*(dx/n),extra=side*(Number(this.lineScale.value)-1);return [xy[0]-dy/n*extra,xy[1]+dx/n*extra];
   }
   background(){
-   const w=Math.max(220,this.canvas.clientWidth),h=Math.max(240,this.canvas.clientHeight),dpr=devicePixelRatio||1,key=[w,h,dpr,this.zoom,this.panX,this.panY,this.lineScale.value].join('|');
+   const w=Math.max(220,this.canvas.clientWidth),h=Math.max(240,this.canvas.clientHeight),dpr=devicePixelRatio||1,key=[globalThis.StintLabTheme?.mode||'dark',w,h,dpr,this.zoom,this.panX,this.panY,this.lineScale.value].join('|');
    if(key===this.key)return;this.key=key;this.w=w;this.h=h;this.dpr=dpr;this.zoomLabel.textContent=Math.round(this.zoom*100)+'%';
    this.canvas.width=this.back.width=Math.round(w*dpr);this.canvas.height=this.back.height=Math.round(h*dpr);
-   const c=this.bg;c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle='#101a28';c.fillRect(0,0,w,h);c.font='12px system-ui';
+   const c=this.bg;c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle=(globalThis.StintLabTheme?.color('CARD')||'#101a28');c.fillRect(0,0,w,h);c.font='12px system-ui';
    let shape=[];
    if(this.route){for(const e of this.entries)for(const p of e.points||[])shape.push([p[2],p[3]])}
    else if(this.diagram)shape=this.diagram.points.map(p=>p.slice(1));
-   if(!shape.length){c.fillStyle='#91a5c0';c.fillText(this.entries.length?'旧日志 / 圈内距离位置':'暂无圈数据',16,28);return}
+   if(!shape.length){c.fillStyle=(globalThis.StintLabTheme?.color('MUTED')||'#91a5c0');c.fillText(this.entries.length?'旧日志 / 圈内距离位置':'暂无圈数据',16,28);return}
    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
    for(const p of shape){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1])}
    const scale=Math.min((w-64)/Math.max(1,maxX-minX),(h-70)/Math.max(1,maxY-minY));
@@ -93,11 +93,11 @@ const InputScopeTrack=(()=>{
     for(const p of points){const xy=withTime&&points!==this.baseline?.points?this.linePosition(p.slice(2),p[1]):p.slice(withTime?2:1),position=this.project(...xy);
      const gap=previous&&(p[0]-previous[0]>1.5||Math.hypot(p[2]-previous[2],p[3]-previous[3])>Math.max(100,(p[0]-previous[0])*150+10));
      if(!previous||withTime&&gap)c.moveTo(...position);else c.lineTo(...position);previous=p}c.stroke()};
-   if(this.diagram){stroke(this.diagram.points,'#334962',9,false);stroke(this.diagram.points,'#8ca5c4',2,false)}
-   else{stroke((this.baseline||this.route).points,'#34485e',9,true);for(const e of this.entries)if(e.points?.length)stroke(e.points,e.color+'cc',1.7,true)}
+   if(this.diagram){stroke(this.diagram.points,(globalThis.StintLabTheme?.color('EDGE')||'#334962'),9,false);stroke(this.diagram.points,(globalThis.StintLabTheme?.color('MUTED')||'#8ca5c4'),2,false)}
+   else{stroke((this.baseline||this.route).points,(globalThis.StintLabTheme?.color('EDGE')||'#34485e'),9,true);for(const e of this.entries)if(e.points?.length)stroke(e.points,e.color+'cc',1.7,true)}
    if(this.selectedCorner){const part=this.selectedCorner,xy=this.route?interpolate(this.route.points,part.apex,1)?.slice(2):this.diagram?shapeAt(this.diagram,InputScopeLab.fraction(part.apex,this.length,this.calibration)):null;if(xy){const p=this.project(...xy);c.strokeStyle='#f4d67d';c.lineWidth=2;c.beginPath();c.arc(...p,13,0,Math.PI*2);c.stroke();c.fillStyle='#f4d67d';c.fillText(part.name,p[0]+17,p[1]-5)}}
    const start=this.route?this.route.points[0].slice(2):shapeAt(this.diagram,InputScopeLab.fraction(0,this.length,this.calibration)),p=this.project(...start);
-   c.fillStyle='#eef4ff';c.fillRect(p[0]-4,p[1]-4,8,8);if(p[0]>=0&&p[0]<=w&&p[1]>=0&&p[1]<=h){c.fillStyle='#a7bad2';c.fillText(this.route?.startLabel||'S/F',Math.min(w-55,p[0]+8),Math.max(16,p[1]-8))}
+   c.fillStyle=(globalThis.StintLabTheme?.color('FG')||'#eef4ff');c.fillRect(p[0]-4,p[1]-4,8,8);if(p[0]>=0&&p[0]<=w&&p[1]>=0&&p[1]<=h){c.fillStyle=(globalThis.StintLabTheme?.color('MUTED')||'#a7bad2');c.fillText(this.route?.startLabel||'S/F',Math.min(w-55,p[0]+8),Math.max(16,p[1]-8))}
   }
   draw(states){
    this.lastStates=states;this.background();const c=this.ctx,w=this.w,h=this.h;c.setTransform(1,0,0,1,0,0);c.drawImage(this.back,0,0);c.setTransform(this.dpr,0,0,this.dpr,0,0);c.font='12px system-ui';

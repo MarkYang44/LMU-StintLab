@@ -252,7 +252,8 @@ def write_compare(path, template, laps=(), status=None,reference_id=None,view_st
         for key,item in view_state.items():
             if key not in ('laps','status','reference_id'):value[key]=item
     template = Path(template)
-    source = template.read_text(encoding='utf-8').replace('/*LAP_DATA*/null','await StintLabData.jsonBlock("stintlab-laps")')
+    from control_theme import web_script
+    source = template.read_text(encoding='utf-8').replace('/*INTERFACE_THEME_JS*/',web_script(template.parent)).replace('/*LAP_DATA*/null','await StintLabData.jsonBlock("stintlab-laps")')
     source = source.replace('/*DATA_VIEW_JS*/',reporting.script(template.parent))
     if '/*TRACK_VIEW_JS*/' in source:
         source = source.replace('/*TRACK_VIEW_JS*/',track_script(template.parent))

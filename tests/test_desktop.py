@@ -2,6 +2,9 @@
 import os
 from pathlib import Path
 import struct
+import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -59,11 +62,103 @@ class DesktopTests(unittest.TestCase):
             for i,size in enumerate(SIZES):
                 w,h,_,_,planes,bits,length,offset=struct.unpack_from('<BBBBHHII',blob,6+i*16)
                 png=blob[offset:offset+length];self.assertEqual(png,(folder/f'stintlab-{size}.png').read_bytes())
-                self.assertEqual((w or 256,h or 256,planes,bits),(size,size,1,32))
+                self.assertEqual((w or 256,h or 256,bits),(size,size,32));self.assertIn(planes,(0,1))
                 self.assertEqual(png[:8],b'\x89PNG\r\n\x1a\n');self.assertEqual(struct.unpack_from('>II',png,16),(size,size))
                 self.assertGreater(length,200)
-    def test_only_reviewed_brand_vector_is_allowed_for_publication(self):
-        from tools.audit_publication import allowed
-        self.assertTrue(allowed('src/branding/stintlab.svg'))
-        for name in ('src/branding/personal.svg','src/branding/private.png','data/stintlab.svg'):
+    def test_only_exact_reviewed_gtd_assets_are_allowed_for_publication(self):
+        from tools.audit_publication import allowed,audit,PUBLIC_ASSETS
+        for name in PUBLIC_ASSETS:
+            self.assertTrue(allowed(name));self.assertTrue(audit([name],lambda n:(ROOT/n).read_bytes())['ok'])
+            self.assertFalse(audit([name],lambda _:b'personal image substituted')['ok'])
+        for name in ('src/branding/personal.svg','src/branding/private.png','data/stintlab.svg','src/branding/stintlab.svg','src/interface_settings.json'):
             self.assertFalse(allowed(name))
+
+    def pump(self,root,seconds=.6):
+        until=time.monotonic()+seconds
+        while time.monotonic()<until:root.update();time.sleep(.005)
+
+    def list_fixture(self,root):
+        from control_list import SessionList
+        table=SessionList(root,('date','type','track','car','lap'),height=9,selectmode='extended');table.pack(fill='both',expand=True)
+        table.replace([(str(i),(str(i),'Race','Spa','BMW','1:23.456')) for i in range(10000)])
+        root.update();return table
+
+    def test_wheel_accumulates_pixel_input_and_stops_with_no_idle_job(self):
+        import tkinter as tk
+        from types import SimpleNamespace
+        root=tk.Tk();root.geometry('800x500');table=self.list_fixture(root)
+        try:
+            for _ in range(5):table.wheel(SimpleNamespace(delta=-120,state=0))
+            self.assertAlmostEqual(table.scroller.target,table.rowheight*12)
+            root.update();self.assertLess(table.offset,table.scroller.target)
+            self.pump(root);self.assertAlmostEqual(table.offset,table.rowheight*12,delta=.3)
+            self.assertIsNone(table.scroller.job);self.assertLess(len(table.viewport.find_all()),130)
+            table.wheel(SimpleNamespace(delta=12000,state=0));self.pump(root)
+            self.assertEqual(table.offset,0);self.assertIsNone(table.scroller.job)
+            table.wheel(SimpleNamespace(delta=-120,state=0));table.destroy();root.update();self.assertIsNone(table.scroller.job)
+        finally:root.destroy()
+
+    def test_selection_is_immediate_multiselect_keyboard_and_filter_keep_ids(self):
+        import tkinter as tk
+        from types import SimpleNamespace
+        root=tk.Tk();root.geometry('800x500');table=self.list_fixture(root)
+        try:
+            table.choose('3');table.choose('7',control=True)
+            self.assertEqual(table.selection(),('3','7'));self.assertTrue(table.motion.jobs)
+            table.choose('10',shift=True);self.assertEqual(table.selection(),('7','8','9','10'))
+            table.cursor='10';table.key(SimpleNamespace(state=1),'Down');self.assertEqual(table.selection(),('7','8','9','10','11'))
+            selected=table.selection();table.replace([(str(i),('','','','','')) for i in (7,11,99)],selected)
+            root.update();self.assertEqual(table.selection(),('7','11'));self.assertEqual(table.indices,{'7':0,'11':1,'99':2})
+            table.scroller.move(100000);self.assertEqual(table.offset,0)
+            self.pump(root);self.assertFalse(table.motion.jobs)
+        finally:root.destroy()
+
+    def test_themes_persist_and_preserve_running_recorder_pure_hud_and_page(self):
+        import control_center,tkinter as tk
+        import control_theme
+        from app_config import COLORS
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory:
+            folder=Path(directory)
+            with patch('control_center.ROOT',folder),patch('hud.ROOT',folder),patch('engine.ROOT',folder),patch('recorder.make_report'):
+                center=control_center.ControlCenter();errors=[];center.root.report_callback_exception=lambda *args:errors.append(args)
+                try:
+                    center.start(True);hud=center.hud;engine=hud.engine;recorder=engine.recorder
+                    center.set_hud('mode','controls');self.pump(center.root,.2);count=recorder.samples
+                    center.set_theme('light');self.pump(center.root,.3)
+                    self.assertIs(center.hud,hud);self.assertIs(hud.engine,engine);self.assertIs(engine.recorder,recorder)
+                    self.assertGreater(recorder.samples,count);self.assertEqual(hud.canvas.cget('bg'),'#000000')
+                    center.show_page(1);center.root.update();center.search.set('Spa');center.set_theme('dark')
+                    self.assertEqual(center.page,1);self.assertEqual(center.search.get(),'Spa')
+                    center.set_theme('light');self.assertEqual(control_theme.T.mode,'light');self.assertEqual(COLORS,('#34e59a','#ff596b','#52b5ff'))
+                    self.assertEqual(center.root.cget('bg'),control_theme.PALETTES['light']['BG']);self.assertFalse(errors)
+                finally:
+                    center.close()
+                    try:
+                        while center.root.winfo_exists():center.root.update();time.sleep(.01)
+                    except tk.TclError:pass
+            with patch('control_center.ROOT',folder),patch('hud.Engine') as engine:
+                center=control_center.ControlCenter()
+                try:self.assertEqual(control_theme.T.mode,'light');engine.assert_not_called()
+                finally:center.close()
+
+    @unittest.skipUnless(shutil.which('node'),'Node available for offline report theme check')
+    def test_offline_report_theme_changes_without_storage_access(self):
+        from control_theme import web_script,T
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('paths.data_directory',return_value=Path(directory)),patch.object(T,'mode','dark'):
+            source=web_script(ROOT/'src')
+        fixture="""
+const colors={},events={},elements={},buttons=[];let resize=0;
+global.window=global;global.dispatchEvent=()=>resize++;
+global.localStorage={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')}};
+global.document={documentElement:{dataset:{},style:{setProperty(k,v){colors[k]=v}}},head:{append(){}},
+ createElement(){return {setAttribute(){}}},getElementById(id){return elements[id]},
+ querySelector(){return {append(v){elements[v.id]=v;buttons.push(v)}}},addEventListener(k,v){events[k]=v}};
+"""
+        after="""
+events.DOMContentLoaded();const first=StintLabTheme.mode;buttons[0].onclick();
+process.stdout.write(JSON.stringify({first,mode:StintLabTheme.mode,bg:colors['--sl-bg'],fg:StintLabTheme.color('FG'),resize}));
+"""
+        result=subprocess.run([shutil.which('node'),'-'],input=fixture+source+after,capture_output=True,text=True,encoding='utf-8',timeout=15)
+        self.assertEqual(result.returncode,0,result.stderr);value=json.loads(result.stdout)
+        self.assertEqual((value['first'],value['mode'],value['bg'],value['fg']),('dark','light','#e9e7e4','#262425'))
+        self.assertEqual(value['resize'],3)

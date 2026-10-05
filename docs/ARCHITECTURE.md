@@ -37,7 +37,7 @@ Recorder 的写盘及结束报告保留各自生命周期，App 继续等待 CSV
 
 `racecom_bridge` 用标准库写原版 XLSX / JSON / TXT，`renderer_process` 在独立受限生命周期中调用用户配置的原版生成器。Windows Job 关闭时结束属于本次任务的 PyInstaller 子进程，超时不会留下生成器。两个图像均成功才提交。`race_report` 缓存源文件、生成器、校准与照片哈希；更换生成方式备份旧报告。未配置原版不静默改变样式。兼容模式仍使用系统 GDI+ 逐页生成，CSV 摘要不持有整场样本。未知字段不补造，个人图像库不进入发布 ZIP。
 
-`control_center` 默认启动时不创建 Engine；HUD 启动后共享一个 Tcl 解释器并使用独立 Toplevel。停止 HUD 等待写盘与报告后释放 Engine 缓存，控制中心保留。分类设置通过 `control_settings` 验证并保留未编辑偏好，可在未启动 HUD 时保存，也可实时应用并记录策略历史。`control_widgets` 提供轻量磨砂风格组件，支持 DWM 圆角与半透明；没有第二个 EXE 或浏览器运行包。
+`control_center` 默认启动时不创建 Engine；HUD 启动后共享一个 Tcl 解释器并使用独立 Toplevel。停止 HUD 等待写盘与报告后释放 Engine 缓存，控制中心保留。分类设置通过 `control_settings` 验证并保留未编辑偏好，可在未启动 HUD 时保存，也可实时应用并记录策略历史。`control_widgets` 提供轻量工业风组件与可切换的深浅色配色，正文保持不透明；没有第二个 EXE 或浏览器运行包。
 
 ## 兼容与验证
 
@@ -45,4 +45,6 @@ CSV 字段、JSON 格式标记、原始 / 过滤后输入、采样设置和旧�
 
 开发测试只放在 tests/，开发工具只放在 tools/；便携包和编译 EXE 继续排除这些模块。发布白名单与个人数据哈希校验分别验证分享内容和本机数据保护。
 
-The desktop shell is separated into `control_shell.py` (DPI layout / navigation), `control_widgets.py` (glass surfaces / interactive controls), `control_motion.py` (cancellable elapsed-time transitions), and `branding.py` (window / taskbar identity). Build-only `tools/build_brand.py` renders the reviewed SVG using Windows GDI+ to multiresolution PNG / ICO; image and browser libraries are not added to runtime dependencies.
+The desktop shell is separated into `control_shell.py` (DPI layout / navigation), `control_widgets.py` (industrial surfaces / controls), `control_motion.py` (elapsed-time transitions / accumulated pixel scrolling), `control_list.py` (virtual session rows / selection / keyboard), `control_theme.py` (dark and light palettes / local preference / offline report embedding), and `branding.py` (window / taskbar identity). Theme changes rebuild the shell without recreating the HUD, Engine or recorder, and preserve page state. Table rendering is limited to visible rows; its text cache is bounded at 1024 entries. Completed animations schedule no frames.
+
+Build-only `tools/build_brand.py` copies two hash-reviewed GTD assets and extracts six existing PNG frames without image processing dependencies. `interface_theme.js` embeds the same palettes into standalone reports, stores only a theme preference locally, and invalidates chart backgrounds by including the mode in cache keys. Historical personal HTML and RaceCom image layouts are not rewritten by an application update.

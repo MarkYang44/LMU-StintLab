@@ -39,7 +39,7 @@ def main():
         if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
     assert {'library','laps','session_archive'}<=modules
     assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
-    assert {'control_shell','control_motion','branding'}<=modules
+    assert {'control_shell','control_motion','control_list','control_theme','branding'}<=modules
     import pefile
     executable=pefile.PE(str(bundle/'LMU-StintLab.exe'))
     resources={entry.id:entry for entry in executable.DIRECTORY_ENTRY_RESOURCE.entries}
@@ -51,7 +51,10 @@ def main():
     ico=(bundle/'_internal/src/branding/stintlab.ico').read_bytes();count=struct.unpack_from('<H',ico,4)[0];expected=[]
     for i in range(count):
         length,offset=struct.unpack_from('<II',ico,6+i*16+8);expected.append(ico[offset:offset+length])
-    assert set(icons)==set(expected) and count==9,'EXE icon differs from reviewed brand'
+    assert set(icons)==set(expected) and count==6,'EXE icon differs from reviewed GTD icon'
+    from tools.audit_publication import PUBLIC_ASSETS
+    assert hashlib.sha256(ico).hexdigest()==PUBLIC_ASSETS['src/branding/gtd.ico']
+    assert hashlib.sha256((bundle/'_internal/src/branding/menu-icon.png').read_bytes()).hexdigest()==PUBLIC_ASSETS['src/branding/gtd-menu.png']
     executable.close()
     print('Portable manifest, privacy and development-code exclusion: PASS',flush=True)
     if args.smoke:

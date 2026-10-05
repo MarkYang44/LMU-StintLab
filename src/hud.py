@@ -9,6 +9,9 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
+from control_theme import T
+import control_theme
+
 import endurance
 import vehiclelab
 from app_config import COLORS, INPUT_CHANNELS, ROOT
@@ -28,6 +31,7 @@ from telemetry_import import import_recording
 class App:
     def __init__(self, demo=False, clean=False, clean_controls=False, root=None, on_menu=None):
         self.root = root if root is not None else tk.Tk()
+        control_theme.load(ROOT/'interface_settings.json')
         self.on_menu=on_menu
         self.root.title('LMU StintLab' + (' · DEMO' if demo else ''))
         from branding import apply
@@ -35,7 +39,7 @@ class App:
         self.root.geometry('640x228+70+70')
         self.root.minsize(440, 160)
         self.root.overrideredirect(True)
-        self.root.configure(bg='#0c111a')
+        self.root.configure(bg=T.BG)
         self.top = tk.BooleanVar(self.root,value=True)
         self.root.attributes('-topmost', True)
         self.root.attributes('-alpha', 1.0)
@@ -91,7 +95,7 @@ class App:
             if self.drag_origin:
                 x, y = event.x_root - self.drag_origin[0], event.y_root - self.drag_origin[1]
                 self.root.geometry(f'{x:+d}{y:+d}')
-        menu = tk.Menu(self.root, tearoff=False, bg='#172236', fg='#eef4ff')
+        menu = tk.Menu(self.root, tearoff=False, bg=T.CARD, fg=T.FG)
         menu.add_command(label='打开控制中心',command=self.open_control_center)
         menu.add_command(label='打开记录', command=self.open_logs)
         menu.add_command(label='打开 CSV 复盘', command=self.review_csv)
@@ -107,12 +111,12 @@ class App:
         menu.add_radiobutton(label='参考类型：典型稳定圈（至少 3 圈）',variable=self.reference_kind,value='stable',command=self.apply_reference)
         menu.add_command(label='演示 / 真实遥测', command=self.toggle_demo)
         menu.add_command(label='采样与刷新设置（F10）', command=self.show_sampling_settings)
-        vehicle_menu=tk.Menu(menu,tearoff=False,bg='#172236',fg='#eef4ff')
+        vehicle_menu=tk.Menu(menu,tearoff=False,bg=T.CARD,fg=T.FG)
         vehicle_menu.add_checkbutton(label='四轮轮胎 HUD',variable=self.tyres_on,command=lambda:self.vehicle_panels.toggle('tyres'))
         vehicle_menu.add_checkbutton(label='燃油与能量 HUD',variable=self.strategy_on,command=lambda:self.vehicle_panels.toggle('strategy'))
         vehicle_menu.add_command(label='车型阈值与策略设置',command=lambda:self.vehicle_panels.settings_dialog())
         menu.add_cascade(label='轮胎与燃油 / 能量',menu=vehicle_menu)
-        endurance_menu=tk.Menu(menu,tearoff=False,bg='#172236',fg='#eef4ff')
+        endurance_menu=tk.Menu(menu,tearoff=False,bg=T.CARD,fg=T.FG)
         for kind,label in [('pit','进站分析 HUD'),('stint','Stint 长距离 HUD'),('weather','天气与赛道 HUD')]:
             endurance_menu.add_checkbutton(label=label,variable=getattr(self,kind+'_on'),command=lambda k=kind:self.endurance_panels.toggle(k))
         endurance_menu.add_command(label='进站 / Stint / 天气设置',command=lambda:self.endurance_panels.settings_dialog())
@@ -139,7 +143,7 @@ class App:
             menu.add_command(label=f'不透明度 {int(opacity * 100)}%',
                              command=lambda value=opacity: self.root.attributes('-alpha', value))
         menu.add_command(label='鼠标穿透 / 解锁（F8）', command=self.toggle_clickthrough)
-        self.canvas = tk.Canvas(self.root, bg='#0c111a', highlightthickness=0)
+        self.canvas = tk.Canvas(self.root, bg=T.BG, highlightthickness=0)
         self.canvas.bind('<Button-1>', begin_drag)
         self.canvas.bind('<B1-Motion>', move_drag)
         self.canvas.bind('<Button-3>', lambda event: menu.tk_popup(event.x_root, event.y_root))
@@ -342,6 +346,15 @@ class App:
                 self.root.after_cancel(self.draw_job)
             self.draw_job = self.root.after_idle(self.queue_draw)
 
+    def apply_theme(self):
+        """Refresh chrome without replacing the Engine, recorder or pure HUD."""
+        color='#000000' if self.hud_mode.get()!='normal' else T.BG
+        self.root.configure(bg=color);self.canvas.configure(bg=color);self.chrome_key=None
+        for child in self.root.winfo_children():
+            if isinstance(child,tk.Menu):
+                child.configure(bg=T.CARD,fg=T.FG,activebackground=T.BUTTON,activeforeground=T.INK)
+        self.render_wake.set()
+
     def apply_clean_mode(self):
         mode = self.hud_mode.get()
         if mode == self.applied_hud_mode:
@@ -362,9 +375,9 @@ class App:
             self.root.minsize(440, 160)
             width, height = self.normal_size
             self.root.geometry(f'{width}x{height}')
-            self.root.configure(bg='#0c111a')
+            self.root.configure(bg=T.BG)
             self.root.attributes('-alpha', self.normal_opacity)
-            self.canvas.configure(bg='#0c111a')
+            self.canvas.configure(bg=T.BG)
             self.canvas.pack(fill='both', expand=True)
         self.applied_hud_mode = mode
         self.chrome_key = None
@@ -425,15 +438,15 @@ class App:
         dialog = tk.Toplevel(self.root)
         self.settings_dialog = dialog
         dialog.title('InputScope · 采样与刷新设置')
-        dialog.configure(bg='#111a29')
+        dialog.configure(bg=T.BG)
         dialog.attributes('-topmost', True)
         dialog.resizable(False, False)
-        panel = tk.Frame(dialog, bg='#111a29', padx=22, pady=18)
+        panel = tk.Frame(dialog, bg=T.BG, padx=22, pady=18)
         panel.pack(fill='both', expand=True)
-        tk.Label(panel,text='采样与刷新',bg='#111a29',fg='#eef4ff',font=('Segoe UI',15,'bold')).grid(row=0,column=0,columnspan=2,sticky='w')
+        tk.Label(panel,text='采样与刷新',bg=T.BG,fg=T.FG,font=('Segoe UI',15,'bold')).grid(row=0,column=0,columnspan=2,sticky='w')
         variables = {key:tk.StringVar(value=str(value)) for key,value in self.settings.items()
                      if key != 'input_channel'}
-        modes = tk.Frame(panel,bg='#111a29')
+        modes = tk.Frame(panel,bg=T.BG)
         modes.grid(row=1,column=0,columnspan=2,sticky='w',pady=(10,6))
         inputs = {}
         def mode_changed():
@@ -445,7 +458,7 @@ class App:
                 widget.configure(state='normal' if enabled else 'disabled')
         for text,value in (('固定采样','fixed'),('动态采样','dynamic')):
             tk.Radiobutton(modes,text=text,value=value,variable=variables['mode'],command=mode_changed,
-                           bg='#111a29',fg='#dce7f8',selectcolor='#26364f',activebackground='#111a29',activeforeground='#ffffff').pack(side='left',padx=(0,15))
+                           bg=T.BG,fg=T.FG,selectcolor=T.FIELD,activebackground=T.BG,activeforeground='#ffffff').pack(side='left',padx=(0,15))
         for row,(key,label,maximum,increment) in enumerate((
                 ('fixed_hz','固定目标（1–4000 Hz）',4000,1),
                 ('min_hz','动态最低（1–4000 Hz）',4000,1),
@@ -454,29 +467,29 @@ class App:
                 ('hold_s','降频延迟（秒）',30,0.1),
                 ('brake_pct','刹车升频（%，0 为关闭）',100,1),
                 ('draw_hz','手动 HUD 绘制（1–4000 Hz）',4000,1)), start=3):
-            tk.Label(panel,text=label,bg='#111a29',fg='#becde3',anchor='w').grid(row=row,column=0,sticky='w',pady=5,padx=(0,28))
+            tk.Label(panel,text=label,bg=T.BG,fg=T.MUTED,anchor='w').grid(row=row,column=0,sticky='w',pady=5,padx=(0,28))
             entry = tk.Spinbox(panel,textvariable=variables[key],from_=0 if key=='brake_pct' else 0.1 if key in ('hold_s','change_pct_s') else 1,
-                               to=maximum,increment=increment,width=12,bg='#24334b',fg='#f4f7ff',insertbackground='#ffffff',
-                               disabledbackground='#182233',disabledforeground='#62748e',buttonbackground='#35465e',relief='flat')
+                               to=maximum,increment=increment,width=12,bg=T.FIELD,fg=T.FG,insertbackground='#ffffff',
+                               disabledbackground=T.CARD,disabledforeground=T.MUTED,buttonbackground=T.EDGE,relief='flat')
             entry.grid(row=row,column=1,sticky='e',pady=5)
             inputs[key] = entry
-        presets = tk.Frame(panel,bg='#111a29')
+        presets = tk.Frame(panel,bg=T.BG)
         presets.grid(row=2,column=0,columnspan=2,sticky='w',pady=(0,8))
         def preset(name):
             for key,value in PRESETS[name].items():
                 variables[key].set(str(value))
             mode_changed()
         for name in PRESETS:
-            tk.Button(presets,text=name+'预设',command=lambda value=name:preset(value),bg='#26364f',fg='#dce7f8',relief='flat',padx=10).pack(side='left',padx=(0,7))
+            tk.Button(presets,text=name+'预设',command=lambda value=name:preset(value),bg=T.FIELD,fg=T.FG,relief='flat',padx=10).pack(side='left',padx=(0,7))
         tk.Checkbutton(panel,text='HUD 绘制跟随采样频率（推荐）',variable=variables['draw_mode'],
                        onvalue='sync',offvalue='manual',command=mode_changed,
-                       bg='#111a29',fg='#dce7f8',selectcolor='#26364f',activebackground='#111a29',
+                       bg=T.BG,fg=T.FG,selectcolor=T.FIELD,activebackground=T.BG,
                        activeforeground='#ffffff').grid(row=10,column=0,columnspan=2,sticky='w',pady=(7,0))
-        info = tk.Label(panel,text='',bg='#111a29',fg='#52b5ff',justify='left',anchor='w')
+        info = tk.Label(panel,text='',bg=T.BG,fg='#52b5ff',justify='left',anchor='w')
         info.grid(row=11,column=0,columnspan=2,sticky='w',pady=(13,5))
         tk.Label(panel,text='同步模式：HUD 与采样目标一起升降频，无 240 Hz 上限。\n实际新数据受游戏限制，可见帧率受显示器和系统性能限制。\n动态模式：输入变化或刹车升频，平稳后延迟降频。',
-                 bg='#111a29',fg='#8fa2be',justify='left',anchor='w').grid(row=12,column=0,columnspan=2,sticky='w',pady=(2,12))
-        error = tk.Label(panel,text='',bg='#111a29',fg='#ff8194',wraplength=400,justify='left')
+                 bg=T.BG,fg=T.MUTED,justify='left',anchor='w').grid(row=12,column=0,columnspan=2,sticky='w',pady=(2,12))
+        error = tk.Label(panel,text='',bg=T.BG,fg='#ff8194',wraplength=400,justify='left')
         error.grid(row=13,column=0,columnspan=2,sticky='w')
         def mark_pending(*_):
             error.configure(text='参数已修改，点击“应用并保存”生效。',fg='#e8bf7e')
@@ -492,10 +505,10 @@ class App:
                 error.configure(text='已应用并保存；采集不中断。',fg='#34e59a')
             except (ValueError,OSError) as problem:
                 error.configure(text=str(problem),fg='#ff8194')
-        actions = tk.Frame(panel,bg='#111a29')
+        actions = tk.Frame(panel,bg=T.BG)
         actions.grid(row=14,column=0,columnspan=2,sticky='e',pady=(10,0))
-        tk.Button(actions,text='关闭',command=dialog.destroy,bg='#26364f',fg='#dce7f8',relief='flat',padx=16).pack(side='left',padx=6)
-        tk.Button(actions,text='应用并保存',command=apply,bg='#315a84',fg='#ffffff',relief='flat',padx=16).pack(side='left')
+        tk.Button(actions,text='关闭',command=dialog.destroy,bg=T.FIELD,fg=T.FG,relief='flat',padx=16).pack(side='left',padx=6)
+        tk.Button(actions,text='应用并保存',command=apply,bg=T.MARK,fg='#ffffff',relief='flat',padx=16).pack(side='left')
         def refresh():
             if not dialog.winfo_exists():
                 return
@@ -524,7 +537,7 @@ class App:
 
     def paint_chrome(self, w, h, clean, controls=False):
         """Cache vector glass surfaces outside the live refresh path."""
-        key = (w, h, clean, controls)
+        key = (w, h, clean, controls, T.mode)
         if key == self.chrome_key:
             return
         self.chrome_key = key
@@ -536,59 +549,53 @@ class App:
             self.user32.SetWindowRgn(handle, None, True)
             if controls:
                 for bounds in hud_layout(w,h,True,True)['pedals']:
-                    c.create_rectangle(*bounds,fill='#111820',outline='#273748',tags='chrome')
+                    c.create_rectangle(*bounds,fill=T.FIELD,outline=T.EDGE,tags='chrome')
                 c.tag_lower('chrome')
             return
         region = self.gdi32.CreateRoundRectRgn(0, 0, w+1, h+1, round(32*s), round(32*s))
         if region and not self.user32.SetWindowRgn(handle, region, True):
             self.gdi32.DeleteObject(region)
-        # Soft glass tint and a cool upper reflection, kept opaque for legibility.
-        for step in range(48):
-            t = step / 47
-            rgb = tuple(round(a * (1-t) + b * t) for a, b in zip((44,57,76), (13,20,32)))
-            color = '#%02x%02x%02x' % rgb
-            c.create_rectangle(0, step*h/48, w, (step+1)*h/48+1,
-                               fill=color, outline='', tags='chrome')
-        self.rounded(1, 1, w-1, h-1, 16*s, fill='', outline='#708199', width=1, tags='chrome')
-        c.create_line(23*s, 1, w-23*s, 1, fill='#b0bed0', tags='chrome')
-        c.create_text(18*s, 18*s, text='INPUTSCOPE', fill='#f1f5fb', anchor='w',
+        # Static industrial surface, cached outside the telemetry draw path.
+        c.create_rectangle(0,0,w,h,fill=T.BG,outline='',tags='chrome')
+        self.rounded(1, 1, w-1, h-1, 16*s, fill='', outline=T.EDGE, width=1, tags='chrome')
+        c.create_line(23*s, 1, w-23*s, 1, fill=T.ACCENT, tags='chrome')
+        c.create_text(18*s, 18*s, text='STINTLAB', fill=T.FG, anchor='w',
                       font=('Segoe UI', -max(10,round(12*s)), 'bold'), tags='chrome')
-        self.rounded(w-74*s, 7*s, w-40*s, 29*s, 10*s, fill='#39465a', outline='#59667b', tags='chrome')
-        c.create_text(w-57*s, 17*s, text='•••', fill='#e4ecf8', font=('Segoe UI', -round(13*s)), tags='chrome')
-        c.create_text(w-22*s, 17*s, text='×', fill='#aab9cf', font=('Segoe UI', -round(18*s)), tags='chrome')
+        self.rounded(w-74*s, 7*s, w-40*s, 29*s, 10*s, fill=T.FIELD, outline=T.EDGE, tags='chrome')
+        c.create_text(w-57*s, 17*s, text='•••', fill=T.FG, font=('Segoe UI', -round(13*s)), tags='chrome')
+        c.create_text(w-22*s, 17*s, text='×', fill=T.MUTED, font=('Segoe UI', -round(18*s)), tags='chrome')
         card_width = (w-44*s)/3
-        for lane, (name, tint, color) in enumerate(zip(('THROTTLE / 油门', 'BRAKE / 刹车', 'STEERING / 转向'),
-                                                     ('#263f3d','#44353f','#2b3d52'), COLORS)):
+        for lane, (name, color) in enumerate(zip(('THROTTLE / 油门', 'BRAKE / 刹车', 'STEERING / 转向'),control_theme.signal_colors(COLORS))):
             x = 14*s + lane*(card_width+8*s)
-            self.rounded(x, 37*s, x+card_width, 82*s, 12*s, fill=tint, outline='#526174', tags='chrome')
-            c.create_line(x+12*s, 38*s, x+card_width-12*s, 38*s, fill='#6b7c8b', tags='chrome')
+            self.rounded(x, 37*s, x+card_width, 82*s, 12*s, fill=T.CARD, outline=T.EDGE, tags='chrome')
+            c.create_line(x+12*s, 38*s, x+card_width-12*s, 38*s, fill=T.EDGE, tags='chrome')
             c.create_oval(x+10*s, 47*s, x+15*s, 52*s, fill=color, outline='', tags='chrome')
             c.create_text(x+21*s, 50*s, text=name if w>=560 else ('油门','刹车','转向')[lane],
-                          fill='#c1cbda', anchor='w', font=('Segoe UI', -max(9,round(10*s))), tags='chrome')
+                          fill=T.MUTED, anchor='w', font=('Segoe UI', -max(9,round(10*s))), tags='chrome')
         layout = hud_layout(w,h)
         x0,x1,y0,y1 = layout['plot']
-        self.rounded(14*s,89*s,x1+10*s,h-27*s,12*s,fill='#121d2b',outline='#42516a',tags='chrome')
-        c.create_line(28*s,90*s,x1-4*s,90*s,fill='#6a7d95',tags='chrome')
+        self.rounded(14*s,89*s,x1+10*s,h-27*s,12*s,fill=T.CARD,outline=T.EDGE,tags='chrome')
+        c.create_line(28*s,90*s,x1-4*s,90*s,fill=T.EDGE,tags='chrome')
         for grid in range(1,4):
             y = y0+(y1-y0)*grid/4
-            c.create_line(x0,y,x1,y,fill='#243245', tags='chrome')
+            c.create_line(x0,y,x1,y,fill=T.FIELD, tags='chrome')
         for grid in range(1,6):
             x = x0+(x1-x0)*grid/6
-            c.create_line(x,y0,x,y1,fill='#1c2a3d', tags='chrome')
+            c.create_line(x,y0,x,y1,fill=T.FIELD, tags='chrome')
         px0,py0,px1,py1 = layout['panel']
-        self.rounded(px0,py0,px1,py1,12*s,fill='#121d2b',outline='#42516a',tags='chrome')
-        c.create_line(px0+12*s,py0+s,px1-12*s,py0+s,fill='#6a7d95',tags='chrome')
-        for bounds,label,color in zip(layout['pedals'],('B','T'),(COLORS[1],COLORS[0])):
+        self.rounded(px0,py0,px1,py1,12*s,fill=T.CARD,outline=T.EDGE,tags='chrome')
+        c.create_line(px0+12*s,py0+s,px1-12*s,py0+s,fill=T.EDGE,tags='chrome')
+        for bounds,label,color in zip(layout['pedals'],('B','T'),(control_theme.signal_colors(COLORS)[1],control_theme.signal_colors(COLORS)[0])):
             bx0,by0,bx1,by1 = bounds
             self.rounded(bx0-2*s,by0-2*s,bx1+2*s,by1+2*s,4*s,
-                         fill='#182536',outline='#35465e',tags='chrome')
+                         fill=T.FIELD,outline=T.EDGE,tags='chrome')
             c.create_text((bx0+bx1)/2,py0+12*s,text=label,fill=color,
                           font=('Segoe UI',-max(8,round(9*s)),'bold'),tags='chrome')
         cx,cy,radius = layout['wheel']
         c.create_oval(cx-radius-3*s,cy-radius-3*s,cx+radius+3*s,cy+radius+3*s,
-                      outline='#25384c',width=1,tags='chrome')
+                      outline=T.EDGE,width=1,tags='chrome')
         c.create_line(cx,cy-radius-3*s,cx,cy-radius+2*s,fill='#52b5ff',width=1.5,tags='chrome')
-        c.create_text(cx,py0+12*s,text='M4 GT3 · 540°',fill='#91a8c5',
+        c.create_text(cx,py0+12*s,text='M4 GT3 · 540°',fill=T.MUTED,
                       font=('Segoe UI',-max(7,round(8*s))),tags='chrome')
         c.tag_lower('chrome')
 
@@ -655,12 +662,12 @@ class App:
         clean = mode != 'normal'
         controls = mode == 'controls'
         w, h = max(4, c.winfo_width()), max(4, c.winfo_height())
-        if self.live_key != (w,h,mode):
+        if self.live_key != (w,h,mode,T.mode):
             c.delete('live')
             c.delete('wheel')
             self.live_items.clear()
             self.wheel_display = None
-            self.live_key = (w,h,mode)
+            self.live_key = (w,h,mode,T.mode)
         self.paint_chrome(w, h, clean, controls)
         s = min(w/640,h/228)
         window = float(self.window.get())
@@ -687,11 +694,11 @@ class App:
         values = latest['controls'][input_offset:input_offset+3] if latest else [0, 0, 0]
         if not clean:
             self.live_item('input_channel',c.create_text,111*s,18*s,
-                           text=f'/  LMU · {channel_label} · F7',fill='#a9bdd7',anchor='w',
+                           text=f'/  LMU · {channel_label} · F7',fill=T.MUTED,anchor='w',
                            font=('Segoe UI',-max(9,round(10*s))))
         if not clean or controls:
             self.paint_controls(layout,values,clean=clean)
-        for lane, (name, color, value) in enumerate(zip(('油门', '刹车', '转向'), COLORS, values)):
+        for lane, (name, color, value) in enumerate(zip(('油门', '刹车', '转向'), control_theme.signal_colors(COLORS), values)):
             value_text = f'{value * 100:+.0f}%' if lane == 2 else f'{value * 100:.0f}%'
             if not clean:
                 card_width = (w-44*s)/3
@@ -733,17 +740,17 @@ class App:
         lock = '穿透' if self.clickthrough else '可拖动'
         if not clean:
             self.live_item('state',c.create_oval,16*s,h-17*s,21*s,h-12*s,
-                           fill=COLORS[1] if failure else COLORS[0] if self.engine.recorder.file else '#8da1bd',outline='')
+                           fill=COLORS[1] if failure else COLORS[0] if self.engine.recorder.file else T.MUTED,outline='')
             mode = 'DYN' if self.settings['mode']=='dynamic' else 'FIX'
             self.live_item('rates',c.create_text,28*s,h-14*s,
                            text=f'{state} {mode}{self.engine.target_hz}   ·   新{sample_hz:.0f} / 绘{draw_hz:.0f} Hz',
-                           fill='#a9b9d0',anchor='w',font=('Segoe UI',-max(9,round(10*s))))
+                           fill=T.MUTED,anchor='w',font=('Segoe UI',-max(9,round(10*s))))
             alignment=getattr(self.engine,'reference_state',{})
             approximate=isinstance(alignment,dict) and (alignment.get('confidence',1)<.6 or alignment.get('conditions',{}).get('unknown'))
             self.live_item('keys',c.create_text,w-16*s,h-14*s,
                            text=('写盘异常 · 该段已停止' if failure else f'REF{"≈" if approximate else ""} {reference_latest[-1]:+.3f}s · F6' if self.reference_on.get() and reference_latest else
                                  ('REF '+self.engine.reference_state.get('mode','未匹配')+' · F6' if self.reference_on.get() else f'{int(window)}s   ·   F8 {lock}   ·   F9 纯净')),
-                           fill='#889ab4',anchor='e',font=('Segoe UI',-max(9,round(10*s))))
+                           fill=T.MUTED,anchor='e',font=('Segoe UI',-max(9,round(10*s))))
         # Tk queues canvas painting as an idle task. Acknowledge after that task,
         # without a nested update_idletasks loop consuming future render callbacks.
         self.draw_job = self.root.after_idle(self.finish_draw)
@@ -792,7 +799,7 @@ class App:
         # as the waveforms. These controls have no separate refresh timer.
         s = layout['scale']
         for bounds,value,color,key in zip(layout['pedals'],(values[1],values[0]),
-                                         (COLORS[1],COLORS[0]),('brake','throttle')):
+                                         (control_theme.signal_colors(COLORS,clean)[1],control_theme.signal_colors(COLORS,clean)[0]),('brake','throttle')):
             self.live_item(key+'_bar',self.canvas.create_rectangle,*pedal_fill(bounds,value),
                            fill=color,outline='',state='normal' if value>0 else 'hidden')
             if not clean:
@@ -801,12 +808,12 @@ class App:
                                font=('Segoe UI',-max(8,round(9*s)),'bold'))
         if self.wheel_display is None:
             self.wheel_display = WheelDisplay(self.canvas,*layout['wheel'],
-                                              background='#000000' if clean else '#121d2b')
+                                              background='#000000' if clean else T.CARD)
         angle = steering_angle(values[2])
         self.wheel_display.set_angle(angle)
         if not clean:
             self.live_item('wheel_degrees',self.canvas.create_text,layout['wheel'][0],
-                           layout['panel'][3]-10*s,text=f'{angle:+.0f}°',fill='#b9d9fa',
+                           layout['panel'][3]-10*s,text=f'{angle:+.0f}°',fill=T.MUTED,
                            font=('Segoe UI',-max(8,round(10*s)),'bold'))
 
     def paint_trace(self, coords, lane, clean):
@@ -814,7 +821,7 @@ class App:
         if not clean:
             self.canvas.create_line(*coords, fill=('#204b44','#502d3b','#23435d')[lane],
                                     width=4, capstyle='round', joinstyle='bevel', tags='trace')
-        self.canvas.create_line(*coords, fill=COLORS[lane], width=1.8 if not clean else 2,
+        self.canvas.create_line(*coords, fill=control_theme.signal_colors(COLORS,clean)[lane], width=1.8 if not clean else 2,
                                 capstyle='round', joinstyle='bevel', tags='trace')
 
     def close(self):

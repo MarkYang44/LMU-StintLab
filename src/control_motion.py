@@ -1,5 +1,6 @@
 """Short, cancellable UI transitions; zero frame callbacks while idle."""
 import time
+import math
 import tkinter as tk
 
 
@@ -28,5 +29,42 @@ class Motion:
             self.jobs.pop(key,None)
             if not self.widget.winfo_exists():return
             t=min(1,(time.perf_counter()-started)*1000/max(1,duration));paint(ease(t))
-            if t<1:self.jobs[key]=self.widget.after(16,frame)
+            if t<1:self.jobs[key]=self.widget.after(10,frame)
         frame()
+
+
+class SmoothScroll:
+    """Accumulate wheel input in pixels, retarget without restarting velocity.
+
+    Limits are read on each frame so resizing/filtering cannot overscroll.
+    Scrollbar dragging is immediate and cancels the remaining wheel motion.
+    """
+    def __init__(self,widget,position,limit,paint):
+        self.widget=widget;self.position=position;self.limit=limit;self.paint=paint
+        self.target=0.;self.job=None;self.last=0.
+        widget.bind('<Destroy>',self.destroy,add='+')
+    def destroy(self,event):
+        if event.widget is self.widget:self.cancel()
+    def cancel(self):
+        if self.job is not None:
+            try:self.widget.after_cancel(self.job)
+            except tk.TclError:pass
+        self.job=None
+        try:self.target=self.position()
+        except tk.TclError:self.target=0.
+    def move(self,value):
+        self.cancel();self.target=max(0,min(self.limit(),value));self.paint(self.target)
+    def add(self,delta):
+        if self.job is None:self.target=self.position()
+        self.target=max(0,min(self.limit(),self.target+delta))
+        if self.job is None:
+            self.last=time.perf_counter();self.job=self.widget.after(10,self.frame)
+    def frame(self):
+        self.job=None
+        if not self.widget.winfo_exists():return
+        now=time.perf_counter();dt=min(.1,max(.001,now-self.last));self.last=now
+        maximum=self.limit();current=max(0,min(maximum,self.position()))
+        self.target=max(0,min(maximum,self.target));gap=self.target-current
+        if abs(gap)<.3:self.paint(self.target);return
+        self.paint(current+gap*(1-math.exp(-dt/.045)))
+        self.job=self.widget.after(10,self.frame)

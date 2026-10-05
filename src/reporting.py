@@ -130,7 +130,8 @@ def render_review(folder,assets,track_js,fastest=None,output=None):
     with (folder/'inputs.csv').open(encoding='utf-8-sig',newline='') as f:
         first=next(csv.DictReader(f),None)
         payload['native_time_offset_s']=(float(first['time_s'])-float(first['session_time_s'])) if first else 0
-    source=(assets/'report.html').read_text(encoding='utf-8')
+    from control_theme import web_script
+    source=(assets/'report.html').read_text(encoding='utf-8').replace('/*INTERFACE_THEME_JS*/',web_script(assets))
     for marker,text in [('/*DATA_VIEW_JS*/',script(assets)),('/*TRACK_VIEW_JS*/',track_js),
         ('/*VEHICLE_VIEW_JS*/',(assets/'vehicleview.js').read_text(encoding='utf-8')),
         ('/*ENDURANCE_VIEW_JS*/',(assets/'enduranceview.js').read_text(encoding='utf-8')),

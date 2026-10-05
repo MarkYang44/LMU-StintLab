@@ -5,18 +5,21 @@ import threading
 from types import SimpleNamespace
 from pathlib import Path
 import tkinter as tk
+from control_theme import T
 from tkinter import ttk,filedialog,messagebox
 from app_config import ROOT
 from background import BackgroundTasks
-from control_widgets import BG,CARD,FG,MUTED,ACCENT,GlassCard,Pill,Switch,CardGrid,LaunchArtwork,backdrop,px
+from control_widgets import GlassCard,Pill,Switch,CardGrid,LaunchArtwork,backdrop,px
 from paths import ASSETS
 from control_shell import Shell
+from control_list import SessionList
 import branding
 import control_settings
 import renderer_config
 import sampling
 import vehiclelab
 import endurance
+import control_theme
 
 PAGES=('运行与 HUD','赛事复盘','曲线对比','采样与遥测','图像与数据')
 SUBTITLES=('比赛中保持专注。所有控制，在这里。','你的赛事、圈速单与日志，集中在一处。','完整圈 / 距离对齐 / 轨迹与驾驶分析','分别配置输入采样、轮胎策略与耐力赛遥测。','RaceCom 原版报告与本地赛事包。')
@@ -26,7 +29,8 @@ class ControlCenter:
     def __init__(self,root=None,hud=None):
         self.root=root or tk.Tk();self.hud=hud;self.closing=False;self.attached=hud is not None
         self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
-        self.root.title('LMU StintLab · 控制中心');self.root.configure(bg=BG)
+        control_theme.load(ROOT/'interface_settings.json')
+        self.root.title('LMU StintLab · 控制中心');self.root.configure(bg=T.BG)
         self.root.protocol('WM_DELETE_WINDOW',self.hide if self.attached else self.close)
         from race_model import read_json
         self.reference_settings=read_json(ROOT/'reference_settings.json',{})
@@ -36,35 +40,71 @@ class ControlCenter:
         self.reference_locked=tk.BooleanVar(self.root,value=bool(self.reference_settings.get('locked',False)))
         self.engine=SimpleNamespace(lock=threading.Lock(),reference=None,aligner=None)
         self.status=tk.StringVar(self.root,value='就绪 · 记录仅保存在本机')
-        style=ttk.Style(self.root);style.theme_use('clam')
-        style.configure('Lab.Treeview',background=CARD,foreground=FG,fieldbackground=CARD,rowheight=px(self.root,40),borderwidth=0,font=('Microsoft YaHei UI',9))
-        style.configure('Lab.Treeview.Heading',background='#273c55',foreground=MUTED,relief='flat',font=('Microsoft YaHei UI',9,'bold'))
-        style.map('Lab.Treeview',background=[('selected','#365777')],foreground=[('selected',FG)])
-        style.configure('Lab.TCombobox',fieldbackground='#293e57',background='#293e57',foreground=FG,arrowcolor=MUTED,padding=7,borderwidth=0,font=('Microsoft YaHei UI',10))
-        style.configure('Lab.Vertical.TScrollbar',background='#3c566c',troughcolor=BG,borderwidth=0,arrowsize=0,width=px(self.root,7))
-        style.layout('Lab.Vertical.TScrollbar',[('Vertical.Scrollbar.trough',{'sticky':'ns','children':[('Vertical.Scrollbar.thumb',{'expand':1,'sticky':'nswe'})]})])
-        style.map('Lab.Vertical.TScrollbar',background=[('active','#65879b')])
-        style.map('Lab.TCombobox',fieldbackground=[('readonly','#293e57')],foreground=[('readonly',FG)],selectbackground=[('readonly','#293e57')],selectforeground=[('readonly',FG)])
-        self.shell=Shell(self.root,PAGES,self.show_page,self.status)
-        self.scroll=self.shell.scroll;self.content=self.shell.content;self.content_item=self.shell.item
-        self.title=self.shell.title;self.subtitle=self.shell.subtitle
+        self.build_shell()
         branding.apply(self.root)
         # Bind to this toplevel only, leaving the HUD's high-rate event loop alone.
         self.root.bind('<MouseWheel>',self.wheel)
         self.show_page(0);backdrop(self.root);self.job=self.root.after(50,self.tick)
 
-    def label(self,parent,text,size=10,color=FG,bold=False):
+    def build_shell(self):
+        style=ttk.Style(self.root);style.theme_use('clam')
+        style.configure('Scope.Treeview',background=T.CARD,fieldbackground=T.CARD,foreground=T.FG)
+        style.configure('Scope.Treeview.Heading',background=T.FIELD,foreground=T.MUTED)
+        style.map('Scope.Treeview',background=[('selected',T.SELECT)],foreground=[('selected',T.FG)])
+        style.configure('Lab.TCombobox',fieldbackground=T.FIELD,background=T.FIELD,foreground=T.FG,arrowcolor=T.MUTED,padding=7,borderwidth=0,font=('Microsoft YaHei UI',10))
+        style.configure('TCombobox',fieldbackground=T.FIELD,background=T.FIELD,foreground=T.FG,arrowcolor=T.MUTED)
+        style.map('TCombobox',fieldbackground=[('readonly',T.FIELD)],foreground=[('readonly',T.FG)],selectbackground=[('readonly',T.SELECT)],selectforeground=[('readonly',T.FG)])
+        for kind in ('Entry','Spinbox'):
+            for name,value in (('background',T.FIELD),('foreground',T.FG),('insertBackground',T.FG)):
+                self.root.option_add('*'+kind+'.'+name,value)
+        style.configure('Lab.Vertical.TScrollbar',background=T.EDGE,troughcolor=T.BG,borderwidth=0,arrowsize=0,width=px(self.root,7))
+        style.layout('Lab.Vertical.TScrollbar',[('Vertical.Scrollbar.trough',{'sticky':'ns','children':[('Vertical.Scrollbar.thumb',{'expand':1,'sticky':'nswe'})]})])
+        style.map('Lab.Vertical.TScrollbar',background=[('active',T.ACCENT)])
+        style.configure('Lab.Horizontal.TScrollbar',background=T.EDGE,troughcolor=T.CARD,borderwidth=0,arrowsize=0,width=px(self.root,7))
+        style.layout('Lab.Horizontal.TScrollbar',[('Horizontal.Scrollbar.trough',{'sticky':'ew','children':[('Horizontal.Scrollbar.thumb',{'expand':1,'sticky':'nswe'})]})])
+        style.map('Lab.Horizontal.TScrollbar',background=[('active',T.ACCENT)])
+        style.map('Lab.TCombobox',fieldbackground=[('readonly',T.FIELD)],foreground=[('readonly',T.FG)],selectbackground=[('readonly',T.FIELD)],selectforeground=[('readonly',T.FG)])
+        self.root.option_add('*TCombobox*Listbox.background',T.FIELD);self.root.option_add('*TCombobox*Listbox.foreground',T.FG)
+        self.root.option_add('*TCombobox*Listbox.selectBackground',T.SELECT)
+        self.shell=Shell(self.root,PAGES,self.show_page,self.status,self.toggle_theme)
+        self.scroll=self.shell.scroll;self.content=self.shell.content;self.content_item=self.shell.item
+        self.title=self.shell.title;self.subtitle=self.shell.subtitle
+    def toggle_theme(self):self.set_theme('light' if T.mode=='dark' else 'dark')
+
+    def set_theme(self,mode):
+        if mode==T.mode:return
+        try:control_theme.save(ROOT/'interface_settings.json',mode)
+        except (OSError,ValueError) as error:self.status.set('主题未保存：'+str(error));return
+        previous=T.mode;page=self.page;geometry=self.root.geometry();fraction=self.scroll.yview()[0]
+        state={name:value.get() for name,value in vars(self).items() if isinstance(value,tk.Variable)}
+        query=self.search.get() if self.tree else ''
+        selected=self.tree.selection() if self.tree else ()
+        table_position=self.tree.offset if self.tree else 0
+        self.shell.motion.cancel();self.shell.scroller.cancel();self.shell.navigation.motion.cancel()
+        self.shell.side.destroy();self.shell.main.destroy();control_theme.set_mode(mode);self.root.configure(bg=T.BG)
+        self.build_shell();self.root.geometry(geometry);self.show_page(page)
+        for name,value in state.items():
+            variable=getattr(self,name,None)
+            if isinstance(variable,tk.Variable):variable.set(value)
+        if self.tree:self.search.set(query);self.populate(selected)
+        self.root.update_idletasks();self.scroll.yview_moveto(fraction)
+        if self.tree:self.tree.scroller.move(table_position)
+        backdrop(self.root)
+        control_theme.recolor(self.root,previous)
+        if self.active():self.hud.apply_theme()
+
+    def label(self,parent,text,size=10,color=None,bold=False):
         return tk.Label(parent,text='' if isinstance(text,tk.Variable) else text,textvariable=text if isinstance(text,tk.Variable) else None,
-            bg=parent.cget('bg'),fg=color,font=('Microsoft YaHei UI',size,'bold' if bold else 'normal'),anchor='w',justify='left')
+            bg=parent.cget('bg'),fg=color or T.FG,font=('Microsoft YaHei UI',size,'bold' if bold else 'normal'),anchor='w',justify='left')
 
     def card(self,title,subtitle='',parent=None):
         card=GlassCard(parent or self.content)
         if parent:parent.add(card)
         else:card.pack(fill='x',pady=(0,px(self.root,18)))
         body=card.body
-        self.label(body,title,14,FG,True).pack(anchor='w',pady=(0,5))
+        self.label(body,title,14,T.FG,True).pack(anchor='w',pady=(0,5))
         if subtitle:
-            label=self.label(body,subtitle,9,MUTED);label.pack(fill='x',pady=(0,px(self.root,14)))
+            label=self.label(body,subtitle,9,T.MUTED);label.pack(fill='x',pady=(0,px(self.root,14)))
             label.bind('<Configure>',lambda e:label.configure(wraplength=max(100,e.width)))
         return body
 
@@ -75,15 +115,14 @@ class ControlCenter:
         row=tk.Frame(parent,bg=parent.cget('bg'));row.pack(fill='x',pady=5);return row
 
     def choice(self,parent,label,var,choices,command=None):
-        row=self.row(parent);self.label(row,label,10,MUTED).pack(side='left')
+        row=self.row(parent);self.label(row,label,10,T.MUTED).pack(side='left')
         box=ttk.Combobox(row,textvariable=var,values=choices,state='readonly',style='Lab.TCombobox',width=26)
         box.pack(side='right',padx=4);box.bind('<<ComboboxSelected>>',lambda _:command() if command else None);return box
 
     def wheel(self,event):
         if str(event.widget).startswith(str(self.content)) and not isinstance(event.widget,(ttk.Treeview,ttk.Combobox)):
-            first,last=self.scroll.yview();height=max(1,self.content.winfo_height())
-            target=min(max(0,1-(last-first)),max(0,first-event.delta/120*px(self.root,65)/height))
-            self.shell.motion.animate('scroll',lambda t:self.scroll.yview_moveto(first+(target-first)*t),150)
+            self.shell.scroller.add(-event.delta/120*px(self.root,65))
+            return 'break'
 
     def show(self):
         self.root.deiconify();self.root.lift();self.root.focus_force()
@@ -93,7 +132,7 @@ class ControlCenter:
 
     def show_page(self,index):
         self.page=index;self.scan_generation+=1;self.tree=None
-        self.shell.motion.cancel('scroll')
+        self.shell.scroller.cancel()
         for child in self.content.winfo_children():child.destroy()
         self.title.configure(text=PAGES[index]);self.subtitle.configure(text=SUBTITLES[index]);self.scroll.yview_moveto(0)
         self.shell.select(index)
@@ -102,7 +141,7 @@ class ControlCenter:
     def run_page(self):
         body=self.card('下一段 Stint，从这里开始','练习时显示 HUD；排位赛和正赛自动保存记录与报告')
         LaunchArtwork(body).pack(fill='x',pady=(0,px(self.root,7)))
-        self.live_label=self.label(body,'等待启动',11,ACCENT);self.live_label.pack(anchor='w',pady=(0,10))
+        self.live_label=self.label(body,'等待启动',11,T.ACCENT);self.live_label.pack(anchor='w',pady=(0,10))
         row=self.row(body);self.button(row,'▶  启动 HUD',self.start,True,160);self.button(row,'停止并保存',self.stop_hud,False,140)
         self.button(row,'演示模式',lambda:self.start(True),False,120)
         grid=CardGrid(self.content);grid.pack(fill='x')
@@ -157,17 +196,15 @@ class ControlCenter:
         self.run_background(work,finish)
 
     def sessions(self,body,multiple=False):
-        row=self.row(body);self.search=tk.StringVar(self.root);entry=tk.Entry(row,textvariable=self.search,bg='#293e57',fg=FG,insertbackground=FG,relief='flat',font=('Microsoft YaHei UI',10))
+        row=self.row(body);self.search=tk.StringVar(self.root);entry=tk.Entry(row,textvariable=self.search,bg=T.FIELD,fg=T.FG,insertbackground=T.ACCENT,relief='flat',font=('Microsoft YaHei UI',10))
         entry.pack(side='left',fill='x',expand=True,ipady=8);entry.bind('<KeyRelease>',lambda _:self.populate())
         self.button(row,'刷新记录',self.refresh,False,112)
-        self.tree=ttk.Treeview(body,columns=('date','type','track','car','lap'),show='headings',height=9,
-            style='Lab.Treeview',selectmode='extended' if multiple else 'browse')
+        self.tree=SessionList(body,columns=('date','type','track','car','lap'),height=9,selectmode='extended' if multiple else 'browse')
         for key,title,width in [('date','时间（UTC）',180),('type','阶段',76),('track','赛道',200),('car','车辆',175),('lap','最快圈',92)]:
             self.tree.heading(key,text=title);self.tree.column(key,width=px(self.root,width),minwidth=px(self.root,60),stretch=key in ('track','car'))
-        self.tree.tag_configure('alternate',background='#203449');self.tree.tag_configure('plain',background=CARD)
         self.tree.pack(fill='x',pady=(6,2));
-        horizontal=ttk.Scrollbar(body,orient='horizontal',command=self.tree.xview);horizontal.pack(fill='x',pady=(0,8));self.tree.configure(xscrollcommand=horizontal.set)
         self.tree.bind('<Double-1>',lambda _:self.report('review.html'))
+        self.tree.bind('<Return>',lambda _:self.report('review.html'))
         self.refresh()
 
     def refresh(self):
@@ -176,18 +213,19 @@ class ControlCenter:
         def done(result,error):
             if self.closing or generation!=self.scan_generation:return
             if error:self.status.set(error);return
-            self.items=result;self.populate();self.status.set(f'{len(result)} 场本地记录 · 旧 Practice 记录仍保留')
+            selected={self.items[int(i)]['folder'] for i in self.tree.selection()} if self.tree else set()
+            self.items=result;chosen=[str(i) for i,item in enumerate(result) if item['folder'] in selected]
+            self.populate(chosen);self.status.set(f'{len(result)} 场本地记录 · 旧 Practice 记录仍保留')
         self.run_background(lambda:inventory(ROOT),done)
 
-    def populate(self):
+    def populate(self,selected=None):
         if self.tree is None or not self.tree.winfo_exists():return
-        selected=self.tree.selection();self.tree.delete(*self.tree.get_children());query=self.search.get().strip().casefold()
+        selected=self.tree.selection() if selected is None else selected;query=self.search.get().strip().casefold();rows=[]
         for i,value in enumerate(self.items):
             if query and query not in ' '.join(str(value.get(k,'')) for k in ('track','vehicle','session_type','date','driver')).casefold():continue
             time=value.get('time_s');lap=f'{int(time//60)}:{time%60:06.3f}' if time else '—'
-            self.tree.insert('','end',iid=str(i),values=(value['date'][:19].replace('T',' '),value['session_type'],value['track'],value['vehicle'],lap),tags=('alternate' if i%2 else 'plain',))
-        remaining=[s for s in selected if self.tree.exists(s)]
-        if remaining:self.tree.selection_set(remaining)
+            rows.append((str(i),(value['date'][:19].replace('T',' '),value['session_type'],value['track'],value['vehicle'],lap)))
+        self.tree.replace(rows,selected)
 
     def selection(self,count=1):
         chosen=[self.items[int(i)] for i in self.tree.selection()] if self.tree else []
@@ -269,9 +307,9 @@ class ControlCenter:
         source={'sampling':sampling,'vehicle':vehiclelab,'endurance':endurance}[module].load_settings(ROOT/({'sampling':'settings.json','vehicle':'vehicle_settings.json','endurance':'endurance_settings.json'}[module]))
         variables={}
         for key,label in specs:
-            row=self.row(body);self.label(row,label,10,MUTED).pack(side='left')
+            row=self.row(body);self.label(row,label,10,T.MUTED).pack(side='left')
             var=tk.StringVar(self.root,value=str(source[key]));variables[key]=var
-            tk.Entry(row,textvariable=var,bg='#293e57',fg=FG,insertbackground=FG,relief='flat',width=15,font=('Segoe UI',11)).pack(side='right',ipady=5,padx=4)
+            tk.Entry(row,textvariable=var,bg=T.FIELD,fg=T.FG,insertbackground=T.FG,relief='flat',width=15,font=('Segoe UI',11)).pack(side='right',ipady=5,padx=4)
         for key,label,options in choices:
             var=tk.StringVar(self.root,value=source[key]);variables[key]=var;self.choice(body,label,var,options)
         row=self.row(body)
@@ -302,7 +340,7 @@ class ControlCenter:
         body=self.card('RaceCom 原版图像','直接调用你自己的 Image Generate.exe；原版版式、字体、颜色与车辆校准保留')
         config=renderer_config.load();self.renderer_mode=tk.StringVar(self.root,value=config['mode']);self.renderer_path=tk.StringVar(self.root,value=config['executable'])
         self.choice(body,'生成方式',self.renderer_mode,['racecom','native'])
-        entry=tk.Entry(body,textvariable=self.renderer_path,bg='#293e57',fg=FG,insertbackground=FG,relief='flat',font=('Segoe UI',10));entry.pack(fill='x',ipady=9,pady=8)
+        entry=tk.Entry(body,textvariable=self.renderer_path,bg=T.FIELD,fg=T.FG,insertbackground=T.FG,relief='flat',font=('Segoe UI',10));entry.pack(fill='x',ipady=9,pady=8)
         def choose():
             path=filedialog.askopenfilename(parent=self.root,title='选择 RaceCom 的 Image Generate.exe',filetypes=[('RaceCom 图像生成器','*.exe')])
             if path:self.renderer_path.set(path)
@@ -310,7 +348,7 @@ class ControlCenter:
             try:renderer_config.save(dict(mode=self.renderer_mode.get(),executable=self.renderer_path.get()));self.status.set('图像生成器已配置；下一场结束自动生成到赛事文件夹')
             except (ValueError,OSError) as e:messagebox.showerror('配置未保存',str(e),parent=self.root)
         row=self.row(body);self.button(row,'选择生成器',choose,False,140);self.button(row,'保存配置',save,True,140)
-        self.label(body,'racecom = 原版版式；native = StintLab 兼容版式。\nGitHub 下载包不包含 RaceCom 程序、商标图片或个人记录。',9,MUTED).pack(anchor='w',pady=8)
+        self.label(body,'racecom = 原版版式；native = StintLab 兼容版式。\nGitHub 下载包不包含 RaceCom 程序、商标图片或个人记录。',9,T.MUTED).pack(anchor='w',pady=8)
         body=self.card('赛事包 / ZIP','一场比赛打包为一个文件；导入校验后新建记录，不覆盖现有赛事')
         self.sessions(body);row=self.row(body);self.button(row,'导出选中赛事',self.export_package,True,165);self.button(row,'导入赛事包',self.import_package,False,145)
         self.button(row,'导入官方遥测',self.import_native,False,155)
@@ -355,7 +393,7 @@ class ControlCenter:
 
     def close(self):
         if not self.closing:
-            self.closing=True;self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel()
+            self.closing=True;self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel();self.shell.scroller.cancel()
             if self.active():self.hud.close()
         if self.tasks.busy or (self.hud and self.hud.root.winfo_exists()):self.root.after(50,self.close);return
         for _ in self.tasks.completions():pass

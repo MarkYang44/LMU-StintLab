@@ -1,5 +1,6 @@
 """Fail closed: only public source/documentation, never local racing data."""
 import argparse
+import hashlib
 import json
 from pathlib import Path,PurePosixPath
 import re
@@ -12,9 +13,13 @@ ROOT_FILES={'.gitignore','.gitattributes','README.md','LICENSE','THIRD_PARTY_NOT
 PRIVATE_PARTS={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','_local','_backup','_verification','__pycache__','.venv','vendor','runtime','racecomrenderer','_racecom','_report_history'}
 PRIVATE_NAMES={'local_settings.json','settings.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json','session.json','recording_checkpoint.json','vehicle_checkpoint.json',
     'race_log.json','race_summary.json','race_images.json','race_events_checkpoint.json','race_images_error.txt','car_calibration.json',
-    'renderer_settings.json','image_generate_config.json'}
+    'renderer_settings.json','image_generate_config.json','interface_settings.json'}
 DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.exe','.dll','.pyd','.pyc','.pdf','.png','.jpg','.svg'}
 SECRET_PATTERNS=[rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',rb'gh[pousr]_[A-Za-z0-9]{30,}',rb'github_pat_[A-Za-z0-9_]{30,}',rb'AKIA[0-9A-Z]{16}',rb'sk-[A-Za-z0-9_-]{40,}']
+PUBLIC_ASSETS={
+    'src/branding/gtd.ico':'540618b9d7e9b951fbb672ecb98f845ddfe5d0fc175351cda645e4a2184b11fe',
+    'src/branding/gtd-menu.png':'9d0f6514a2dabc8566a1ea388d78856b6c7475b771a1023121defe40dc862241',
+}
 PRIVATE_PATTERNS=[rb'(?i)[A-Z]:[\\/]+Users[\\/]+[^\\/\s]+',rb'(?i)[A-Z]:[\\/]+(?:SteamLibrary|SPD)[\\/]+']
 
 def git_command(*args):
@@ -24,7 +29,7 @@ def git_command(*args):
 def allowed(name):
     path=PurePosixPath(name);parts=[p.casefold() for p in path.parts]
     if any(p in PRIVATE_PARTS for p in parts) or path.name.casefold() in PRIVATE_NAMES:return False
-    if name=='src/branding/stintlab.svg':return True
+    if name in PUBLIC_ASSETS:return True
     if path.suffix.casefold() in DENIED_SUFFIXES or name.endswith('.lap.json'):return False
     if len(path.parts)==1:return name in ROOT_FILES
     return (path.parts[0]=='src' and path.suffix in ('.py','.js','.html','.json','.txt')) or (path.parts[0]=='tools' and path.suffix in ('.py','.ps1','.cmd')) or (path.parts[0]=='tests' and path.suffix=='.py') or (path.parts[0]=='docs' and path.suffix=='.md') or (path.parts[0]=='.github' and path.suffix in ('.yml','.yaml','.md'))
@@ -34,6 +39,9 @@ def audit(files,read):
     for name in files:
         if not allowed(name):failures.append(name+': outside publication allowlist');continue
         blob=read(name);total+=len(blob)
+        if name in PUBLIC_ASSETS:
+            if hashlib.sha256(blob).hexdigest()!=PUBLIC_ASSETS[name]:failures.append(name+': reviewed asset checksum mismatch')
+            continue
         try:blob.decode('utf-8-sig')
         except UnicodeError:failures.append(name+': non-text content');continue
         if len(blob)>2_000_000:failures.append(name+': unexpectedly large source file')

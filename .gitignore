@@ -74,7 +74,9 @@
 *.png
 *.jpg
 *.svg
-!/src/branding/stintlab.svg
+!/src/branding/gtd-menu.png
+!/src/branding/gtd.ico
+**/interface_settings.json
 **/FastestLapCompare.html
 **/DemoFastestLapCompare.html
 **/review.html
