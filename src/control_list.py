@@ -12,9 +12,10 @@ from control_widgets import scale
 
 
 class SessionList(tk.Frame):
-    def __init__(self,parent,columns,height=9,selectmode='browse',**_):
+    def __init__(self,parent,columns,height=9,selectmode='browse',checkboxes=False,**_):
         super().__init__(parent,bg=T.CARD)
         self.s=s=scale(parent);self.rowheight=44*s;self.columns=list(columns);self.multiple=selectmode=='extended'
+        self.checkboxes=bool(checkboxes and self.multiple);self.gutter=32*s if self.checkboxes else 0
         self.widths={key:100*s for key in columns};self.minimum={key:60*s for key in columns}
         self.stretch=set();self.labels={key:key for key in columns};self.rows={};self.order=[];self.indices={}
         self.chosen=set();self.previous=set();self.anchor=None;self.cursor=None;self.fade=1.;self.offset=0.;self.xoffset=0.
@@ -34,6 +35,8 @@ class SessionList(tk.Frame):
         for key in ('Up','Down','Home','End','Prior','Next'):
             self.viewport.bind('<'+key+'>',lambda event,k=key:self.key(event,k))
         self.viewport.bind('<Control-a>',self.select_all)
+        self.viewport.bind('<space>',self.toggle_focused)
+        if self.checkboxes:self.header.bind('<Button-1>',self.header_click)
         super().bind('<Destroy>',self.destroyed,add='+')
     def bind(self,sequence=None,func=None,add=None):
         if hasattr(self,'viewport') and sequence not in ('<Destroy>','<Configure>'):
@@ -85,9 +88,9 @@ class SessionList(tk.Frame):
         if self.pending is None:self.pending=self.after_idle(self.layout)
     def layout(self):
         self.pending=None;self.indices={iid:i for i,iid in enumerate(self.order)}
-        width=max(1,self.viewport.winfo_width());total=sum(self.widths.values());extra=max(0,width-total)
+        width=max(1,self.viewport.winfo_width());total=sum(self.widths.values())+self.gutter;extra=max(0,width-total)
         self.actual={key:self.widths[key]+(extra/len(self.stretch) if key in self.stretch else 0) for key in self.columns}
-        self.totalwidth=sum(self.actual.values());self.xoffset=max(0,min(self.xoffset,self.totalwidth-width))
+        self.totalwidth=sum(self.actual.values())+self.gutter;self.xoffset=max(0,min(self.xoffset,self.totalwidth-width))
         if self.totalwidth>width+1:self.horizontal.grid(row=2,column=0,sticky='ew',pady=(round(3*self.s),0))
         else:self.horizontal.grid_remove()
         self.offset=max(0,min(self.offset,self.limit()));self.scroller.target=max(0,min(self.scroller.target,self.limit()))
@@ -119,7 +122,14 @@ class SessionList(tk.Frame):
         self.viewport.focus_set();iid=self.at(event)
         if iid is None:return 'break'
         self.cursor=iid
-        self.choose(iid,bool(event.state&4),bool(event.state&1));return 'break'
+        self.choose(iid,bool(event.state&4) or (self.checkboxes and event.x<self.gutter),bool(event.state&1));return 'break'
+    def toggle_focused(self,event):
+        if self.multiple and self.cursor in self.rows:self.choose(self.cursor,control=True)
+        return 'break'
+    def header_click(self,event):
+        if event.x<self.gutter:
+            self.selection_set(()) if len(self.chosen)==len(self.order) else self.select_all(event)
+        return 'break'
     def choose(self,iid,control=False,shift=False):
         if self.multiple and shift and self.anchor in self.indices:
             a,b=sorted((self.indices[self.anchor],self.indices[iid]));values=set(self.order[a:b+1])
@@ -163,7 +173,7 @@ class SessionList(tk.Frame):
         c=self.viewport;h=c.winfo_height();w=c.winfo_width();s=self.s;c.delete('all')
         header_key=(T.mode,w,self.xoffset,tuple(self.actual.values()),tuple(self.labels.values()))
         if header_key!=self.header_key:
-            self.header_key=header_key;self.header.delete('all');x=-self.xoffset
+            self.header_key=header_key;self.header.delete('all');x=self.gutter-self.xoffset
             for key in self.columns:
                 width=self.actual[key]
                 self.header.create_text(x+12*s,18*s,text=self.labels[key],anchor='w',fill=T.MUTED,font=self.bold)
@@ -176,7 +186,7 @@ class SessionList(tk.Frame):
             color=blend(T.HOVER if iid==self.hovered else base,T.SELECT,amount)
             c.create_rectangle(0,y,w,y+self.rowheight,fill=color,outline='')
             if amount>0:c.create_rectangle(0,y+7*s,3*s,y+self.rowheight-7*s,fill=blend(color,T.ACCENT,amount),outline='')
-            x=-self.xoffset
+            x=self.gutter-self.xoffset
             for key,value in zip(self.columns,self.rows[iid]):
                 width=self.actual[key]
                 if x+width>0 and x<w:
@@ -184,7 +194,17 @@ class SessionList(tk.Frame):
                     fg=T.ACCENT if key=='lap' and iid in self.chosen else (T.MUTED if key=='date' else T.FG)
                     c.create_text(x+12*s,y+self.rowheight/2,text=self.fit(value,max(0,width-24*s),font),anchor='w',font=font,fill=fg)
                 x+=width
+            if self.checkboxes:
+                c.create_rectangle(0,y,self.gutter,y+self.rowheight,fill=color,outline='')
+                self.checkbox(c,16*s,y+self.rowheight/2,iid in self.chosen)
             if self.cursor==iid and c.focus_get() is c:
                 c.create_rectangle(5*s,y+3*s,w-3*s,y+self.rowheight-3*s,outline=T.EDGE)
         if not self.order:c.create_text(w/2,h/2,text='没有匹配的赛事记录',font=self.font,fill=T.MUTED)
+        if self.checkboxes:
+            self.header.delete('check');self.header.create_rectangle(0,0,self.gutter,35*s,fill=T.FIELD,outline='',tags='check')
+            self.checkbox(self.header,16*s,18*s,bool(self.order) and len(self.chosen)==len(self.order),'check')
         self.vertical.set(*self.fractions());self.horizontal.set(*self.xview())
+    def checkbox(self,canvas,x,y,checked,tag=''):
+        half=6*self.s
+        canvas.create_rectangle(x-half,y-half,x+half,y+half,fill=T.BUTTON if checked else '',outline=T.ACCENT if checked else T.MUTED,tags=tag)
+        if checked:canvas.create_line(x-3*self.s,y,x-self.s,y+2*self.s,x+4*self.s,y-3*self.s,fill=T.INK,width=max(1,1.5*self.s),tags=tag)

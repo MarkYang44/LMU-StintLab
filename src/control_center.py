@@ -195,17 +195,26 @@ class ControlCenter:
                 if done:done(result)
         self.run_background(work,finish)
 
-    def sessions(self,body,multiple=False):
+    def sessions(self,body,multiple=False,checkboxes=False):
         row=self.row(body);self.search=tk.StringVar(self.root);entry=tk.Entry(row,textvariable=self.search,bg=T.FIELD,fg=T.FG,insertbackground=T.ACCENT,relief='flat',font=('Microsoft YaHei UI',10))
         entry.pack(side='left',fill='x',expand=True,ipady=8);entry.bind('<KeyRelease>',lambda _:self.populate())
         self.button(row,'刷新记录',self.refresh,False,112)
-        self.tree=SessionList(body,columns=('date','type','track','car','lap'),height=9,selectmode='extended' if multiple else 'browse')
+        self.tree=SessionList(body,columns=('date','type','track','car','lap'),height=9,selectmode='extended' if multiple else 'browse',checkboxes=checkboxes)
         for key,title,width in [('date','时间（UTC）',180),('type','阶段',76),('track','赛道',200),('car','车辆',175),('lap','最快圈',92)]:
             self.tree.heading(key,text=title);self.tree.column(key,width=px(self.root,width),minwidth=px(self.root,60),stretch=key in ('track','car'))
         self.tree.pack(fill='x',pady=(6,2));
         self.tree.bind('<Double-1>',lambda _:self.report('review.html'))
         self.tree.bind('<Return>',lambda _:self.report('review.html'))
+        if checkboxes:
+            row=self.row(body);self.selected_count=tk.StringVar(self.root,value='已选 0 场')
+            self.button(row,'全选当前列表',lambda:self.tree.selection_set(self.tree.get_children()),False,128)
+            self.button(row,'清除选择',lambda:self.tree.selection_set(()),False,108)
+            self.label(row,self.selected_count,9,T.MUTED).pack(side='right',padx=8)
+            self.tree.bind('<<TreeviewSelect>>',lambda _:self.update_selection_count())
         self.refresh()
+
+    def update_selection_count(self):
+        if self.tree and self.tree.checkboxes:self.selected_count.set(f'已选 {len(self.tree.selection())} 场 / 列表 {len(self.tree.get_children())} 场')
 
     def refresh(self):
         from library import inventory
@@ -226,10 +235,12 @@ class ControlCenter:
             time=value.get('time_s');lap=f'{int(time//60)}:{time%60:06.3f}' if time else '—'
             rows.append((str(i),(value['date'][:19].replace('T',' '),value['session_type'],value['track'],value['vehicle'],lap)))
         self.tree.replace(rows,selected)
+        self.update_selection_count()
 
     def selection(self,count=1):
         chosen=[self.items[int(i)] for i in self.tree.selection()] if self.tree else []
-        if len(chosen)!=count:raise ValueError(f'请选择 {count} 场赛事记录')
+        if count is None and not chosen:raise ValueError('请至少勾选一场赛事记录')
+        if count is not None and len(chosen)!=count:raise ValueError(f'请选择 {count} 场赛事记录')
         if any(v['status'] in ('recording','write_error') for v in chosen):raise ValueError('请等记录完整保存后再操作')
         return chosen
 
@@ -349,16 +360,28 @@ class ControlCenter:
             except (ValueError,OSError) as e:messagebox.showerror('配置未保存',str(e),parent=self.root)
         row=self.row(body);self.button(row,'选择生成器',choose,False,140);self.button(row,'保存配置',save,True,140)
         self.label(body,'racecom = 原版版式；native = StintLab 兼容版式。\nGitHub 下载包不包含 RaceCom 程序、商标图片或个人记录。',9,T.MUTED).pack(anchor='w',pady=8)
-        body=self.card('赛事包 / ZIP','一场比赛打包为一个文件；导入校验后新建记录，不覆盖现有赛事')
-        self.sessions(body);row=self.row(body);self.button(row,'导出选中赛事',self.export_package,True,165);self.button(row,'导入赛事包',self.import_package,False,145)
+        body=self.card('赛事包 / ZIP','勾选多场或全选当前列表，一次导出；每场一个 ZIP，导入时校验并新建记录')
+        self.sessions(body,True,True);row=self.row(body);self.button(row,'批量导出选中赛事',self.export_package,True,180);self.button(row,'导入赛事包',self.import_package,False,145)
         self.button(row,'导入官方遥测',self.import_native,False,155)
 
     def export_package(self):
-        from session_archive import export_session
+        from session_archive import export_session,transfer_batch
+        if getattr(self,'exporting',False):self.status.set('赛事包正在导出，请等待完成');return
         def action(items):
             directory=filedialog.askdirectory(parent=self.root,title='选择赛事包导出目录')
-            if directory:self.work(lambda:export_session(ROOT,items[0]['key'],Path(directory)),lambda result:os.startfile(str(Path(result['path']).parent)))
-        self.with_selection(action)
+            if not directory:return
+            keys=[item['key'] for item in items];self.exporting=True
+            self.status.set(f'正在导出 {len(keys)} 场赛事，每场一个 ZIP…')
+            def done(result,error):
+                self.exporting=False
+                if error:self.status.set('导出未完成：'+error);messagebox.showerror('StintLab',error,parent=self.root);return
+                self.status.set(f"已导出 {len(result['items'])} 场赛事 · 失败 {len(result['errors'])} 场")
+                if result['items']:os.startfile(directory)
+                if result['errors']:
+                    details='\n'.join(v['item']+'：'+v['error'] for v in result['errors'][:10])
+                    messagebox.showwarning('部分赛事未导出',details,parent=self.root)
+            self.run_background(lambda:transfer_batch(keys,lambda key:export_session(ROOT,key,Path(directory))),done)
+        self.with_selection(action,None)
 
     def import_package(self):
         from session_archive import import_session

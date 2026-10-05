@@ -64,6 +64,21 @@ class ArchiveTests(unittest.TestCase):
             self.assertEqual(inventory(other)[0]['note'],'updated locally')
             self.assertFalse(inventory(other)[0]['traffic'])
 
+    def test_batch_exports_independent_verified_packages_with_one_failure_and_roundtrips(self):
+        with tempfile.TemporaryDirectory(dir=ROOT) as t:
+            data,first=self.fixture(t,'First');_,second=self.fixture(t,'Second')
+            keys=['Logs/First','Logs/Missing','Logs/Second'];before={p.name:self.hashes(p) for p in (first,second)}
+            result=packs.transfer_batch(keys,lambda key:packs.export_session(data,key,Path(t)/'exports'))
+            self.assertEqual((len(result['items']),len(result['errors'])),(2,1))
+            self.assertEqual(result['errors'][0]['item'],'Logs/Missing')
+            target=Path(t)/'imported'
+            for entry in result['items']:packs.import_session(target,entry['path'])
+            self.assertEqual(len(inventory(target)),2)
+            for folder in (first,second):self.assertEqual(self.hashes(folder),before[folder.name])
+            for item in inventory(target):
+                original=first if Path(item['folder']).name.startswith('First_') else second
+                actual=self.hashes(Path(item['folder']));self.assertEqual({key:actual[key] for key in before[original.name]},before[original.name])
+
     def test_compression_keeps_full_raw_stream_and_excludes_other_records_and_settings(self):
         with tempfile.TemporaryDirectory(dir=ROOT) as t:
             data,folder=self.fixture(t)

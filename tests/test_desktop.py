@@ -113,6 +113,49 @@ class DesktopTests(unittest.TestCase):
             self.pump(root);self.assertFalse(table.motion.jobs)
         finally:root.destroy()
 
+    def test_archive_checkboxes_select_without_modifiers_and_toggle_filtered_all(self):
+        import tkinter as tk
+        from types import SimpleNamespace
+        from control_list import SessionList
+        root=tk.Tk();root.geometry('800x500')
+        table=SessionList(root,('date','type','track','car','lap'),selectmode='extended',checkboxes=True);table.pack(fill='both',expand=True)
+        table.replace([(str(i),('','','','','')) for i in range(8)]);root.update()
+        try:
+            for i in (1,4):table.click(SimpleNamespace(x=table.gutter/2,y=(i+.5)*table.rowheight,state=0))
+            self.assertEqual(table.selection(),('1','4'))
+            table.toggle_focused(None);self.assertEqual(table.selection(),('1',))
+            table.replace([(str(i),('','','','','')) for i in (1,4,7)],table.selection());root.update()
+            table.header_click(SimpleNamespace(x=1));self.assertEqual(table.selection(),('1','4','7'))
+            table.header_click(SimpleNamespace(x=1));self.assertEqual(table.selection(),())
+            self.assertEqual(table.totalwidth,sum(table.actual.values())+table.gutter)
+        finally:root.destroy()
+
+    def test_control_center_exports_every_checked_session_and_reports_partial_failure(self):
+        from control_center import ControlCenter
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)):
+            center=ControlCenter()
+            try:
+                center.show_page(4);center.root.update()
+                self.assertTrue(center.tree.multiple);self.assertTrue(center.tree.checkboxes)
+                center.items=[dict(key='Logs/'+str(i),date='',session_type='Race',track='Spa',vehicle='BMW',status='complete',time_s=None) for i in range(3)]
+                center.populate();center.tree.selection_set(('0','1','2'));center.root.update()
+                self.assertIn('已选 3 场',center.selected_count.get())
+                captured=[]
+                def export(root,key,target):
+                    if key=='Logs/1':raise ValueError('fixture corrupt record')
+                    return dict(path=str(target/(key[-1]+'.zip')))
+                with patch('session_archive.export_session',side_effect=export) as worker:
+                    with patch.object(center,'run_background',side_effect=lambda work,done:captured.append((work,done))),patch('control_center.filedialog.askdirectory',return_value=directory):
+                        center.export_package();center.export_package()
+                    self.assertEqual(len(captured),1)
+                    result=captured[0][0]()
+                    self.assertEqual([call.args[1] for call in worker.call_args_list],['Logs/0','Logs/1','Logs/2'])
+                self.assertEqual((len(result['items']),len(result['errors'])),(2,1))
+                with patch('control_center.os.startfile') as opened,patch('control_center.messagebox.showwarning') as warning:
+                    captured[0][1](result,None);opened.assert_called_once_with(directory);warning.assert_called_once()
+                self.assertFalse(center.exporting);self.assertIn('已导出 2 场',center.status.get())
+            finally:center.close()
+
     def test_themes_persist_and_preserve_running_recorder_pure_hud_and_page(self):
         import control_center,tkinter as tk
         import control_theme

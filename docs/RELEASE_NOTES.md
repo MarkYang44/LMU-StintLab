@@ -1,4 +1,15 @@
-# LMU StintLab v0.1.8 · 双主题工业界面与平滑列表
+# LMU StintLab v0.1.9 · 赛事批量导出
+
+完整解压 `LMU-StintLab-v0.1.9-windows-x64.zip`，双击 **LMU-StintLab.exe**。保留 `_internal` 文件夹；更新时保留自己的 `data/` 和 `local_settings.json`。
+
+- 图像与数据页增加赛事复选框、表头全选、全选当前搜索列表、清除选择与已选数量。
+- 一次选择导出目录，后台逐场生成独立且完整校验的 ZIP；部分失败不影响其他赛事，重复点击不会启动第二批任务。
+- GTD 六尺寸图标继续内嵌在 EXE 中，深浅主题和既有遥测功能保持兼容。
+- 完整文件夹可迁移到其他位置；默认数据、RaceCom 生成器和资产使用项目内相对路径，个人记录仍排除出公开发布。
+
+**English:** Checkbox-based bulk session exports. Select a destination once; each checked session becomes a separately verified ZIP, with partial failures reported independently.
+
+## v0.1.8 · 双主题工业界面与平滑列表
 
 完整解压 `LMU-StintLab-v0.1.8-windows-x64.zip`，双击 **LMU-StintLab.exe**。保留 `_internal` 文件夹；更新时保留自己的 `data/` 和 `local_settings.json`。
 
