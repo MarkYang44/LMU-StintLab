@@ -59,3 +59,5 @@ Windows CI 检查公开文件、运行隔离测试并构建便携 ZIP；推送�
 Download and extract the portable Windows x64 release, then double-click **LMU-StintLab.exe**. For source ZIPs, run **Setup.cmd** first; it provisions Python 3.13 and verified dependencies. **Demo.cmd** uses synthetic telemetry only. No files are installed in the game directory. All racing data stays in `data/` locally. The UI is primarily Chinese. Read-only LMU shared memory is supplied by the bundled MIT-licensed SDK.
 
 This is an independent community project, not affiliated with Studio 397, Motorsport Games, Fanatec or BMW. The schematic steering wheel uses original drawing code; no commercial artwork is included. Project source: MIT; upstream notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+赛道指南与车型图鉴：控制中心左侧可搜索浏览 GTD 资料；自带离线详情页支持 18 条赛道、24 台车型、144 条推荐、42 张官方来源图片、收藏和 2–3 项并排对比。界面统一使用 StintLab 深浅终末地主题，资料仍保留 GTD 的版本日期和来源。

@@ -11,7 +11,7 @@ import uuid
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
-ASSET_NAMES=('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','interface_theme.js','tracks/catalog.json')
+ASSET_NAMES=('report.html','compare.html','dataview.js','trackview.js','laplab.js','vehicleview.js','enduranceview.js','interface_theme.js','tracks/catalog.json','guide/catalog.json','guide/provenance.json','guide/index.html','guide/guide.css','guide/guide.js')
 STARTERS=('Start.cmd','Start Clean.cmd','Start Clean Controls.cmd','Start Demo.cmd','Demo.cmd')
 PORTABLE_DOCS=('USAGE.md','PRIVACY.md')
 PORTABLE_ROOT_FILES={'LMU-StintLab.exe','README.md','LICENSE','THIRD_PARTY_NOTICES.md','VERSION','build-manifest.json',*STARTERS}
@@ -58,6 +58,8 @@ def main():
         args.extend(['--add-data',str(ROOT/'src'/relative)+';'+(Path('src')/relative.parent).as_posix()])
     for name in ('stintlab.ico','stintlab-32.png','stintlab-48.png','stintlab-64.png','stintlab-128.png','menu-icon.png'):
         args.extend(['--add-data',str(brand/name)+';src/branding'])
+    for image in (ROOT/'src/guide/media').rglob('*.webp'):
+        args.extend(['--add-data',str(image)+';'+image.parent.relative_to(ROOT).as_posix()])
     args.append(str(ROOT/'src'/'inputscope.py'))
     subprocess.run(args,cwd=ROOT,check=True)
     bundle=stage/'LMU-StintLab'

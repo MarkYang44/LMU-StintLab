@@ -39,7 +39,7 @@ def main():
         if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
     assert {'library','laps','session_archive'}<=modules
     assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
-    assert {'control_shell','control_motion','control_list','control_theme','branding'}<=modules
+    assert {'control_shell','control_motion','control_list','control_theme','branding','guidebook','control_guide'}<=modules
     import pefile
     executable=pefile.PE(str(bundle/'LMU-StintLab.exe'))
     resources={entry.id:entry for entry in executable.DIRECTORY_ENTRY_RESOURCE.entries}
@@ -55,6 +55,10 @@ def main():
     from tools.audit_publication import PUBLIC_ASSETS
     assert hashlib.sha256(ico).hexdigest()==PUBLIC_ASSETS['src/branding/gtd.ico']
     assert hashlib.sha256((bundle/'_internal/src/branding/menu-icon.png').read_bytes()).hexdigest()==PUBLIC_ASSETS['src/branding/gtd-menu.png']
+    for name,wanted in PUBLIC_ASSETS.items():
+        if name.startswith('src/guide/'):assert hashlib.sha256((bundle/'_internal'/name).read_bytes()).hexdigest()==wanted,name
+    guide=json.loads((bundle/'_internal/src/guide/catalog.json').read_text(encoding='utf-8'))
+    assert len(guide['tracks'])==18 and len(guide['cars'])==24 and guide['total_recommendations']==144
     executable.close()
     print('Portable manifest, privacy and development-code exclusion: PASS',flush=True)
     if args.smoke:

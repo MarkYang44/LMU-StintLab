@@ -21,14 +21,14 @@ import vehiclelab
 import endurance
 import control_theme
 
-PAGES=('运行与 HUD','赛事复盘','曲线对比','采样与遥测','图像与数据')
-SUBTITLES=('比赛中保持专注。所有控制，在这里。','你的赛事、圈速单与日志，集中在一处。','完整圈 / 距离对齐 / 轨迹与驾驶分析','分别配置输入采样、轮胎策略与耐力赛遥测。','RaceCom 原版报告与本地赛事包。')
+PAGES=('运行与 HUD','赛事复盘','曲线对比','采样与遥测','图像与数据','赛道指南','车型图鉴')
+SUBTITLES=('比赛中保持专注。所有控制，在这里。','你的赛事、圈速单与日志，集中在一处。','完整圈 / 距离对齐 / 轨迹与驾驶分析','分别配置输入采样、轮胎策略与耐力赛遥测。','RaceCom 原版报告与本地赛事包。','赛道特性、练习建议与车型选择。','车型优缺点、适配赛道与并排对比。')
 
 
 class ControlCenter:
     def __init__(self,root=None,hud=None):
         self.root=root or tk.Tk();self.hud=hud;self.closing=False;self.attached=hud is not None
-        self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
+        self.guide_state={};self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
         control_theme.load(ROOT/'interface_settings.json')
         self.root.title('LMU StintLab · 控制中心');self.root.configure(bg=T.BG)
         self.root.protocol('WM_DELETE_WINDOW',self.hide if self.attached else self.close)
@@ -136,7 +136,15 @@ class ControlCenter:
         for child in self.content.winfo_children():child.destroy()
         self.title.configure(text=PAGES[index]);self.subtitle.configure(text=SUBTITLES[index]);self.scroll.yview_moveto(0)
         self.shell.select(index)
-        (self.run_page,self.review_page,self.compare_page,self.settings_page,self.data_page)[index]()
+        (self.run_page,self.review_page,self.compare_page,self.settings_page,self.data_page,self.tracks_page,self.cars_page)[index]()
+
+    def tracks_page(self):
+        from control_guide import show
+        show(self,'tracks')
+
+    def cars_page(self):
+        from control_guide import show
+        show(self,'cars')
 
     def run_page(self):
         body=self.card('下一段 Stint，从这里开始','练习时显示 HUD；排位赛和正赛自动保存记录与报告')

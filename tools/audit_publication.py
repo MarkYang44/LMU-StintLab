@@ -20,6 +20,10 @@ PUBLIC_ASSETS={
     'src/branding/gtd.ico':'540618b9d7e9b951fbb672ecb98f845ddfe5d0fc175351cda645e4a2184b11fe',
     'src/branding/gtd-menu.png':'9d0f6514a2dabc8566a1ea388d78856b6c7475b771a1023121defe40dc862241',
 }
+sys.path.insert(0,str(ROOT))
+from tools.guide_assets import GUIDE_ASSETS
+PUBLIC_ASSETS.update(GUIDE_ASSETS)
+
 PRIVATE_PATTERNS=[rb'(?i)[A-Z]:[\\/]+Users[\\/]+[^\\/\s]+',rb'(?i)[A-Z]:[\\/]+(?:SteamLibrary|SPD)[\\/]+']
 
 def git_command(*args):
@@ -32,7 +36,7 @@ def allowed(name):
     if name in PUBLIC_ASSETS:return True
     if path.suffix.casefold() in DENIED_SUFFIXES or name.endswith('.lap.json'):return False
     if len(path.parts)==1:return name in ROOT_FILES
-    return (path.parts[0]=='src' and path.suffix in ('.py','.js','.html','.json','.txt')) or (path.parts[0]=='tools' and path.suffix in ('.py','.ps1','.cmd')) or (path.parts[0]=='tests' and path.suffix=='.py') or (path.parts[0]=='docs' and path.suffix=='.md') or (path.parts[0]=='.github' and path.suffix in ('.yml','.yaml','.md'))
+    return (path.parts[0]=='src' and path.suffix in ('.py','.js','.html','.css','.json','.txt')) or (path.parts[0]=='tools' and path.suffix in ('.py','.ps1','.cmd')) or (path.parts[0]=='tests' and path.suffix=='.py') or (path.parts[0]=='docs' and path.suffix=='.md') or (path.parts[0]=='.github' and path.suffix in ('.yml','.yaml','.md'))
 
 def audit(files,read):
     failures=[];total=0

@@ -1,4 +1,15 @@
-# LMU StintLab v0.1.9 · 赛事批量导出
+# LMU StintLab v0.1.10 · GTD 离线赛道指南与车型图鉴
+
+完整解压 `LMU-StintLab-v0.1.10-windows-x64.zip`，双击 **LMU-StintLab.exe**，保留 `_internal`；更新时保留 `data/` 和 `local_settings.json`。
+
+- 左侧新增赛道指南、车型图鉴；原生菜单提供搜索、车型组别筛选及练习摘要。
+- 自带完整离线页面：18 条赛道、24 台车型、144 条推荐（含 Sleeper 之选）、42 张官方来源图片，保留 GTD 资料日期、来源和未验证标记。
+- 深浅终末地工业主题，中文 / English、收藏、2–3 项并排对比、赛道和车型互相跳转；图片延迟加载，展开时才生成推荐详情。
+- 指南按需加载，不启动 GTD / Flask 或常驻服务器；收藏保存在浏览器本地，个人赛事仍排除出发布。
+
+**English:** Bundled offline GTD circuit guide and car catalog, integrated into the desktop navigation with StintLab's dark/light industrial themes.
+
+## LMU StintLab v0.1.9 · 赛事批量导出
 
 完整解压 `LMU-StintLab-v0.1.9-windows-x64.zip`，双击 **LMU-StintLab.exe**。保留 `_internal` 文件夹；更新时保留自己的 `data/` 和 `local_settings.json`。
 
