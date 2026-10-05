@@ -61,11 +61,60 @@ assert.equal(api.esc('<img onerror="x">'),'&lt;img onerror=&quot;x&quot;&gt;');
     def test_native_pages_are_lazy_and_do_not_start_telemetry_or_write_preferences(self):
         from control_center import ControlCenter,PAGES
         self.assertEqual(PAGES[-2:],('赛道指南','车型图鉴'))
-        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)),patch('hud.Engine') as engine,patch('control_guide.prepare') as prepare:
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)),patch('hud.Engine') as engine,patch('webbrowser.open') as browser:
             center=ControlCenter()
             try:
                 for index in (5,6,0,5):center.show_page(index);center.root.update()
-                engine.assert_not_called();prepare.assert_not_called();self.assertFalse(list(Path(directory).glob('*settings.json')))
+                engine.assert_not_called();browser.assert_not_called();self.assertFalse(list(Path(directory).glob('*settings.json')))
                 center.guide_state['tracks']['query']='Monza';center.set_theme('light');center.root.update()
                 self.assertEqual(center.guide_state['tracks']['query'],'Monza')
+            finally:center.close()
+
+    def test_native_preferences_filters_and_comparison_preserve_original_metadata(self):
+        from guide_library import Library
+        from tools.audit_publication import allowed
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory:
+            path=Path(directory)/'guide_settings.json';library=Library(guidebook.catalog(),path)
+            self.assertFalse(path.exists());self.assertEqual(len(library.rows('tracks',{})),18)
+            self.assertEqual(len(library.rows('cars',{})),24)
+            self.assertEqual(library.rows('tracks',{'query':'斯帕'})[0][0]['slug'],'spa')
+            self.assertTrue(all(len(recs)==4 for _,recs in library.rows('tracks',{'group':'LMGT3'})))
+            library.favorite('cars','bmw-m4-lmgt3');library.favorite('tracks','monza');library.set_language('en')
+            fresh=Library(library.data,path);self.assertEqual(fresh.language,'en');self.assertEqual(len(fresh.rows('cars',{'favorite':'cars'})),1)
+            self.assertEqual(len(fresh.rows('tracks',{'favorite':'tracks'})),1)
+            selection=[]
+            for key in list(library.recommendations)[:3]:self.assertTrue(library.toggle_comparison(selection,key))
+            self.assertFalse(library.toggle_comparison(selection,list(library.recommendations)[3]));self.assertEqual(len(selection),3)
+            _,rec=library.item(selection[0]);self.assertIn(library.data['tracks'][rec['track_slug']]['name'],library.name(selection[0]));self.assertIsNone(rec['review']['applicable_version'])
+            self.assertFalse(allowed('data/guide_settings.json'));self.assertFalse(allowed('guide_settings.json'))
+
+    @unittest.skipUnless(os.name=='nt','Windows native card integration')
+    def test_native_cards_pictures_expansion_comparison_and_release_need_no_browser(self):
+        import time
+        from control_center import ControlCenter
+        from guide_cards import Picture
+        def pump(center,duration=.24):
+            deadline=time.monotonic()+duration
+            while time.monotonic()<deadline:center.root.update();time.sleep(.01)
+        def walk(widget):
+            yield widget
+            for child in widget.winfo_children():yield from walk(child)
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)),patch('webbrowser.open') as browser:
+            center=ControlCenter();errors=[];center.root.report_callback_exception=lambda *args:errors.append(args)
+            try:
+                center.show_page(6);page=center.guide_page;self.assertEqual(page.card_count,3)
+                page.variables['query'].set('BMW');pump(center);self.assertEqual(len(page.rows),2)
+                page.favorite('cars','bmw-m4-lmgt3');self.assertTrue((Path(directory)/'guide_settings.json').is_file())
+                page.select('car:bmw-m4-lmgt3');page.select('car:bmw-m-hybrid-v8');page.compare();pump(center)
+                self.assertEqual((page.state['mode'],page.card_count),('compare',2))
+                center.scroll.yview_moveto(.4);pump(center)
+                pictures=[v for v in walk(page.results) if isinstance(v,Picture)]
+                self.assertTrue(any(v.photo for v in pictures));self.assertFalse([v.error for v in pictures if v.error])
+                center.set_theme('light');pump(center);self.assertEqual(center.guide_page.state['comparison'],['car:bmw-m4-lmgt3','car:bmw-m-hybrid-v8'])
+                center.guide_page.jump('tracks','monza');page=center.guide_page;page.state['expanded']=['track:monza'];page.render();pump(center)
+                self.assertEqual(len([v for v in walk(page.results) if isinstance(v,Picture)]),9)
+                page.variables['group'].set('LMGT3');page.filter_changed();pump(center)
+                self.assertEqual(len([v for v in walk(page.results) if isinstance(v,Picture)]),5)
+                center.show_page(0);pump(center);self.assertTrue(page.closed)
+                self.assertTrue(all(not v.photo for v in pictures));browser.assert_not_called();self.assertFalse(errors,errors)
             finally:center.close()

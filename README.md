@@ -60,4 +60,4 @@ Download and extract the portable Windows x64 release, then double-click **LMU-S
 
 This is an independent community project, not affiliated with Studio 397, Motorsport Games, Fanatec or BMW. The schematic steering wheel uses original drawing code; no commercial artwork is included. Project source: MIT; upstream notices: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-赛道指南与车型图鉴：控制中心左侧可搜索浏览 GTD 资料；自带离线详情页支持 18 条赛道、24 台车型、144 条推荐、42 张官方来源图片、收藏和 2–3 项并排对比。界面统一使用 StintLab 深浅终末地主题，资料仍保留 GTD 的版本日期和来源。
+赛道指南与车型图鉴：完整图文直接显示在控制中心菜单，支持 18 条赛道、24 台车型、144 条推荐、42 张官方来源图片、收藏与 2–3 项原生对比。单列宽松卡片，每页 3 条；推荐按需展开，图片滚出视野后释放。深浅终末地主题和中英切换均保留，无需浏览器或服务器。收藏与语言仅保存到本地 `data/guide_settings.json`。

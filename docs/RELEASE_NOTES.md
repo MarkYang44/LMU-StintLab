@@ -1,4 +1,15 @@
-# LMU StintLab v0.1.10 · GTD 离线赛道指南与车型图鉴
+# LMU StintLab v0.1.11 · 完整原生图文指南
+
+完整解压 `LMU-StintLab-v0.1.11-windows-x64.zip`，双击 **LMU-StintLab.exe**。保留 `_internal`；更新时保留 `data/` 与 `local_settings.json`。
+
+- 赛道指南、车型图鉴的完整图片、描述、练习建议与原始来源全部在程序菜单中呈现，移除浏览器跳转入口。
+- 单列完整卡片，每页 3 条；原生搜索、组别 / 车型 / 收藏筛选、中英切换、收藏、推荐展开和 A / B / C 对比；对比同样采用单列，避免信息过密。
+- 深浅终末地主题统一；收藏与语言保存到本机私有配置，排除出赛事包和发布。
+- 图片随可视区域按需解码，离开视野、翻页与关闭后释放；无需浏览器内核、GTD 后端或常驻服务器。
+
+**English:** Complete native circuit guide and car catalog with spacious single-column cards, in-menu pictures, descriptions, favorites and comparisons. No browser navigation.
+
+## LMU StintLab v0.1.10 · GTD 离线赛道指南与车型图鉴
 
 完整解压 `LMU-StintLab-v0.1.10-windows-x64.zip`，双击 **LMU-StintLab.exe**，保留 `_internal`；更新时保留 `data/` 和 `local_settings.json`。
 

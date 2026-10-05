@@ -28,7 +28,7 @@ SUBTITLES=('比赛中保持专注。所有控制，在这里。','你的赛事�
 class ControlCenter:
     def __init__(self,root=None,hud=None):
         self.root=root or tk.Tk();self.hud=hud;self.closing=False;self.attached=hud is not None
-        self.guide_state={};self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
+        self.data_path=ROOT;self.guide_page=None;self.guide_state={};self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
         control_theme.load(ROOT/'interface_settings.json')
         self.root.title('LMU StintLab · 控制中心');self.root.configure(bg=T.BG)
         self.root.protocol('WM_DELETE_WINDOW',self.hide if self.attached else self.close)
@@ -131,7 +131,7 @@ class ControlCenter:
         return self.hud is not None and not self.hud.closing and self.hud.root.winfo_exists()
 
     def show_page(self,index):
-        self.page=index;self.scan_generation+=1;self.tree=None
+        self.page=index;self.scan_generation+=1;self.tree=None;self.guide_page=None
         self.shell.scroller.cancel()
         for child in self.content.winfo_children():child.destroy()
         self.title.configure(text=PAGES[index]);self.subtitle.configure(text=SUBTITLES[index]);self.scroll.yview_moveto(0)

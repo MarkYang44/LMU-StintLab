@@ -12,6 +12,7 @@ Copyright (c) 2021 Tony Whitley; Copyright (c) 2025 Xiang. MIT license; full tex
 | --- | --- | --- |
 | [CPython](https://github.com/python/cpython) | PSF / historical Python licenses | Embedded interpreter in portable builds |
 | [Tcl/Tk](https://github.com/tcltk/tcl) | Tcl/Tk permissive licenses | Native HUD |
+| [Pillow](https://github.com/python-pillow/Pillow) | HPND / bundled codec notices | Native local WebP guide cards |
 | [DuckDB](https://github.com/duckdb/duckdb) | MIT | Read-only native telemetry import |
 | [PyInstaller](https://github.com/pyinstaller/pyinstaller) | GPL-2.0-or-later with bootloader exception | Packaging; exception permits independent licensing of bundled apps |
 | altgraph | MIT | Build dependency |
