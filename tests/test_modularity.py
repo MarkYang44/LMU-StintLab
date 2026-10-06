@@ -237,4 +237,19 @@ assert app.engine.reference is not None
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
 
 
+
+
+    def test_completion_registry_keeps_gui_callbacks_out_of_worker_closures(self):
+        from concurrent.futures import Future
+        tasks=BackgroundTasks();runner=[]
+        try:
+            with patch.object(tasks._executor,'submit',side_effect=lambda function:(runner.append(function),Future())[1]):
+                callback=lambda *_:None;tasks.submit(lambda:42,callback)
+            self.assertNotIn('done',runner[0].__code__.co_freevars)
+            runner[0]();callbacks=list(tasks.completions())
+            self.assertIs(callbacks[0][0],callback);self.assertEqual(callbacks[0][1],42)
+            self.assertFalse(tasks._callbacks)
+        finally:tasks.close()
+
+
 if __name__=='__main__':unittest.main()

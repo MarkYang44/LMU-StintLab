@@ -3,7 +3,7 @@ from i18n import tr,Label
 import tkinter as tk
 from control_theme import T
 from tkinter import ttk,font as tkfont
-from control_motion import Motion,SmoothScroll,blend
+from control_motion import Motion,SmoothScroll
 from control_widgets import rounded,polygon_points,scale,px,Pill
 import branding
 
@@ -25,7 +25,7 @@ def symbol(canvas,kind,x,y,s,color):
 
 class Navigation(tk.Canvas):
     def __init__(self,parent,names,command):
-        self.s=scale(parent);self.step=68*self.s;self.names=names;self.command=command;self.selected=0;self.position=0;self.hovered=-1;self.paint_key=None
+        self.s=scale(parent);self.step=68*self.s;self.names=names;self.command=command;self.selected=0;self.position=0;self.marker_amount=1.;self.hovered=-1;self.paint_key=None
         super().__init__(parent,bg=T.RAIL,height=round(self.step*len(names)),highlightthickness=0,takefocus=True,cursor='hand2')
         self.motion=Motion(self);self.bind('<Configure>',lambda _:self.paint());self.bind('<Motion>',self.hover);self.bind('<Leave>',self.leave)
         self.bind('<Button-1>',self.click);self.bind('<Up>',lambda _:self.command(max(0,self.selected-1)))
@@ -38,20 +38,22 @@ class Navigation(tk.Canvas):
         if self.hovered!=index:self.hovered=index;self.paint()
     def leave(self,_):self.hovered=-1;self.paint()
     def select(self,index):
-        start=self.position;self.selected=index
-        def frame(t):self.position=start+(index-start)*t;self.paint()
-        self.motion.animate('selection',frame,230)
+        # Commit the selected row immediately; animate only its accent, never
+        # slide a stale highlight across the previously selected menu entries.
+        self.position=index;self.selected=index;self.marker_amount=.25;self.paint()
+        def frame(t):self.marker_amount=.25+.75*t;self.paint()
+        self.motion.animate('selection',frame,140)
     def paint(self):
         import i18n
         s=self.s;w=self.winfo_width();top=self.position*self.step+6*s
         key=(w,self.step,self.selected,self.hovered,T.mode,i18n.language)
         if self.paint_key==key:
             self.coords(self.highlight,*polygon_points(0,top,w-1,self.step-12*s,8*s))
-            self.coords(self.marker,*polygon_points(0,top+17*s,3*s,22*s,1*s))
+            self.coords(self.marker,*polygon_points(0,top+17*s,3*s,22*s*self.marker_amount,1*s))
             return
         self.paint_key=key;self.delete('all')
         self.highlight=rounded(self,0,top,w-1,self.step-12*s,8*s,fill=T.SELECT,outline=T.MARK)
-        self.marker=rounded(self,0,top+17*s,3*s,22*s,1*s,fill=T.ACCENT,outline='')
+        self.marker=rounded(self,0,top+17*s,3*s,22*s*self.marker_amount,1*s,fill=T.ACCENT,outline='')
         for i,name in enumerate(self.names):
             y=i*self.step+self.step/2;color=T.FG if i==self.selected else T.MUTED
             if i==self.hovered and i!=self.selected:
@@ -112,6 +114,7 @@ class Shell:
         self.scroll.bind('<Configure>',lambda e:self.scroll.itemconfigure(self.item,width=e.width))
         # The animation translates the window, not the scrollable document origin.
         self.content.bind('<Configure>',lambda e:self.scroll.configure(scrollregion=(0,0,e.width,e.height)))
+        self.covering=False
     def release_brand(self,event):
         if event.widget is self.brand:
             self.logo=None;self.brand_font.__del__();self.brand_font.delete_font=False
@@ -133,9 +136,17 @@ class Shell:
         step=max(32*s,min(68*s,budget/len(self.navigation.names)))
         if abs(step-self.navigation.step)>.5:
             self.navigation.step=step;self.navigation.configure(height=round(step*len(self.navigation.names)));self.navigation.paint()
+    def cover_page(self):
+        if self.covering:return
+        self.covering=True;self.scroller.cancel();self.motion.cancel('page')
+        self.title.configure(fg=T.FG)
+        self.scroll.itemconfigure(self.item,state='hidden')
+        # Hide the embedded document itself. The existing opaque canvas clears
+        # the old pixels; no overlapping native window or second rendering layer.
+    def reveal_page(self):
+        self.scroll.itemconfigure(self.item,state='normal');self.covering=False
+        self.root.update_idletasks()
     def select(self,index):
         self.navigation.select(index);self.breadcrumb.configure(text=f'STINTRIX  / 0{index + 1}')
         self.scroll.coords(self.item,0,0)
-        def frame(t):
-            self.title.configure(fg=blend(T.MUTED,T.FG,t))
-        self.motion.animate('page',frame,240)
+        self.title.configure(fg=T.FG)

@@ -9,6 +9,7 @@ class BackgroundTasks:
         self._completed = SimpleQueue()
         self._futures = set()
         self._closed = False
+        self._callbacks = {}; self._sequence = 0
 
     def submit(self, work, done):
         """Called by the GUI. No worker may call Tk, including root.after()."""
@@ -16,14 +17,19 @@ class BackgroundTasks:
             raise RuntimeError('Background tasks are closing')
         self._prune()
 
+        self._sequence += 1; key = self._sequence
+        self._callbacks[key] = done
+        completed = self._completed
         def run():
             try:
                 result, error = work(), None
             except Exception as exception:
                 result, error = None, str(exception)
-            self._completed.put((done, result, error))
+            completed.put((key, result, error))
 
-        future = self._executor.submit(run)
+        try:future = self._executor.submit(run)
+        except Exception:
+            self._callbacks.pop(key,None);raise
         self._futures.add(future)
         return future
 
@@ -39,7 +45,8 @@ class BackgroundTasks:
         """Drain on the owning thread; do not retain completed results/futures."""
         while True:
             try:
-                yield self._completed.get_nowait()
+                key,result,error = self._completed.get_nowait()
+                yield self._callbacks.pop(key),result,error
             except Empty:
                 break
         self._prune()

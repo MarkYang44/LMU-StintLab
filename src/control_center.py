@@ -29,6 +29,10 @@ SUBTITLES=('比赛中保持专注。所有控制，在这里。','你的赛事�
 
 class ControlCenter:
     def __init__(self,root=None,hud=None):
+        # Closed Tcl interpreters can remain in widget cycles. Reclaim them on
+        # their GUI thread before another image worker can trigger collection.
+        import gc
+        gc.collect()
         self.root=root or tk.Tk();self.hud=hud;self.closing=False;self.attached=hud is not None
         self.data_path=ROOT;self.guide_page=None;self.guide_state={};self.tasks=BackgroundTasks();self.items=[];self.scan_generation=0;self.scanning=False;self.page=0
         import i18n
@@ -48,7 +52,10 @@ class ControlCenter:
         branding.apply(self.root)
         # Bind to this toplevel only, leaving the HUD's high-rate event loop alone.
         self.root.bind('<MouseWheel>',self.wheel)
-        self.show_page(0);backdrop(self.root);self.job=self.root.after(50,self.tick)
+        self.show_page(0);backdrop(self.root)
+        from control_repaint import Presentation
+        self.presentation=Presentation(self.root);self.root._stintrix_presentation=self.presentation
+        self.job=self.root.after(50,self.tick)
         self.repair_windows_entry()
 
     def build_shell(self):
@@ -349,6 +356,8 @@ class ControlCenter:
         self.sessions(body)
         row=self.row(body);self.button(row,'赛事 Review',lambda:self.report('review.html'),True,140)
         self.button(row,'查看圈速单',lambda:self.report('圈速单.png'),False,130);self.button(row,'查看比赛日志',lambda:self.report('比赛日志.png'),False,140)
+        from control_delete import remove
+        self.button(row,'删除选中赛事',lambda:remove(self),False,160)
         row=self.row(body);self.button(row,'同场圈 A / 圈 B',self.selected_laps,False,160);self.button(row,'导出赛事包',self.export_package,False,140)
         self.button(row,'完整记录管理',self.library,False,150)
 
@@ -510,7 +519,7 @@ class ControlCenter:
 
     def close(self):
         if not self.closing:
-            self.closing=True;self.pages.cancel_request();self.pages.cancel_build();self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel();self.shell.scroller.cancel()
+            self.closing=True;self.presentation.cancel();self.pages.cancel_request();self.pages.cancel_build();self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel();self.shell.scroller.cancel()
             if self.active():self.hud.close()
         if self.tasks.busy or (self.hud and self.hud.root.winfo_exists()):self.root.after(50,self.close);return
         for _ in self.tasks.completions():pass

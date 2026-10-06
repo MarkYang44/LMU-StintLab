@@ -67,3 +67,47 @@ class NavigationTests(unittest.TestCase):
                 for (_,done),image in zip(jobs,output):done(image,None)
                 self.assertTrue(all(not picture.photo for picture in pictures));self.assertFalse(errors)
             finally:center.close()
+
+    def test_old_document_and_selection_disappear_before_deferred_page_build(self):
+        from control_center import ControlCenter
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)):
+            center=ControlCenter();errors=[];center.root.report_callback_exception=lambda *args:errors.append(args)
+            try:
+                center.show_page(1);center.root.update()
+                old=center.content;self.assertTrue(old.winfo_ismapped())
+                generation=center.scan_generation
+                center.request_page(3);center.root.update_idletasks()
+                self.assertFalse(old.winfo_ismapped())
+                self.assertTrue(center.shell.covering);self.assertEqual(center.scroll.itemcget(center.content_item,'state'),'hidden')
+                self.assertIsNotNone(center.pages.pending);self.assertIsNone(center.tree)
+                self.assertGreater(center.scan_generation,generation)
+                self.assertEqual(center.shell.navigation.position,3)
+                self.assertEqual(center.shell.navigation.selected,3)
+                center.request_page(6);center.request_page(0)
+                self.pump(center,lambda:center.page==0 and center.pages.pending is None)
+                self.assertFalse(center.shell.covering);self.assertEqual(center.scroll.itemcget(center.content_item,'state'),'normal')
+                self.assertTrue(center.pages.active.frame.winfo_ismapped());self.assertFalse(errors,errors)
+            finally:center.close()
+
+    def test_move_repaints_only_menu_once_then_releases_callback_on_close(self):
+        from control_center import ControlCenter
+        from types import SimpleNamespace
+        import tkinter as tk
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)):
+            center=ControlCenter();presentation=center.presentation
+            try:
+                center.root.update();presentation.cancel()
+                presentation.changed(SimpleNamespace(widget=center.content,type=tk.EventType.Configure))
+                self.assertIsNone(presentation.job)
+                with patch.object(presentation.user,'RedrawWindow',wraps=presentation.user.RedrawWindow) as redraw:
+                    for value in range(4):center.root.geometry(f'+{140+value*4}+{110+value*3}');center.root.update_idletasks()
+                    self.pump(center,lambda:presentation.job is None and redraw.call_count>0)
+                    self.assertEqual(redraw.call_count,1)
+                    self.assertEqual(redraw.call_args.args[0],center.root.winfo_id())
+                    self.assertEqual(redraw.call_args.args[3],0x185)
+                    for _ in range(12):center.root.update();time.sleep(.005)
+                    self.assertEqual(redraw.call_count,1);self.assertIsNone(presentation.job)
+                presentation.schedule();pending=presentation.job
+            finally:center.close()
+            self.assertIsNone(presentation.job);self.assertIsNone(presentation.root)
+            self.assertIsNone(presentation.user)

@@ -30,6 +30,8 @@ from telemetry_import import import_recording
 
 class App:
     def __init__(self, demo=False, clean=False, clean_controls=False, root=None, on_menu=None):
+        import gc
+        gc.collect()
         self.root = root if root is not None else tk.Tk()
         control_theme.load(ROOT/'interface_settings.json')
         self.on_menu=on_menu

@@ -20,6 +20,10 @@ class PageDeck:
         if self.pending is not None:self.owner.root.after_cancel(self.pending);self.pending=None
     def request(self,index):
         self.cancel_request()
+        if self.active is not None and self.index==index and self.active.complete and not self.owner.shell.covering:return
+        self.owner.shell.cover_page();self.hide_active()
+        self.owner.root.update_idletasks()
+        self.owner.scan_generation+=1;self.owner.tree=None;self.owner.guide_page=None
         self.owner.title.configure(text=self.owner.page_titles[index])
         self.owner.subtitle.configure(text=self.owner.page_subtitles[index])
         self.owner.shell.select(index)
@@ -34,18 +38,35 @@ class PageDeck:
         motion=getattr(widget,'motion',None)
         if motion is not None:
             motion.cancel()
-            if widget.__class__.__name__=='Switch':widget.value=float(widget.variable.get())
+            changed=False
+            if widget.__class__.__name__=='Switch':
+                value=float(widget.variable.get());changed=widget.value!=value;widget.value=value
             for name,value in (('amount',0),('focused',False),('pressed',False)):
-                if hasattr(widget,name):setattr(widget,name,value)
-            if hasattr(widget,'paint'):widget.paint()
+                if hasattr(widget,name):
+                    changed=changed or getattr(widget,name)!=value;setattr(widget,name,value)
+            if changed and hasattr(widget,'paint'):widget.paint()
         if widget.__class__.__name__=='Select':widget.close(False)
         for child in widget.winfo_children():self.pause(child)
-    def mount(self,index,builder,progressive=False):
+    def hide_active(self):
+        self.cancel_build()
+        selector=getattr(self.owner.root,'_stintrix_active_select',None)
+        if selector:selector.close(False)
+        if self.active is not None:self.active.frame.pack_forget()
+        guide=self.owner.guide_page
+        if guide:
+            for name in ('job','card_job'):
+                job=getattr(guide,name)
+                if job:self.owner.root.after_cancel(job);setattr(guide,name,None)
+    def retire(self):
         self.cancel_build()
         if self.active is not None:
-            self.pause(self.active.frame);self.active.frame.pack_forget()
-            if self.index not in self.CACHE or not self.active.complete:
-                self.active.frame.destroy();self.pages.pop(self.index,None)
+            self.active.frame.pack_forget()
+            if self.index in self.CACHE and self.active.complete:self.pause(self.active.frame)
+            else:self.active.frame.destroy();self.pages.pop(self.index,None)
+        self.active=None;self.building=None
+    def mount(self,index,builder,progressive=False):
+        self.owner.shell.cover_page();self.retire()
+        self.owner.root.update_idletasks()
         self.index=index
         cached=self.pages.get(index)
         if cached is not None and cached.complete:
@@ -53,6 +74,7 @@ class PageDeck:
             for name,value in cached.attributes.items():setattr(self.owner,name,value)
             cached.frame.pack(fill='x')
             for refresh in cached.sync:refresh()
+            self.owner.shell.reveal_page()
             return
         page=Page(tk.Frame(self.host,bg=self.host.cget('bg')));self.active=page
         if index in self.CACHE:self.pages[index]=page
@@ -73,6 +95,7 @@ class PageDeck:
             if self.before.get(name) is not value and isinstance(value,(tk.Widget,tk.Variable))
             and name not in ('root','content','scroll','title','subtitle','tree','guide_page')}
         page.complete=True;self.generator=None;self.job=None;self.building=None
+        self.owner.shell.reveal_page()
     def step(self):
         self.job=None;start=time.perf_counter()
         try:

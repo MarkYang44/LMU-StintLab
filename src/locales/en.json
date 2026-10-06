@@ -284,5 +284,14 @@
   "诊断已导出": "Diagnostics exported",
   "圈速单 / 比赛日志": "Lap Sheet / Race Log",
   "圈 A": "Lap A",
-  "圈 B": "Lap B"
+  "圈 B": "Lap B",
+  "请等待当前记录任务完成": "Wait for the current session task to finish",
+  "删除赛事记录": "Delete Session Record",
+  "删除选中赛事": "Delete Selected Session",
+  "记录路径无效": "Invalid session path",
+  "永久删除这场赛事记录？": "Permanently delete this session record?",
+  "将从本机删除该场全部记录、圈文件与报告，无法恢复。": "All recording files, extracted laps and reports for this session will be permanently deleted from this PC.",
+  "记录已永久删除": "Session permanently deleted",
+  "；备注清理失败：": "; note cleanup failed: ",
+  "记录包含链接，不能删除": "Session contains links; deletion is blocked"
 }
