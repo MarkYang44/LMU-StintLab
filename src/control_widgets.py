@@ -14,8 +14,12 @@ def px(widget,value):return round(value*scale(widget))
 
 def rounded(canvas,x,y,w,h,r,**kwargs):
     """Clipped opposing corners, retained under its old name for UI compatibility."""
+    return canvas.create_polygon(*polygon_points(x,y,w,h,r),**kwargs)
+
+
+def polygon_points(x,y,w,h,r):
     r=min(r,w/3,h/3)
-    return canvas.create_polygon(x+r,y,x+w,y,x+w,y+h-r,x+w-r,y+h,x,y+h,x,y+r,**kwargs)
+    return (x+r,y,x+w,y,x+w,y+h-r,x+w-r,y+h,x,y+h,x,y+r)
 
 
 class Pill(tk.Canvas):
@@ -29,6 +33,9 @@ class Pill(tk.Canvas):
         self.bind('<ButtonPress-1>',self.press);self.bind('<ButtonRelease-1>',self.release)
         self.bind('<Return>',lambda _:self.command());self.bind('<space>',lambda _:self.command())
         self.bind('<FocusIn>',lambda _:self.focus(True));self.bind('<FocusOut>',lambda _:self.focus(False))
+        self.bind('<Destroy>',self.dispose,add='+')
+    def dispose(self,event):
+        if event.widget is self:self.font.__del__();self.font.delete_font=False
     def focus(self,value):self.focused=value;self.paint()
     def hover(self,target):
         start=self.amount

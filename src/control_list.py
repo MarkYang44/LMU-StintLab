@@ -44,6 +44,8 @@ class SessionList(tk.Frame):
             return self.viewport.bind(sequence,func,add)
         return super().bind(sequence,func,add)
     def destroyed(self,event):
+        if event.widget is self:
+            for font in (self.font,self.small,self.bold):font.__del__();font.delete_font=False
         if event.widget is self and self.pending:
             try:self.after_cancel(self.pending)
             except tk.TclError:pass

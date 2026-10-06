@@ -4,7 +4,7 @@ import tkinter as tk
 from control_theme import T
 from tkinter import ttk,font as tkfont
 from control_motion import Motion,SmoothScroll,blend
-from control_widgets import rounded,scale,px,Pill
+from control_widgets import rounded,polygon_points,scale,px,Pill
 import branding
 
 
@@ -25,7 +25,7 @@ def symbol(canvas,kind,x,y,s,color):
 
 class Navigation(tk.Canvas):
     def __init__(self,parent,names,command):
-        self.s=scale(parent);self.step=68*self.s;self.names=names;self.command=command;self.selected=0;self.position=0;self.hovered=-1
+        self.s=scale(parent);self.step=68*self.s;self.names=names;self.command=command;self.selected=0;self.position=0;self.hovered=-1;self.paint_key=None
         super().__init__(parent,bg=T.RAIL,height=round(self.step*len(names)),highlightthickness=0,takefocus=True,cursor='hand2')
         self.motion=Motion(self);self.bind('<Configure>',lambda _:self.paint());self.bind('<Motion>',self.hover);self.bind('<Leave>',self.leave)
         self.bind('<Button-1>',self.click);self.bind('<Up>',lambda _:self.command(max(0,self.selected-1)))
@@ -42,9 +42,16 @@ class Navigation(tk.Canvas):
         def frame(t):self.position=start+(index-start)*t;self.paint()
         self.motion.animate('selection',frame,230)
     def paint(self):
-        self.delete('all');s=self.s;w=self.winfo_width();top=self.position*self.step+6*s
-        rounded(self,0,top,w-1,self.step-12*s,8*s,fill=T.SELECT,outline=T.MARK)
-        rounded(self,0,top+17*s,3*s,22*s,1*s,fill=T.ACCENT,outline='')
+        import i18n
+        s=self.s;w=self.winfo_width();top=self.position*self.step+6*s
+        key=(w,self.step,self.selected,self.hovered,T.mode,i18n.language)
+        if self.paint_key==key:
+            self.coords(self.highlight,*polygon_points(0,top,w-1,self.step-12*s,8*s))
+            self.coords(self.marker,*polygon_points(0,top+17*s,3*s,22*s,1*s))
+            return
+        self.paint_key=key;self.delete('all')
+        self.highlight=rounded(self,0,top,w-1,self.step-12*s,8*s,fill=T.SELECT,outline=T.MARK)
+        self.marker=rounded(self,0,top+17*s,3*s,22*s,1*s,fill=T.ACCENT,outline='')
         for i,name in enumerate(self.names):
             y=i*self.step+self.step/2;color=T.FG if i==self.selected else T.MUTED
             if i==self.hovered and i!=self.selected:
@@ -66,6 +73,7 @@ class Shell:
         self.brand=tk.Canvas(side,bg=T.RAIL,highlightthickness=0,height=round(177*s));self.brand.pack(fill='x',padx=round(25*s),pady=(round(22*s),round(4*s)))
         self.brand.bind('<Configure>',self.paint_brand)
         self.logo=None
+        self.brand.bind('<Destroy>',self.release_brand,add='+')
         try:
             from PIL import Image,ImageOps,ImageTk
             with Image.open(branding.directory()/('menu-icon-light.png' if T.mode=='light' else 'menu-icon.png')) as artwork:
@@ -104,6 +112,9 @@ class Shell:
         self.scroll.bind('<Configure>',lambda e:self.scroll.itemconfigure(self.item,width=e.width))
         # The animation translates the window, not the scrollable document origin.
         self.content.bind('<Configure>',lambda e:self.scroll.configure(scrollregion=(0,0,e.width,e.height)))
+    def release_brand(self,event):
+        if event.widget is self.brand:
+            self.logo=None;self.brand_font.__del__();self.brand_font.delete_font=False
     def paint_brand(self,_=None):
         c=self.brand;s=self.s;c.delete('all')
         if self.logo:c.create_image(0,0,image=self.logo,anchor='nw')
@@ -124,7 +135,7 @@ class Shell:
             self.navigation.step=step;self.navigation.configure(height=round(step*len(self.navigation.names)));self.navigation.paint()
     def select(self,index):
         self.navigation.select(index);self.breadcrumb.configure(text=f'STINTRIX  / 0{index + 1}')
+        self.scroll.coords(self.item,0,0)
         def frame(t):
-            self.scroll.coords(self.item,0,round((1-t)*14*self.s))
             self.title.configure(fg=blend(T.MUTED,T.FG,t))
         self.motion.animate('page',frame,240)

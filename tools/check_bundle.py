@@ -39,7 +39,7 @@ def main():
         if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
     assert {'library','laps','session_archive'}<=modules
     assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
-    assert {'control_fields','windows_integration','control_shell','control_motion','control_list','control_theme','branding','guidebook','control_guide','guide_library','guide_cards','PIL.ImageTk','PIL.WebPImagePlugin'}<=modules
+    assert {'control_pages','control_fields','windows_integration','control_shell','control_motion','control_list','control_theme','branding','guidebook','control_guide','guide_library','guide_cards','PIL.ImageTk','PIL.WebPImagePlugin'}<=modules
     import pefile
     executable=pefile.PE(str(bundle/'LMU-Stintrix.exe'))
     resources={entry.id:entry for entry in executable.DIRECTORY_ENTRY_RESOURCE.entries}

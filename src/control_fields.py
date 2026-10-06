@@ -268,5 +268,6 @@ class Select(tk.Canvas):
     def dispose(self,event):
         if event.widget is self:
             self.close(False)
+            self.font.__del__();self.font.delete_font=False;self.edit=None
             try:self.variable.trace_remove('write',self.trace)
             except tk.TclError:pass

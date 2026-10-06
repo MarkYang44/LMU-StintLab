@@ -10,7 +10,7 @@ class Picture(tk.Canvas):
     """Decode only visible images, release on scroll-away; no global image cache."""
     def __init__(self,parent,center,item):
         super().__init__(parent,bg=T.FIELD,highlightthickness=0,height=px(parent,210))
-        self.center=center;self.item=item;self.photo=None;self.size=None;self.job=None;self.error=''
+        self.center=center;self.item=item;self.photo=None;self.size=None;self.job=None;self.error='';self.loading=None;self.revision=0
         self.pack(fill='x',pady=(0,px(parent,16)))
         self.bind('<Configure>',self.changed);self.bind('<Destroy>',self.dispose,add='+')
         self.command=self.register(self.view_changed)
@@ -30,11 +30,14 @@ class Picture(tk.Canvas):
             except tk.TclError:pass
         try:self.tk.call('trace','remove','execution',self.center.scroll._w,'leave',self.command)
         except tk.TclError:pass
-        self.photo=None;self.size=None
+        self.revision+=1;self.photo=None;self.size=None
 
     def render(self):
+        if self.job:
+            try:self.after_cancel(self.job)
+            except tk.TclError:pass
         self.job=None
-        if not self.winfo_exists():return
+        if not self.winfo_exists() or self.center.closing:return
         width=max(1,min(1200,self.winfo_width()));height=max(1,round(width*9/16))
         # A smaller image on wide windows keeps the complete photograph visible.
         if self.winfo_width()<=1:return
@@ -45,16 +48,27 @@ class Picture(tk.Canvas):
             if self.photo is not None:self.delete('image');self.photo=None;self.size=None
             return
         if self.size==(width,height):return
-        try:
-            from PIL import Image,ImageTk,WebPImagePlugin
-            path=(ASSETS/'guide'/self.item['image']).resolve()
-            if not path.is_relative_to((ASSETS/'guide/media').resolve()):raise ValueError('Invalid guide image path')
+        if self.loading==(width,height):return
+        path=(ASSETS/'guide'/self.item['image']).resolve()
+        if not path.is_relative_to((ASSETS/'guide/media').resolve()):self.error='Invalid guide image path';return
+        self.revision+=1;revision=self.revision;self.loading=(width,height)
+        def decode():
+            from PIL import Image,WebPImagePlugin
             with Image.open(path,formats=['WEBP']) as original:
                 original.thumbnail((width,height),Image.Resampling.LANCZOS)
-                self.photo=ImageTk.PhotoImage(original,master=self)
+                return original.copy()
+        def ready(image,error):
+            if not self.winfo_exists() or revision!=self.revision:return
+            self.loading=None
+            if error:
+                self.error=error;self.delete('all');self.create_text(self.winfo_width()/2,height/2,text='图片暂不可用',fill=T.MUTED);return
+            if not self.winfo_ismapped():return
+            top=self.winfo_rooty();viewport=self.center.scroll
+            if top+height<viewport.winfo_rooty()-80 or top>viewport.winfo_rooty()+viewport.winfo_height()+80:return
+            from PIL import ImageTk
+            self.error='';self.photo=ImageTk.PhotoImage(image,master=self)
             self.size=(width,height);self.delete('all');self.create_image(self.winfo_width()/2,height/2,image=self.photo,tags='image')
-        except (OSError,ValueError,tk.TclError) as error:
-            self.error=str(error);self.delete('all');self.create_text(self.winfo_width()/2,height/2,text='图片暂不可用',fill=T.MUTED)
+        self.center.run_background(decode,ready)
 
 
 class Sources(tk.Frame):

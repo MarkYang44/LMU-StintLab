@@ -12,7 +12,7 @@ from guide_cards import Cards
 class GuidePage:
     PAGE_SIZE=3
     def __init__(self,center,view):
-        self.center=center;self.view=view;self.job=None;self.closed=False
+        self.center=center;self.view=view;self.job=None;self.card_job=None;self.render_generation=0;self.closed=False
         self.library=Library(catalog(),center.data_path/'guide_settings.json')
         import i18n
         self.library.language=i18n.language
@@ -25,12 +25,14 @@ class GuidePage:
     def tr(self,zh,en):return self.library.tr(zh,en)
     def dispose(self,event):
         if event.widget is not self.container:return
-        self.closed=True
+        self.closed=True;self.cards.page=None
         try:self.variables['query'].trace_remove('write',self.query_trace)
         except tk.TclError:pass
-        if self.job:
-            try:self.center.root.after_cancel(self.job)
-            except tk.TclError:pass
+        for job in (self.job,self.card_job):
+            if job:
+                try:self.center.root.after_cancel(job)
+                except tk.TclError:pass
+        self.job=None;self.card_job=None
 
     def build(self):
         center=self.center;tr=self.tr
@@ -80,6 +82,8 @@ class GuidePage:
     def render(self):
         self.job=None
         if self.closed:return
+        self.render_generation+=1;generation=self.render_generation
+        if self.card_job:self.center.root.after_cancel(self.card_job);self.card_job=None
         fraction=self.center.scroll.yview()[0]
         for child in self.results.winfo_children():child.destroy()
         self.card_count=0;self.compare_buttons={};self.favorite_buttons={};self.rows=self.library.rows(self.view,self.state)
@@ -87,24 +91,38 @@ class GuidePage:
         else:text=self.tr('台车型','cars')
         self.result.configure(text=f'{len(self.rows)} '+text)
         self.update_selection()
+        builders=[]
         if self.state['mode']=='compare':
             for index,key in enumerate(self.state['comparison']):
                 car,rec=self.library.item(key)
                 if car:
-                    self.cards.text(self.results,self.tr('对比 ','Comparison ')+chr(65+index),12,T.ACCENT,True)
-                    self.cards.car(self.results,car,rec,True);self.card_count+=1
+                    def comparison_card(car=car,rec=rec,index=index):
+                        self.cards.text(self.results,self.tr('对比 ','Comparison ')+chr(65+index),12,T.ACCENT,True)
+                        self.cards.car(self.results,car,rec,True)
+                    builders.append(comparison_card)
             self.page_label.configure(text=self.tr('对比中 · 保留原赛道上下文','Comparing · original circuit context retained'))
         else:
             pages=max(1,(len(self.rows)+self.PAGE_SIZE-1)//self.PAGE_SIZE)
             self.state['page']=max(0,min(pages-1,self.state['page']));start=self.state['page']*self.PAGE_SIZE
             for item,recs in self.rows[start:start+self.PAGE_SIZE]:
-                if self.view=='tracks':self.cards.track(self.results,item,recs)
-                else:self.cards.car(self.results,item)
-                self.card_count+=1
+                builders.append(lambda item=item,recs=recs:self.cards.track(self.results,item,recs) if self.view=='tracks' else self.cards.car(self.results,item))
             if not self.rows:self.cards.text(self.results,self.tr('没有匹配的资料，试试重置筛选。','No matches. Try resetting filters.'),12,T.MUTED)
             self.page_label.configure(text=f"{self.state['page']+1} / {pages} · "+self.tr('每页 3 张完整卡片','3 complete cards per page'))
-        self.center.root.update_idletasks();self.center.scroll.yview_moveto(fraction)
-        self.center.status.set(self.tr('完整原生图文 · 收藏仅保存在本机','Complete native library · favorites remain local'))
+        def finish():
+            self.card_job=None
+            if self.closed or generation!=self.render_generation:return
+            self.center.scroll.yview_moveto(fraction)
+            self.center.status.set(self.tr('完整原生图文 · 收藏仅保存在本机','Complete native library · favorites remain local'))
+        if getattr(self.center,'progressive',False):
+            def next_card():
+                self.card_job=None
+                if self.closed or self.center.closing or generation!=self.render_generation:return
+                if builders:builders.pop(0)();self.card_count+=1;self.card_job=self.center.root.after(16,next_card)
+                else:finish()
+            self.card_job=self.center.root.after(16,next_card)
+        else:
+            for build in builders:build();self.card_count+=1
+            self.center.root.update_idletasks();finish()
 
     def update_selection(self):
         self.selected_label.configure(text='\n'.join(self.library.name(key) for key in self.state['comparison']) or self.tr('选择 2–3 项进行对比。','Choose 2–3 items to compare.'))
@@ -145,7 +163,7 @@ class GuidePage:
     def jump(self,view,slug):
         target=self.center.guide_state.setdefault(view,{})
         target.update(query=self.library.data[view][slug]['name'],group='',car='',favorite='',page=0,mode='browse')
-        self.center.show_page(5 if view=='tracks' else 6)
+        self.center.show_page(5 if view=='tracks' else 6,progressive=True)
 
 
 def show(center,view):

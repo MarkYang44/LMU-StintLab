@@ -16,7 +16,7 @@ class Motion:
     def __init__(self,widget):
         self.widget=widget;self.jobs={};widget.bind('<Destroy>',self.destroy,add='+')
     def destroy(self,event):
-        if event.widget is self.widget:self.cancel()
+        if event.widget is self.widget:self.cancel();self.widget=None
     def cancel(self,key=None):
         for name in list(self.jobs) if key is None else [key]:
             job=self.jobs.pop(name,None)
@@ -44,7 +44,8 @@ class SmoothScroll:
         self.target=0.;self.job=None;self.last=0.
         widget.bind('<Destroy>',self.destroy,add='+')
     def destroy(self,event):
-        if event.widget is self.widget:self.cancel()
+        if event.widget is self.widget:
+            self.cancel();self.widget=None;self.position=None;self.limit=None;self.paint=None
     def cancel(self):
         if self.job is not None:
             try:self.widget.after_cancel(self.job)

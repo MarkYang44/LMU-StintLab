@@ -71,9 +71,12 @@ class ControlCenter:
         style.map('Lab.TCombobox',fieldbackground=[('readonly',T.FIELD)],foreground=[('readonly',T.FG)],selectbackground=[('readonly',T.FIELD)],selectforeground=[('readonly',T.FG)])
         self.root.option_add('*TCombobox*Listbox.background',T.FIELD);self.root.option_add('*TCombobox*Listbox.foreground',T.FG)
         self.root.option_add('*TCombobox*Listbox.selectBackground',T.SELECT)
-        self.shell=Shell(self.root,PAGES,self.show_page,self.status,self.toggle_theme,self.toggle_language)
+        self.page_titles=PAGES;self.page_subtitles=SUBTITLES
+        self.shell=Shell(self.root,PAGES,self.request_page,self.status,self.toggle_theme,self.toggle_language)
         self.scroll=self.shell.scroll;self.content=self.shell.content;self.content_item=self.shell.item
         self.title=self.shell.title;self.subtitle=self.shell.subtitle
+        from control_pages import PageDeck
+        self.pages=PageDeck(self,self.shell.content)
     def toggle_theme(self):self.set_theme('light' if T.mode=='dark' else 'dark')
 
     def set_theme(self,mode):
@@ -103,6 +106,7 @@ class ControlCenter:
         query=self.search.get() if self.tree else ''
         selected=self.tree.selection() if self.tree else ()
         table_position=self.tree.offset if self.tree else 0
+        self.pages.dispose()
         self.shell.motion.cancel();self.shell.scroller.cancel();self.shell.navigation.motion.cancel()
         self.shell.side.destroy();self.shell.main.destroy();self.root.configure(bg=T.BG)
         self.build_shell();self.root.geometry(geometry);self.show_page(page)
@@ -161,13 +165,15 @@ class ControlCenter:
     def active(self):
         return self.hud is not None and not self.hud.closing and self.hud.root.winfo_exists()
 
-    def show_page(self,index):
-        self.page=index;self.scan_generation+=1;self.tree=None;self.guide_page=None
+    def request_page(self,index):self.pages.request(index)
+
+    def show_page(self,index,progressive=False):
+        self.pages.cancel_request()
+        self.page=index;self.progressive=progressive;self.scan_generation+=1;self.tree=None;self.guide_page=None
         self.shell.scroller.cancel()
-        for child in self.content.winfo_children():child.destroy()
         self.title.configure(text=PAGES[index]);self.subtitle.configure(text=SUBTITLES[index]);self.scroll.yview_moveto(0)
-        self.shell.select(index)
-        (self.run_page,self.review_page,self.compare_page,self.settings_page,self.data_page,self.tracks_page,self.cars_page)[index]()
+        if self.shell.navigation.selected!=index:self.shell.select(index)
+        self.pages.mount(index,(self.run_page,self.review_page,self.compare_page,self.settings_page,self.data_page,self.tracks_page,self.cars_page)[index],progressive)
 
     def tracks_page(self):
         from control_guide import show
@@ -197,9 +203,20 @@ class ControlCenter:
         self.button(row,'性能诊断',lambda:self.hud_action('show_diagnostics'),False,130)
         body=self.card('附加遥测面板','按需开启，让比赛视野保持清爽',grid)
         vehicle=vehiclelab.load_settings(ROOT/'vehicle_settings.json');end=endurance.load_settings(ROOT/'endurance_settings.json')
+        switches=[]
         for module,key,title in [('vehicle','tyres','四轮轮胎温度 / 胎压 / 胎况'),('vehicle','strategy','燃油、虚拟能量与续航策略'),('endurance','pit','进站计时与补给'),('endurance','stint','Stint 长距离节奏'),('endurance','weather','天气与赛道趋势')]:
             value=tk.BooleanVar(self.root,value=(vehicle if module=='vehicle' else end)[key+'_enabled'])
             Switch(body,title,value,lambda m=module,k=key,v=value:self.update_module(m,{k+'_enabled':v.get()})).pack(fill='x',pady=2)
+            switches.append((module,key,value))
+
+        channel=self.channel
+        def refresh_run():
+            channel.set('游戏过滤后' if sampling.load_settings(ROOT/'settings.json')['input_channel']=='filtered' else '原始输入')
+            values={'vehicle':vehiclelab.load_settings(ROOT/'vehicle_settings.json'),'endurance':endurance.load_settings(ROOT/'endurance_settings.json')}
+            for module,key,variable in switches:
+                value=values[module][key+'_enabled']
+                if variable.get()!=value:variable.set(value)
+        self.pages.on_resume(refresh_run)
 
         body=self.card('Windows 快捷启动','添加后可在开始菜单 / Windows 搜索中输入 Stintrix 或 LMU 启动；迁移程序后可再次更新入口')
         row=self.row(body)
@@ -379,34 +396,48 @@ class ControlCenter:
 
     def form(self,body,module,specs,choices=()):
         source={'sampling':sampling,'vehicle':vehiclelab,'endurance':endurance}[module].load_settings(ROOT/({'sampling':'settings.json','vehicle':'vehicle_settings.json','endurance':'endurance_settings.json'}[module]))
-        variables={}
+        variables={};baseline={key:str(value) for key,value in source.items()}
         for key,label in specs:
             row=self.row(body);self.label(row,label,10,T.MUTED).pack(side='left')
             var=tk.StringVar(self.root,value=str(source[key]));variables[key]=var
             Field(row,textvariable=var,width=15,font=('Segoe UI',11)).pack(side='right',padx=4)
+            yield
         for key,label,options in choices:
             var=tk.StringVar(self.root,value=source[key]);variables[key]=var;self.choice(body,label,var,options)
+            yield
         row=self.row(body)
         def save():
             try:self.update_module(module,{key:variables[key].get() for key in variables})
             except (ValueError,OSError) as e:messagebox.showerror(tr('设置未保存'),str(e),parent=self.root)
         self.button(row,'应用并保存',save,True,145)
+        def refresh_form():
+            current={'sampling':sampling,'vehicle':vehiclelab,'endurance':endurance}[module].load_settings(ROOT/({'sampling':'settings.json','vehicle':'vehicle_settings.json','endurance':'endurance_settings.json'}[module]))
+            for key,variable in variables.items():
+                value=variable.get();equal=value==baseline[key]
+                if not equal:
+                    try:equal=float(value)==float(baseline[key])
+                    except ValueError:pass
+                if equal:variable.set(str(current[key]))
+            baseline.update({key:str(value) for key,value in current.items()})
+        self.pages.register(module,variables,refresh_form)
+        yield
+
 
     def update_module(self,module,values):
         control_settings.apply(module,values,self.hud if self.active() else None);self.status.set(tr('设置已保存') + (tr('并应用到 HUD') if self.active() else tr('，启动 HUD 时生效')))
 
     def settings_page(self):
         body=self.card('输入采样与 HUD 刷新','1–4000 Hz · sync 跟随采样目标；有效数据频率由游戏和硬件决定')
-        self.form(body,'sampling',[('fixed_hz','固定采样 / Hz'),('min_hz','动态最低 / Hz'),('max_hz','动态最高 / Hz'),
+        yield from self.form(body,'sampling',[('fixed_hz','固定采样 / Hz'),('min_hz','动态最低 / Hz'),('max_hz','动态最高 / Hz'),
             ('change_pct_s','升频变化阈值 / % 每秒'),('hold_s','降频延迟 / 秒'),('brake_pct','刹车升频阈值 / %'),('draw_hz','手动绘制 / Hz')],
             [('mode','采样模式',['fixed','dynamic']),('draw_mode','绘制模式',['sync','manual'])])
         body=self.card('轮胎、燃油与能量策略')
-        self.form(body,'vehicle',[('record_hz','附加遥测记录 / Hz'),('history_laps','耗油统计圈数'),('reserve_l','燃油余量 / L'),('extra_finish_laps','保险圈数'),('target_value','手动赛程数值')],
+        yield from self.form(body,'vehicle',[('record_hz','附加遥测记录 / Hz'),('history_laps','耗油统计圈数'),('reserve_l','燃油余量 / L'),('extra_finish_laps','保险圈数'),('target_value','手动赛程数值')],
             [('target_mode','赛程来源',['auto','laps','time']),('rate_mode','耗油统计',['conservative','median'])])
         from control_profile import show
         self.button(self.row(body),'车型轮胎阈值',lambda:show(self),False,160)
         body=self.card('进站、Stint 与天气')
-        self.form(body,'endurance',[('pit_limit_kmh','进站限速 / km/h（0 关闭）'),('pit_tolerance_kmh','超速容差 / km/h'),('stationary_kmh','静止阈值 / km/h'),
+        yield from self.form(body,'endurance',[('pit_limit_kmh','进站限速 / km/h（0 关闭）'),('pit_tolerance_kmh','超速容差 / km/h'),('stationary_kmh','静止阈值 / km/h'),
             ('warmup_laps','暖胎观察圈数'),('pace_window','节奏统计窗口 / 圈'),('weather_window_s','天气趋势窗口 / 秒'),('rain_change','雨强提醒阈值 / 0–1'),
             ('wetness_change','湿度提醒阈值 / 0–1'),('temp_change_c','温度提醒阈值 / °C'),('alert_cooldown_s','提醒冷却 / 秒')])
 
@@ -479,10 +510,18 @@ class ControlCenter:
 
     def close(self):
         if not self.closing:
-            self.closing=True;self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel();self.shell.scroller.cancel()
+            self.closing=True;self.pages.cancel_request();self.pages.cancel_build();self.tasks.close();self.root.after_cancel(self.job);self.shell.motion.cancel();self.shell.navigation.motion.cancel();self.shell.scroller.cancel()
             if self.active():self.hud.close()
         if self.tasks.busy or (self.hud and self.hud.root.winfo_exists()):self.root.after(50,self.close);return
         for _ in self.tasks.completions():pass
+        variables=[value for value in vars(self).items() if isinstance(value[1],tk.Variable)]
+        forms=[value for page in self.pages.pages.values() for form in page.forms.values() for value in form.values()]
+        self.pages.dispose();self.shell.navigation.command=None
+        self.root._brand_images=[]
+        for name,variable in variables:
+            variable.__del__();variable._tk=None
+        for variable in forms:
+            if variable._tk is not None:variable.__del__();variable._tk=None
         self.root.destroy()
 
 

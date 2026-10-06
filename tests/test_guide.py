@@ -94,8 +94,11 @@ assert.equal(api.esc('<img onerror="x">'),'&lt;img onerror=&quot;x&quot;&gt;');
         from control_center import ControlCenter
         from guide_cards import Picture
         def pump(center,duration=.24):
-            deadline=time.monotonic()+duration
-            while time.monotonic()<deadline:center.root.update();time.sleep(.01)
+            deadline=time.monotonic()+duration;limit=deadline+2
+            while time.monotonic()<limit:
+                center.root.update();time.sleep(.01)
+                guide=center.guide_page
+                if time.monotonic()>=deadline and (not guide or (guide.job is None and guide.card_job is None)):break
         def walk(widget):
             yield widget
             for child in widget.winfo_children():yield from walk(child)
