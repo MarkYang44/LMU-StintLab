@@ -56,7 +56,7 @@ def main():
     for name in ASSET_NAMES:
         relative=Path(name)
         args.extend(['--add-data',str(ROOT/'src'/relative)+';'+(Path('src')/relative.parent).as_posix()])
-    for name in ('stintrix.ico','stintrix-32.png','stintrix-48.png','stintrix-64.png','stintrix-128.png','menu-icon.png'):
+    for name in ('stintrix.ico','stintrix-32.png','stintrix-48.png','stintrix-64.png','stintrix-128.png','menu-icon.png','menu-icon-light.png'):
         args.extend(['--add-data',str(brand/name)+';src/branding'])
     for image in (ROOT/'src/guide/media').rglob('*.webp'):
         args.extend(['--add-data',str(image)+';'+image.parent.relative_to(ROOT).as_posix()])

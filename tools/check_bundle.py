@@ -56,7 +56,8 @@ def main():
     from tools.build_brand import render
     reviewed=render(target/'reviewed-branding')
     assert ico==(reviewed/'stintrix.ico').read_bytes()
-    assert (bundle/'_internal/src/branding/menu-icon.png').read_bytes()==(reviewed/'menu-icon.png').read_bytes()
+    for name in ('menu-icon.png','menu-icon-light.png'):
+        assert (bundle/'_internal/src/branding'/name).read_bytes()==(reviewed/name).read_bytes()
     for name,wanted in PUBLIC_ASSETS.items():
         if name.startswith('src/guide/'):assert hashlib.sha256((bundle/'_internal'/name).read_bytes()).hexdigest()==wanted,name
     guide=json.loads((bundle/'_internal/src/guide/catalog.json').read_text(encoding='utf-8'))

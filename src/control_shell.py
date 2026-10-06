@@ -68,8 +68,8 @@ class Shell:
         self.logo=None
         try:
             from PIL import Image,ImageOps,ImageTk
-            with Image.open(branding.directory()/'menu-icon.png') as artwork:
-                image=ImageOps.contain(artwork.convert('RGB'),(self.rail_width-round(50*s),round(101*s)),Image.Resampling.LANCZOS)
+            with Image.open(branding.directory()/('menu-icon-light.png' if T.mode=='light' else 'menu-icon.png')) as artwork:
+                image=ImageOps.contain(artwork.convert('RGBA'),(self.rail_width-round(50*s),round(101*s)),Image.Resampling.LANCZOS)
                 self.logo=ImageTk.PhotoImage(image,master=root)
         except (OSError,tk.TclError):pass
         self.navigation=Navigation(side,names,command);self.navigation.pack(fill='x',padx=round(16*s))

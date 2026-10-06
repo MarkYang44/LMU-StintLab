@@ -205,3 +205,19 @@ process.stdout.write(JSON.stringify({first,mode:StintrixTheme.mode,bg:colors['--
         self.assertEqual(result.returncode,0,result.stderr);value=json.loads(result.stdout)
         self.assertEqual((value['first'],value['mode'],value['bg'],value['fg']),('dark','light','#e9e7e4','#262425'))
         self.assertEqual(value['resize'],3)
+
+
+    def test_menu_brand_has_transparent_background_in_both_themes_and_app_stays_opaque(self):
+        from PIL import Image,ImageStat
+        from tools.build_brand import render
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory:
+            folder=render(directory)
+            for name in ('menu-icon.png','menu-icon-light.png'):
+                with Image.open(folder/name) as image:
+                    self.assertEqual(image.mode,'RGBA');self.assertEqual(image.getpixel((0,0))[3],0)
+                    self.assertEqual(image.getchannel('A').getextrema(),(0,255))
+                    coverage=ImageStat.Stat(image.getchannel('A')).mean[0]/255
+                    self.assertGreater(coverage,.08);self.assertLess(coverage,.65)
+            with Image.open(folder/'stintrix-256.png') as image:
+                self.assertEqual(image.getchannel('A').getextrema(),(255,255))
+                self.assertEqual(image.getpixel((0,0)),(0,0,0,255))

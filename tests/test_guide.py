@@ -118,3 +118,39 @@ assert.equal(api.esc('<img onerror="x">'),'&lt;img onerror=&quot;x&quot;&gt;');
                 center.show_page(0);pump(center);self.assertTrue(page.closed);self.assertEqual(page.variables["query"].trace_info(),[])
                 self.assertTrue(all(not v.photo for v in pictures));browser.assert_not_called();self.assertFalse(errors,errors)
             finally:center.close()
+
+
+    @unittest.skipUnless(os.name=='nt','Windows native source disclosure')
+    def test_sources_default_collapsed_copy_and_rebuild_state_without_browser(self):
+        from control_center import ControlCenter
+        from guide_cards import Sources
+        import i18n,control_theme
+        def walk(widget):
+            yield widget
+            for child in widget.winfo_children():yield from walk(child)
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)),patch('webbrowser.open') as browser:
+            center=ControlCenter();errors=[];center.root.report_callback_exception=lambda *args:errors.append(args)
+            try:
+                center.show_page(6);center.root.update_idletasks()
+                sources=[widget for widget in walk(center.guide_page.results) if isinstance(widget,Sources)]
+                self.assertEqual(len(sources),3)
+                self.assertTrue(all(not widget.opened and not widget.built and not widget.panel.winfo_manager() for widget in sources))
+                first=sources[0];pairs=list(first.pairs);flag=first.flag
+                first.toggle();center.root.update_idletasks()
+                self.assertTrue(first.opened and first.built);self.assertEqual(first.panel.winfo_manager(),'pack')
+                first.copy();self.assertEqual(center.root.clipboard_get(),'\n'.join(url for _,url in pairs))
+                children=first.panel.winfo_children();first.toggle();first.toggle()
+                self.assertEqual(first.panel.winfo_children(),children)
+                center.toggle_language();center.set_theme('light');center.root.update_idletasks()
+                replacement=next(widget for widget in walk(center.guide_page.results) if isinstance(widget,Sources) and widget.flag==flag)
+                self.assertTrue(replacement.opened);self.assertEqual([url for _,url in replacement.pairs],[url for _,url in pairs])
+                self.assertIn('Sources',replacement.heading.label)
+                replacement.toggle();self.assertFalse(replacement.panel.winfo_manager())
+                center.set_theme('dark');center.root.update_idletasks()
+                replacement=next(widget for widget in walk(center.guide_page.results) if isinstance(widget,Sources) and widget.flag==flag)
+                self.assertFalse(replacement.opened);self.assertFalse(replacement.built)
+                center.show_page(5);center.root.update_idletasks()
+                self.assertTrue(all(not widget.opened for widget in walk(center.guide_page.results) if isinstance(widget,Sources)))
+                browser.assert_not_called();self.assertFalse(errors,errors)
+            finally:
+                center.close();i18n.set_language('zh');control_theme.set_mode('dark')

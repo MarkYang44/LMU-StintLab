@@ -75,6 +75,7 @@
 *.jpg
 *.svg
 !/src/branding/stx-menu.png
+!/src/branding/stx-menu-light.png
 !/src/branding/stx-app.png
 **/interface_settings.json
 **/FastestLapCompare.html

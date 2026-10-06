@@ -57,6 +57,41 @@ class Picture(tk.Canvas):
             self.error=str(error);self.delete('all');self.create_text(self.winfo_width()/2,height/2,text='图片暂不可用',fill=T.MUTED)
 
 
+class Sources(tk.Frame):
+    """Sources are lazy, collapsed initially, and retained across menu rebuilds."""
+    def __init__(self,parent,cards,pairs):
+        from hashlib import sha256
+        super().__init__(parent,bg=parent.cget('bg'))
+        self.cards=cards;self.center=cards.center;self.library=cards.library;self.pairs=pairs
+        self.flag=sha256('\n'.join(url for _,url in pairs).encode()).hexdigest()[:20]
+        self.expanded=cards.page.state.setdefault('sources',[])
+        self.opened=False;self.built=False
+        self.pack(fill='x',pady=(6,12))
+        row=self.center.row(self)
+        self.heading=self.center.button(row,'',self.toggle,width=180)
+        self.panel=tk.Frame(self,bg=T.FIELD)
+        self.set_open(self.flag in self.expanded)
+    def set_open(self,opened):
+        self.opened=opened
+        self.heading.label=('▾ ' if opened else '▸ ')+self.library.tr('来源链接','Sources')+f' · {len(self.pairs)}'
+        self.heading.paint()
+        if opened:
+            if not self.built:
+                content=tk.Frame(self.panel,bg=T.FIELD);content.pack(fill='x',padx=12,pady=12)
+                for label,url in self.pairs:self.cards.text(content,label+'\n'+url,9,T.MUTED)
+                self.center.button(self.center.row(content),self.library.tr('复制来源链接','Copy sources'),self.copy,width=150)
+                self.built=True
+            self.panel.pack(fill='x',pady=(4,0))
+            if self.flag not in self.expanded:self.expanded.append(self.flag)
+        else:
+            self.panel.pack_forget()
+            if self.flag in self.expanded:self.expanded.remove(self.flag)
+    def toggle(self):self.set_open(not self.opened)
+    def copy(self):
+        self.center.root.clipboard_clear();self.center.root.clipboard_append('\n'.join(url for _,url in self.pairs))
+        self.center.status.set(self.library.tr('来源链接已复制','Source URLs copied'))
+
+
 class Cards:
     def __init__(self,page):self.page=page;self.center=page.center;self.library=page.library
     def text(self,parent,text,size=10,color=None,bold=False):
@@ -69,16 +104,8 @@ class Cards:
         if subtitle:self.text(body,subtitle,9,T.ACCENT)
         return body
     def sources(self,parent,values):
-        # Sources stay readable in the menu; copying is explicit and opens no browser.
         pairs=[(label,url) for label,url in values if url]
-        if not pairs:return
-        panel=tk.Frame(parent,bg=T.FIELD);panel.pack(fill='x',pady=(6,12),ipadx=10,ipady=6)
-        for label,url in pairs:self.text(panel,label+'\n'+url,9,T.MUTED)
-        row=self.center.row(panel)
-        def copy():
-            self.center.root.clipboard_clear();self.center.root.clipboard_append('\n'.join(url for _,url in pairs))
-            self.center.status.set(self.library.tr('来源链接已复制','Source URLs copied'))
-        self.center.button(row,self.library.tr('复制来源链接','Copy sources'),copy,width=150)
+        return Sources(parent,self,pairs) if pairs else None
     def practice(self,body,item):
         note=item['note'];tr=self.library.tr
         self.text(body,tr('来源摘记：','Source note: ')+self.library.text(note,'observation'),10,T.MUTED)

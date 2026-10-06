@@ -10,7 +10,7 @@ from tools.audit_publication import audit
 SIZES=(16,32,48,64,128,256)
 
 def render(destination=None):
-    names=['src/branding/stx-app.png','src/branding/stx-menu.png']
+    names=['src/branding/stx-app.png','src/branding/stx-menu.png','src/branding/stx-menu-light.png']
     result=audit(names,lambda name:(ROOT/name).read_bytes())
     if not result['ok']:raise ValueError('Unreviewed brand asset: '+str(result['failures']))
     target=Path(destination or ROOT/'_local/branding');target.mkdir(parents=True,exist_ok=True)
@@ -27,9 +27,11 @@ def render(destination=None):
     for size,png in zip(SIZES,frames):
         directory.append(struct.pack('<BBBBHHII',size%256,size%256,0,0,1,32,len(png),offset));offset+=len(png)
     (target/'stintrix.ico').write_bytes(struct.pack('<HHH',0,1,len(SIZES))+b''.join(directory)+b''.join(frames))
-    with Image.open(ROOT/names[1]) as artwork:
-        menu=ImageOps.contain(artwork.convert('RGB'),(512,256),Image.Resampling.LANCZOS)
-        menu.save(target/'menu-icon.png',optimize=True)
+    for name,output in zip(names[1:],('menu-icon.png','menu-icon-light.png')):
+        with Image.open(ROOT/name) as artwork:
+            menu=ImageOps.contain(artwork.convert('RGBA'),(512,256),Image.Resampling.LANCZOS)
+            if menu.getchannel('A').getextrema()!=(0,255):raise ValueError('Menu artwork must have genuine transparency')
+            menu.save(target/output,optimize=True)
     return target
 
 if __name__=='__main__':print(render())

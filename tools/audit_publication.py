@@ -16,7 +16,7 @@ PRIVATE_NAMES={'local_settings.json','settings.json','reference_settings.json','
     'renderer_settings.json','image_generate_config.json','interface_settings.json','guide_settings.json','desktop_registration.json'}
 DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.exe','.dll','.pyd','.pyc','.pdf','.png','.jpg','.svg'}
 SECRET_PATTERNS=[rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',rb'gh[pousr]_[A-Za-z0-9]{30,}',rb'github_pat_[A-Za-z0-9_]{30,}',rb'AKIA[0-9A-Z]{16}',rb'sk-[A-Za-z0-9_-]{40,}']
-PUBLIC_ASSETS={'src/branding/stx-app.png': '8f1d9730f44ee12cc63136f31484cbc77a9ae7c8c0baa1f19718f0ba3bfc6896', 'src/branding/stx-menu.png': '2b0d3fe1f90c4ae1a450142f9bc6cc23e6ef154fdef4c632e7b8dcd1bbcfb729'}
+PUBLIC_ASSETS={'src/branding/stx-app.png': '8f1d9730f44ee12cc63136f31484cbc77a9ae7c8c0baa1f19718f0ba3bfc6896', 'src/branding/stx-menu.png': 'c55573b6ea082572ea7302ab5073a21369c84e68188cb186bea8351e3f8ca738', 'src/branding/stx-menu-light.png': '5bc03c16a0d037fb6bc09a12c9adf524b337180841fde3e8c0c8153fce374864'}
 sys.path.insert(0,str(ROOT))
 from tools.guide_assets import GUIDE_ASSETS
 PUBLIC_ASSETS.update(GUIDE_ASSETS)
