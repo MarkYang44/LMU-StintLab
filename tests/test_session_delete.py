@@ -39,6 +39,16 @@ class DeleteTests(unittest.TestCase):
             with self.assertRaises(PermissionError):session_delete.remove(self.root,self.key)
         self.assertTrue((self.folder/'inputs.csv').exists())
 
+    def test_batch_deduplicates_keys_and_reports_failure_without_losing_success(self):
+        other=self.root/'Logs'/'Other';other.mkdir()
+        (other/'session.json').write_text('{"status":"complete"}',encoding='utf-8')
+        (self.folder/'session.json').write_text('{"status":"recording"}',encoding='utf-8')
+        result=session_delete.remove_many(self.root,[self.key,'Logs/Other','Logs\\Other','../outside'])
+        self.assertEqual(result['deleted'],['Logs/Other']);self.assertEqual(len(result['failed']),2)
+        self.assertTrue(self.folder.exists());self.assertFalse(other.exists())
+        self.assertIn(self.key,json.loads((self.root/'library_notes.json').read_text()))
+        self.assertFalse((self.root/'_Trash').exists())
+
     @unittest.skipUnless(os.name=='nt','Native Windows menu')
     def test_review_confirmation_cancel_and_delete(self):
         from control_center import ControlCenter
@@ -61,4 +71,33 @@ class DeleteTests(unittest.TestCase):
                     control_delete.remove(center)
                     pump(center,lambda:not self.folder.exists() and not center.tasks.busy)
                 self.assertFalse((self.root/'_Trash').exists())
+            finally:center.close()
+
+    @unittest.skipUnless(os.name=='nt','Native Windows menu')
+    def test_review_checkbox_batch_confirmation_and_no_other_session_deleted(self):
+        from control_center import ControlCenter
+        import control_delete
+        for name in ('Second','Keep'):
+            path=self.root/'Logs'/name;path.mkdir()
+            (path/'session.json').write_text(json.dumps(dict(status='complete',track=name,session=10,started_utc='2026-01-02T12:00:00Z')),encoding='utf-8')
+        with patch('control_center.ROOT',self.root):
+            center=ControlCenter()
+            def settle(condition):
+                end=time.monotonic()+4
+                while time.monotonic()<end:
+                    center.root.update();time.sleep(.005)
+                    if condition():return
+                self.fail('Batch operation did not settle')
+            try:
+                center.show_page(1);settle(lambda:len(center.items)==3 and not center.tasks.busy)
+                self.assertTrue(center.tree.checkboxes)
+                ids=tuple(str(i) for i,item in enumerate(center.items) if item['track']!='Keep')
+                center.tree.selection_set(ids)
+                with patch('control_delete.messagebox.askyesno',return_value=False) as ask:
+                    control_delete.remove(center)
+                    self.assertIn('(2)',ask.call_args.args[1]);self.assertIn('Second',ask.call_args.args[1])
+                    self.assertTrue(self.folder.exists())
+                with patch('control_delete.messagebox.askyesno',return_value=True):
+                    control_delete.remove(center);settle(lambda:not self.folder.exists() and not center.tasks.busy)
+                self.assertFalse((self.root/'Logs/Second').exists());self.assertTrue((self.root/'Logs/Keep/session.json').exists())
             finally:center.close()

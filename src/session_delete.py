@@ -37,3 +37,17 @@ def remove(root,key):
         try:atomic_json(notes_path,notes)
         except OSError as error:warning=str(error)
     return dict(key=relative.as_posix(),notes_warning=warning)
+
+
+def remove_many(root,keys):
+    """Deduplicate a frozen selection; report failures without hiding successes."""
+    deleted=[];failed=[];warnings=[];seen=set()
+    for key in keys:
+        normalized=str(key).replace(chr(92),'/');identity=normalized.casefold()
+        if identity in seen:continue
+        seen.add(identity)
+        try:
+            result=remove(root,normalized);deleted.append(result['key'])
+            if result['notes_warning']:warnings.append((normalized,result['notes_warning']))
+        except (OSError,ValueError) as error:failed.append((normalized,str(error)))
+    return dict(deleted=deleted,failed=failed,warnings=warnings)

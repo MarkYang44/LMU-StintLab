@@ -293,5 +293,9 @@
   "将从本机删除该场全部记录、圈文件与报告，无法恢复。": "All recording files, extracted laps and reports for this session will be permanently deleted from this PC.",
   "记录已永久删除": "Session permanently deleted",
   "；备注清理失败：": "; note cleanup failed: ",
-  "记录包含链接，不能删除": "Session contains links; deletion is blocked"
+  "记录包含链接，不能删除": "Session contains links; deletion is blocked",
+  "永久删除选中的赛事记录？": "Permanently delete the selected sessions?",
+  "将从本机删除所选赛事的全部记录、圈文件与报告，无法恢复。": "All records, lap files and reports for these sessions will be permanently deleted from this computer. This cannot be undone.",
+  "永久删除": "Delete permanently",
+  "部分赛事未能删除": "Some sessions could not be deleted"
 }

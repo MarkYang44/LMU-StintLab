@@ -353,7 +353,7 @@ class ControlCenter:
 
     def review_page(self):
         body=self.card('赛事资料库','搜索时间、阶段、赛道或车辆 · 双击打开赛事复盘')
-        self.sessions(body)
+        self.sessions(body,True,True)
         row=self.row(body);self.button(row,'赛事 Review',lambda:self.report('review.html'),True,140)
         self.button(row,'查看圈速单',lambda:self.report('圈速单.png'),False,130);self.button(row,'查看比赛日志',lambda:self.report('比赛日志.png'),False,140)
         from control_delete import remove

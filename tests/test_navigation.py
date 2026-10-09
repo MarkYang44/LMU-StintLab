@@ -111,3 +111,38 @@ class NavigationTests(unittest.TestCase):
             finally:center.close()
             self.assertIsNone(presentation.job);self.assertIsNone(presentation.root)
             self.assertIsNone(presentation.user)
+
+    def test_guide_pagination_cancels_scroll_and_old_cards_and_keeps_content_visible(self):
+        from control_center import ControlCenter
+        from guide_cards import Picture
+        def walk(widget):
+            yield widget
+            for child in widget.winfo_children():yield from walk(child)
+        with tempfile.TemporaryDirectory(dir=ROOT/'_local') as directory,patch('control_center.ROOT',Path(directory)):
+            center=ControlCenter();errors=[];center.root.report_callback_exception=lambda *args:errors.append(args)
+            try:
+                for index in (5,6):
+                    center.request_page(index)
+                    self.pump(center,lambda:center.page==index and center.guide_page and center.guide_page.card_job is None and center.guide_page.card_count==3)
+                    page=center.guide_page
+                    last=(len(page.rows)-1)//page.PAGE_SIZE
+                    for delta in [1]*last+[-1]*last:
+                        center.scroll.yview_moveto(1);center.shell.scroller.add(2000)
+                        old=list(page.results.winfo_children());page.turn(delta)
+                        self.pump(center,lambda:page.card_job is None)
+                        self.assertEqual(center.scroll.canvasy(0),0)
+                        self.assertIsNone(center.shell.scroller.job)
+                        self.assertEqual(center.scroll.itemcget(center.content_item,'state'),'normal')
+                        self.assertTrue(page.container.winfo_ismapped())
+                        self.assertTrue(all(not card.winfo_exists() for card in old))
+                        pictures=[v for v in walk(page.results) if isinstance(v,Picture)]
+                        self.assertEqual(len(pictures),3)
+                        center.scroll.yview_moveto(.24)
+                        self.pump(center,lambda:any(v.photo for v in pictures))
+                        self.assertFalse([v.error for v in pictures if v.error])
+                    for delta in (1,1,-1,1):page.turn(delta)
+                    self.pump(center,lambda:page.card_job is None)
+                    self.assertEqual(page.state['page'],2);self.assertEqual(page.card_count,3)
+                    self.assertEqual(center.scroll.canvasy(0),0)
+                self.assertFalse(errors,errors)
+            finally:center.close()

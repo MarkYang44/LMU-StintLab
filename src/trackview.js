@@ -17,11 +17,20 @@ const InputScopeTrack=(()=>{
   if(!lo)return points[0].slice(1);const a=points[lo-1],b=points[lo],u=(f-a[0])/Math.max(1e-9,b[0]-a[0]);
   return [a[1]+u*(b[1]-a[1]),a[2]+u*(b[2]-a[2])];
  }
+ // World X/Z is left-handed (+Y up); Mercator is east/north. Canvas is Y-down.
+ // Reference SVG/PDF outlines already use screen coordinates and must not flip.
+ function projection(bounds,w,h,options={}){
+  const {minX,maxX,minY,maxY}=bounds,{invertY=false,rotation=0,zoom=1,panX=0,panY=0}=options;
+  const sign=invertY?-1:1,angle=rotation*Math.PI/180,cos=Math.cos(angle),sin=Math.sin(angle);
+  const dx=maxX-minX,dy=maxY-minY,extentX=Math.abs(cos)*dx+Math.abs(sin)*dy,extentY=Math.abs(sin)*dx+Math.abs(cos)*dy;
+  const scale=Math.min((w-64)/Math.max(1,extentX),(h-70)/Math.max(1,extentY))*zoom;
+  return (x,y)=>{x-=(minX+maxX)/2;y=(y-(minY+maxY)/2)*sign;return [(x*cos-y*sin)*scale+w/2+panX,(x*sin+y*cos)*scale+h/2+panY]};
+ }
  class View{
-  constructor(canvas,mode,source){this.canvas=canvas;this.ctx=canvas.getContext('2d');this.back=document.createElement('canvas');this.bg=this.back.getContext('2d');this.mode=mode;this.source=source;this.entries=[];this.key='';this.lastStates=[];this.zoom=1;this.panX=0;this.panY=0;
+  constructor(canvas,mode,source){this.canvas=canvas;this.ctx=canvas.getContext('2d');this.back=document.createElement('canvas');this.bg=this.back.getContext('2d');this.mode=mode;this.source=source;this.entries=[];this.key='';this.lastStates=[];this.zoom=1;this.panX=0;this.panY=0;this.rotation=0;
    const bar=document.createElement('div');bar.className='map-navigation';Object.assign(bar.style,{display:'flex',gap:'7px',alignItems:'center',flexWrap:'wrap',margin:'8px 0'});
    const button=(text,title,action)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.title=title;b.setAttribute('aria-label',title);b.onclick=action;bar.append(b);return b};
-   button('−','缩小赛道地图',()=>this.zoomAt(1/1.4));button('＋','放大赛道地图',()=>this.zoomAt(1.4));this.zoomLabel=document.createElement('span');this.zoomLabel.style.cssText='font-size:12px;color:#91a4bf;min-width:38px';bar.append(this.zoomLabel);button('还原','还原完整赛道视图',()=>this.resetView());const hint=document.createElement('small');hint.textContent='滚轮缩放 · 拖动查看';bar.append(hint);canvas.before(bar);canvas.style.cursor='grab';
+   button('−','缩小赛道地图',()=>this.zoomAt(1/1.4));button('＋','放大赛道地图',()=>this.zoomAt(1.4));this.zoomLabel=document.createElement('span');this.zoomLabel.style.cssText='font-size:12px;color:#91a4bf;min-width:38px';bar.append(this.zoomLabel);button('↶','逆时针旋转赛道图 90°',()=>this.rotate(-90));button('↷','顺时针旋转赛道图 90°',()=>this.rotate(90));button('还原','还原完整赛道视图',()=>this.resetView());const hint=document.createElement('small');hint.textContent='滚轮缩放 · 拖动查看';bar.append(hint);canvas.before(bar);canvas.style.cursor='grab';
    canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();this.zoomAt(Math.exp(-e.deltaY*.0015),e.clientX-r.left,e.clientY-r.top)},{passive:false});
    canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;this.drag={id:e.pointerId,x:e.clientX,y:e.clientY,panX:this.panX,panY:this.panY};canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing'});
    canvas.addEventListener('pointermove',e=>{if(!this.drag||e.pointerId!==this.drag.id)return;this.panX=this.drag.panX+e.clientX-this.drag.x;this.panY=this.drag.panY+e.clientY-this.drag.y;this.draw(this.lastStates)});
@@ -54,11 +63,12 @@ const InputScopeTrack=(()=>{
    const d=this.route?nearest[1]/this.route.length*this.length:InputScopeLab.distance(nearest[0],this.length,this.calibration);this.onSeekDistance?.(d,nearest[0]);
   }
   zoomAt(factor,x=this.w/2,y=this.h/2){const next=Math.max(.5,Math.min(20,this.zoom*factor)),ratio=next/this.zoom;this.panX=x-this.w/2-(x-this.w/2-this.panX)*ratio;this.panY=y-this.h/2-(y-this.h/2-this.panY)*ratio;this.zoom=next;this.draw(this.lastStates)}
-  resetView(){this.zoom=1;this.panX=0;this.panY=0;this.draw(this.lastStates)}
+  rotate(degrees){this.rotation=(this.rotation+degrees)%360;this.panX=0;this.panY=0;this.draw(this.lastStates)}
+  resetView(){this.zoom=1;this.panX=0;this.panY=0;this.rotation=0;this.draw(this.lastStates)}
   setEntries(entries,track,length){
    const frame=entries.find(e=>e.points?.length)?.coordinateSource||'recorded_world_xz';
-   this.entries=entries.map(e=>({...e,points:(e.coordinateSource||'recorded_world_xz')===frame?e.points:[],frameMismatch:(e.coordinateSource||'recorded_world_xz')!==frame}));this.track=track;this.length=length;this.zoom=1;this.panX=0;this.panY=0;this.lastStates=[];
-   entries=this.entries;
+   this.entries=entries.map(e=>({...e,points:(e.coordinateSource||'recorded_world_xz')===frame?e.points:[],frameMismatch:(e.coordinateSource||'recorded_world_xz')!==frame}));this.track=track;this.length=length;this.zoom=1;this.panX=0;this.panY=0;this.rotation=0;this.lastStates=[];
+   this.frame=frame;entries=this.entries;
    this.route=entries.find(e=>e.points?.length>=3)||null;
    this.diagram=this.route?null:official(track,length);
    this.baseline=InputScopeLab.baseline(entries,length);
@@ -66,7 +76,7 @@ const InputScopeTrack=(()=>{
    this.offsetInput.value=this.calibration.offset_m;this.reverseInput.checked=this.calibration.direction===-1;
    this.mode.textContent=this.route?'LMU 实测轨迹':this.diagram?(this.diagram.source_kind==='community'?'社区赛道图 · 位置估算':'官方赛道图 · 位置估算'):'圈内进度 · 无坐标';
    this.source.replaceChildren();
-   if(this.route)this.source.textContent=(frame.startsWith('gps_')?'GPS 经纬度投影坐标（带地图投影误差）。':'形状与坐标：LMU mPos 的 X/Z 俯视轨迹。')+'缺口不跨越插值；无坐标圈按轨迹距离估算。'+(this.baseline?' 灰色为 '+this.baseline.count+' 圈距离对齐的中位走线；可放大横向走线偏差。':' 点击走线定位曲线。')+(entries.some(e=>e.frameMismatch)?' 不同坐标系的圈仅显示距离估算位置。':'');
+   if(this.route)this.source.textContent=(frame.startsWith('gps_')?'GPS 经纬度投影坐标（带地图投影误差）。':'形状与坐标：LMU mPos 的 X/Z 俯视轨迹（已校正镜像）。')+'缺口不跨越插值；无坐标圈按轨迹距离估算。'+(this.baseline?' 灰色为 '+this.baseline.count+' 圈距离对齐的中位走线；可放大横向走线偏差。':' 点击走线定位曲线。')+(entries.some(e=>e.frameMismatch)?' 不同坐标系的圈仅显示距离估算位置。':'');
    else if(this.diagram){const a=document.createElement('a');a.href=this.diagram.source_pdf_url||this.diagram.source_url;a.textContent=this.diagram.source_title;a.target='_blank';a.rel='noreferrer';this.source.append(a,document.createTextNode(' · '+(this.diagram.source_kind==='community'?'社区矢量轮廓':'官方矢量轮廓')+'；位置按圈内距离比例估算，不代表精确走线。'))}
    else this.source.textContent='该记录没有世界坐标，也没有匹配布局的可信地图；仅展示圈内进度。';
    this.key='';this.background();
@@ -77,7 +87,7 @@ const InputScopeTrack=(()=>{
    if(!center||!a||!b)return xy;const dx=b[2]-a[2],dy=b[3]-a[3],n=Math.hypot(dx,dy)||1,side=(xy[0]-center[2])*(-dy/n)+(xy[1]-center[3])*(dx/n),extra=side*(Number(this.lineScale.value)-1);return [xy[0]-dy/n*extra,xy[1]+dx/n*extra];
   }
   background(){
-   const w=Math.max(220,this.canvas.clientWidth),h=Math.max(240,this.canvas.clientHeight),dpr=devicePixelRatio||1,key=[globalThis.StintrixTheme?.mode||'dark',w,h,dpr,this.zoom,this.panX,this.panY,this.lineScale.value].join('|');
+   const w=Math.max(220,this.canvas.clientWidth),h=Math.max(240,this.canvas.clientHeight),dpr=devicePixelRatio||1,key=[globalThis.StintrixTheme?.mode||'dark',w,h,dpr,this.zoom,this.panX,this.panY,this.lineScale.value,this.rotation].join('|');
    if(key===this.key)return;this.key=key;this.w=w;this.h=h;this.dpr=dpr;this.zoomLabel.textContent=Math.round(this.zoom*100)+'%';
    this.canvas.width=this.back.width=Math.round(w*dpr);this.canvas.height=this.back.height=Math.round(h*dpr);
    const c=this.bg;c.setTransform(dpr,0,0,dpr,0,0);c.fillStyle=(globalThis.StintrixTheme?.color('CARD')||'#101a28');c.fillRect(0,0,w,h);c.font='12px system-ui';
@@ -87,8 +97,7 @@ const InputScopeTrack=(()=>{
    if(!shape.length){c.fillStyle=(globalThis.StintrixTheme?.color('MUTED')||'#91a5c0');c.fillText(this.entries.length?'旧日志 / 圈内距离位置':'暂无圈数据',16,28);return}
    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
    for(const p of shape){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1])}
-   const scale=Math.min((w-64)/Math.max(1,maxX-minX),(h-70)/Math.max(1,maxY-minY));
-   this.project=(x,y)=>[(x-(minX+maxX)/2)*scale*this.zoom+w/2+this.panX,(y-(minY+maxY)/2)*scale*this.zoom+h/2+this.panY];
+   this.project=projection({minX,maxX,minY,maxY},w,h,{invertY:Boolean(this.route)&&(this.frame==='recorded_world_xz'||this.frame?.startsWith('gps_')),rotation:this.rotation,zoom:this.zoom,panX:this.panX,panY:this.panY});
    const stroke=(points,color,width,withTime)=>{c.strokeStyle=color;c.lineWidth=width;c.lineJoin='round';c.lineCap='round';c.beginPath();let previous=null;
     for(const p of points){const xy=withTime&&points!==this.baseline?.points?this.linePosition(p.slice(2),p[1]):p.slice(withTime?2:1),position=this.project(...xy);
      const gap=previous&&(p[0]-previous[0]>1.5||Math.hypot(p[2]-previous[2],p[3]-previous[3])>Math.max(100,(p[0]-previous[0])*150+10));
@@ -116,5 +125,5 @@ const InputScopeTrack=(()=>{
    return results;
   }
  }
- return {View,interpolate,official,shapeAt};
+ return {View,interpolate,official,shapeAt,projection};
 })();

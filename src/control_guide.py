@@ -77,14 +77,18 @@ class GuidePage:
         for key,values in self.choices.items():self.state[key]=values.get(self.variables[key].get(),'')
         self.state['page']=0;self.state['mode']='browse'
         if self.job:self.center.root.after_cancel(self.job)
-        self.job=self.center.root.after(180,self.render)
+        self.job=self.center.root.after(180,lambda:self.render(top=True))
 
-    def render(self):
+    def render(self,top=False):
+        if self.job:
+            self.center.root.after_cancel(self.job)
         self.job=None
         if self.closed:return
         self.render_generation+=1;generation=self.render_generation
         if self.card_job:self.center.root.after_cancel(self.card_job);self.card_job=None
-        fraction=self.center.scroll.yview()[0]
+        self.center.shell.scroller.cancel()
+        fraction=0 if top else self.center.scroll.yview()[0]
+        if top:self.center.scroll.yview_moveto(0)
         for child in self.results.winfo_children():child.destroy()
         self.card_count=0;self.compare_buttons={};self.favorite_buttons={};self.rows=self.library.rows(self.view,self.state)
         if self.view=='tracks':text=self.tr('条赛道','circuits')+f" · {sum(len(recs) for _,recs in self.rows)} "+self.tr('条推荐','recommendations')
@@ -111,6 +115,10 @@ class GuidePage:
         def finish():
             self.card_job=None
             if self.closed or generation!=self.render_generation:return
+            # Settle the new document height before applying the requested view.
+            self.center.root.update_idletasks()
+            if self.closed or generation!=self.render_generation:return
+            self.center.shell.scroller.cancel()
             self.center.scroll.yview_moveto(fraction)
             self.center.status.set(self.tr('完整原生图文 · 收藏仅保存在本机','Complete native library · favorites remain local'))
         if getattr(self.center,'progressive',False):
@@ -149,9 +157,9 @@ class GuidePage:
             self.center.status.set(self.tr('已选 ','Selected ')+str(len(self.state['comparison']))+'/3')
     def compare(self):
         if len(self.state['comparison'])<2:self.center.status.set(self.tr('请先选择至少 2 项。','Choose at least 2 items first.'));return
-        self.state['mode']='compare';self.render();self.center.scroll.yview_moveto(0)
+        self.state['mode']='compare';self.render(top=True)
     def clear(self):self.state['comparison'].clear();self.state['mode']='browse';self.render()
-    def browse(self):self.state['mode']='browse';self.render();self.center.scroll.yview_moveto(0)
+    def browse(self):self.state['mode']='browse';self.render(top=True)
     def reset(self):
         self.state.update(query='',group='',car='',favorite='',page=0,mode='browse')
         self.variables['query'].set('')
@@ -159,7 +167,7 @@ class GuidePage:
         self.filter_changed()
     def language(self):self.center.toggle_language()
     def turn(self,delta):
-        self.state['mode']='browse';self.state['page']+=delta;self.render();self.center.scroll.yview_moveto(0)
+        self.state['mode']='browse';self.state['page']+=delta;self.render(top=True)
     def jump(self,view,slug):
         target=self.center.guide_state.setdefault(view,{})
         target.update(query=self.library.data[view][slug]['name'],group='',car='',favorite='',page=0,mode='browse')
