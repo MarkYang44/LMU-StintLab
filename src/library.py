@@ -1,5 +1,6 @@
 """Plugin-local inventory and notes. Never edits original session metadata."""
 import json
+from json_store import load as load_json
 from pathlib import Path
 from storage import atomic_json
 
@@ -29,7 +30,7 @@ def inventory(root):
                 meta=json.loads(meta_path.read_text(encoding='utf-8'));summary={};analysis={}
                 for file,target in [('fastest_lap_summary.json',summary),('session_analysis.json',analysis)]:
                     path=folder/file
-                    if path.exists():target.update(json.loads(path.read_text(encoding='utf-8')))
+                    if path.exists():target.update(load_json(path,fields=('stable_reference_file','recent_stability')) if file=='session_analysis.json' else json.loads(path.read_text(encoding='utf-8')))
                 key=str(folder.relative_to(root));note=notes.get(key)
                 if note is None:
                     try:note=json.loads((folder/'_archive_note.json').read_text(encoding='utf-8'))

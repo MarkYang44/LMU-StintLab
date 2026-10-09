@@ -8,7 +8,10 @@ import math
 from pathlib import Path
 import statistics
 import sys
+import tempfile
 import vehiclelab
+from analysis_spool import DiskTable,Column
+from laps import write_json
 
 FIELDS = ['time_s','utc','session_time_s','lap','lap_distance_m','throttle','brake','steering',
           'filtered_throttle','filtered_brake','filtered_steering','speed_kmh','lap_start_s',
@@ -44,8 +47,10 @@ def read_native(path, root):
     if path.suffix.lower() != '.duckdb':
         raise ValueError('请选择已结束录制的 .duckdb 文件')
     before = fingerprint(path)
+    scratch=Path(root)/'_work';scratch.mkdir(parents=True,exist_ok=True)
+    database_work=tempfile.TemporaryDirectory(prefix='native-db-',dir=scratch)
     db = driver(root).connect(str(path),read_only=True,config={'enable_external_access':False,
-            'autoinstall_known_extensions':False,'autoload_known_extensions':False,'threads':2})
+            'autoinstall_known_extensions':False,'autoload_known_extensions':False,'threads':2,'memory_limit':'256MB','temp_directory':database_work.name})
     try:
         # Only physical tables, never views or user-defined SQL from the recording.
         tables = {r[0]:r[1] for r in db.execute("SELECT table_name,schema_name FROM duckdb_tables() WHERE NOT internal").fetchall()}
@@ -73,24 +78,26 @@ def read_native(path, root):
             count = db.execute('SELECT count(*) FROM '+table(name)).fetchone()[0]
             if count>8000000:
                 raise ValueError('单通道超过 800 万样本，请选择较短的已结束录制')
-            result = db.execute('SELECT '+','.join(quote(c) for c in (['ts'] if has_time else [])+values)
-                    +' FROM '+table(name)+' ORDER BY '+('ts' if has_time else 'rowid')).fetchall()
-            data = []
-            for i,r in enumerate(result):
-                t = float(r[0]) if has_time else i/freq
-                nums = [float(x) for x in (r[1:] if has_time else r)]
-                if not all(math.isfinite(x) for x in [t,*nums]):
-                    raise ValueError('非有限采样值：'+name)
-                if data and t<data[-1][0]:
-                    raise ValueError('时间顺序无效：'+name)
-                if data and t==data[-1][0]:
-                    data[-1] = [t,*nums]
-                else:
-                    data.append([t,*nums])
+            cursor = db.execute('SELECT '+','.join(quote(c) for c in (['ts'] if has_time else [])+values)
+                    +' FROM '+table(name)+' ORDER BY '+('ts, rowid' if has_time else 'rowid'))
+            def rows():
+                previous=None;index=0
+                while batch:=cursor.fetchmany(8192):
+                    for r in batch:
+                        t=float(r[0]) if has_time else index/freq;index+=1
+                        nums=[float(x) for x in (r[1:] if has_time else r)]
+                        if not all(math.isfinite(x) for x in [t,*nums]):raise ValueError('非有限采样值：'+name)
+                        if previous is not None:
+                            if t<previous[0]:raise ValueError('时间顺序无效：'+name)
+                            if t!=previous[0]:yield previous
+                        previous=[t,*nums]
+                if previous is not None:yield previous
+            scratch=Path(root)/'_work';scratch.mkdir(parents=True,exist_ok=True)
+            data=DiskTable(rows(),len(values)+1,scratch)
             series[name] = dict(unit=str(unit or ''),frequency_hz=freq,event=event,
                                 explicit_time=has_time,data=data)
     finally:
-        db.close()
+        db.close();database_work.cleanup()
     if fingerprint(path)!=before:
         raise ValueError('源日志仍在变化，请等待游戏结束录制后再导入')
     return meta,series,before
@@ -98,7 +105,13 @@ def read_native(path, root):
 
 def lookup(s,t,offset=0):
     data=s['data'];times=s['times'];target=t+offset
-    i=bisect.bisect_right(times,target)
+    # Import visits timestamps monotonically; reuse the cursor rather than
+    # random-seeking every channel on every frame. Backward callers still bisect.
+    if target>=s.get('_lookup_target',math.inf):
+        i=s['_lookup_index']
+        while i<len(data) and times[i]<=target:i+=1
+    else:i=bisect.bisect_right(times,target)
+    s['_lookup_target']=target;s['_lookup_index']=i
     if not i:
         return None
     a=data[i-1]
@@ -117,13 +130,13 @@ def lookup(s,t,offset=0):
 
 
 def input_scale(s,steer=False):
-    unit=s['unit'].strip().lower();values=[r[1] for r in s['data']]
-    if not values:
+    unit=s['unit'].strip().lower()
+    if not s['data']:
         raise ValueError('空输入通道')
     scale = .01 if unit in ('%','percent','percentage') else 1
     if unit not in ('','%','percent','percentage','ratio','normalized','1','-'):
         raise ValueError('不支持的输入单位：'+unit)
-    if any(not (-1.001 if steer else -.001) <= v*scale <= 1.001 for v in values):
+    if any(not (-1.001 if steer else -.001) <= v*scale <= 1.001 for v in (r[1] for r in s['data'])):
         raise ValueError('输入范围无效；需要比例或百分比单位')
     return scale
 
@@ -136,7 +149,7 @@ def import_recording(path,root,overrides=None):
     if missing:
         raise ValueError('日志缺少所需通道：'+', '.join(sorted(missing))+'。不会用过滤后输入伪造原始输入。')
     for s in series.values():
-        s['times']=[r[0] for r in s['data']]
+        s['times']=Column(s['data'])
     dist=series['Lap Dist'];dist['distance']=True
     resets=[r[0] for a,r in zip(dist['data'],dist['data'][1:]) if r[1]<a[1]-50]
     lap_events=series.get('Lap',{}).get('data',[])
@@ -215,7 +228,7 @@ def import_recording(path,root,overrides=None):
                     extra=dict(et=t,lap=number,distance=d[0],vehicle=values,in_pits=row.get('in_pits'),lap_invalidated=row.get('lap_invalidated'))
                     vw.writerow(vehiclelab.sample_row(extra,timeline[0]));vehicle_last=t
         if count<3:raise ValueError('连续输入样本不足')
-        extras={n:{k:v for k,v in s.items() if k not in ('times','distance')} for n,s in series.items() if n in EXTRAS}
+        extras={n:{k:v for k,v in s.items() if k not in ('times','distance') and not k.startswith('_lookup_')} for n,s in series.items() if n in EXTRAS}
         metadata=dict(track=track,vehicle=vehicle,driver=str(overrides.get('driver') or meta.get('DriverName') or 'Unknown'),
             started_utc=str(meta.get('RecordingTime') or stamp),ended_utc=stamp,status='finished',session='native_import',
             source='LMU native DuckDB (read-only import)',end_reason='native import',position_source='gps_mercator_m' if gps else None,
@@ -227,7 +240,7 @@ def import_recording(path,root,overrides=None):
             units='Celsius / kPa / wear fraction / fuel L / battery and virtual energy percent / power kW',
             unknown_units='unsupported or absent channel units remain blank; original native channels retained')
         (folder/'session.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
-        (folder/'native_channels.json').write_text(json.dumps(dict(event_offset_s=event_offset if not dist['explicit_time'] else 0,channels=extras),ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+        write_json(folder/'native_channels.json',dict(event_offset_s=event_offset if not dist['explicit_time'] else 0,channels=extras))
     except Exception:
         # Keep failed output separate and clearly marked; never touch source DB.
         (folder/'IMPORT_FAILED.txt').write_text('Import failed; original DuckDB unchanged.',encoding='utf-8')

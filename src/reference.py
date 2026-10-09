@@ -1,6 +1,7 @@
 """Immutable distance-aligned reference lookup; no file I/O on sampling thread."""
 import bisect
 import json
+from json_store import load as load_json
 import math
 from pathlib import Path
 from sessionlab import condition_check
@@ -41,7 +42,8 @@ class ReferenceLap:
         self.cells={}
         if self.trajectory.get('source')=='recorded_world_xz':
             points=self.trajectory.get('points',[])
-            if not isinstance(points,list) or any(not isinstance(p,(list,tuple)) or len(p)!=4 or
+            from analysis_spool import DiskTable
+            if not isinstance(points,(list,DiskTable)) or any(not isinstance(p,(list,tuple)) or len(p)!=4 or
                 not all(isinstance(x,(int,float)) and math.isfinite(x) for x in p) for p in points):
                 raise ValueError('参考圈坐标格式无效')
             for a,b in zip(points,points[1:]):
@@ -55,7 +57,7 @@ class ReferenceLap:
         path = Path(path)
         if path.stat().st_size > 100*1024*1024:
             raise ValueError('参考圈文件超过 100 MB')
-        return cls(json.loads(path.read_text(encoding='utf-8')),path)
+        return cls(load_json(path),path)
 
     def compatible(self, sample):
         return (all(str(self.session.get(k,'')).strip().casefold() == str(sample.get(k,'')).strip().casefold()
@@ -152,11 +154,12 @@ def best_reference(root, sample, current=None,kind='fastest'):
     for folder in folders:
         for path in (Path(root)/folder).glob('*/'+('session_analysis.json' if kind=='stable' else 'fastest_lap_summary.json')):
             try:
-                v = json.loads(path.read_text(encoding='utf-8'))
+                v = load_json(path,fields=('stable_reference_file',)) if kind=='stable' else json.loads(path.read_text(encoding='utf-8'))
                 if kind=='stable':
                     if not v.get('stable_reference_file'):continue
-                    ref=ReferenceLap.load(path.parent/v['stable_reference_file']);s=ref.session;info=ref.info;file=ref.path
-                    conditions=ref.conditions
+                    file=path.parent/v['stable_reference_file']
+                    header=load_json(file,fields=('session','lap','conditions'))
+                    s=header['session'];info=header['lap'];conditions=header.get('conditions',{})
                 else:s=v['session'];info=v['lap'];file=path.parent/v['file'];conditions=v.get('conditions',{})
                 if (all(str(s.get(k,'')).strip().casefold()
                         == str(sample.get(k,'')).strip().casefold() for k in ('track','vehicle'))

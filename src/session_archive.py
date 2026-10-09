@@ -52,6 +52,7 @@ def _session(root,key):
         raise ValueError('请选择记录管理中的比赛')
     source=root/str(rel);folder=source.resolve()
     if not folder.is_relative_to(root) or source.is_symlink() or source.is_junction():raise ValueError('记录路径无效')
+    if (folder/'.storage_compression.pending').exists():raise ValueError('该赛事正在压缩，请稍后重试')
     meta=json.loads((folder/'session.json').read_text(encoding='utf-8-sig'))
     if not isinstance(meta,dict):raise ValueError('比赛信息无效')
     if meta.get('status')=='recording':raise ValueError('请等录制结束后再导出；中断记录请先恢复')

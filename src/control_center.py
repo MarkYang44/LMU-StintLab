@@ -1,6 +1,7 @@
 """Local launchpad: HUD, categorized preferences and direct session actions."""
 from i18n import tr,Label
 import json
+from json_store import load as load_json
 import os
 import threading
 from types import SimpleNamespace
@@ -384,7 +385,7 @@ class ControlCenter:
             if any(items[0][k]!=items[1][k] for k in ('track','vehicle')):raise ValueError('请选择相同赛道、相同车辆的两场赛事')
             if any(not v['fastest_file'] for v in items):raise ValueError('这两场赛事需要已有最快完整圈')
             def build():
-                records=[json.loads((Path(v['folder'])/v['fastest_file']).read_text(encoding='utf-8')) for v in items]
+                records=[load_json(Path(v['folder'])/v['fastest_file']) for v in items]
                 path=ROOT/'FastestLapCompare.html';write_compare(path,ASSETS/'compare.html',records);return str(path)
             self.work(build,os.startfile)
         self.with_selection(action,2)
@@ -466,6 +467,27 @@ class ControlCenter:
         body=self.card('赛事包 / ZIP','勾选多场或全选当前列表，一次导出；每场一个 ZIP，导入时校验并新建记录')
         self.sessions(body,True,True);row=self.row(body);self.button(row,'批量导出选中赛事',self.export_package,True,180);self.button(row,'导入赛事包',self.import_package,False,145)
         self.button(row,'导入官方遥测',self.import_native,False,155)
+        body=self.card('无损节省磁盘空间','赛后透明压缩 CSV 与报告；文件名、完整采样与图片质量保持不变')
+        from session_compression import enabled
+        self.storage_auto=tk.BooleanVar(self.root,value=enabled(ROOT))
+        def save_storage():
+            from storage import atomic_json
+            atomic_json(ROOT/'storage_settings.json',dict(auto_compress=self.storage_auto.get()))
+        row=self.row(body);self.label(row,'赛后自动压缩',10,T.MUTED).pack(side='left')
+        Switch(row,'',self.storage_auto,save_storage).pack(side='right',fill='x',expand=True)
+        self.button(self.row(body),'压缩选中赛事',self.compress_selected,False,165)
+
+    def compress_selected(self):
+        from session_compression import compress
+        from session_archive import transfer_batch
+        def action(items):
+            folders=[item['folder'] for item in items]
+            def done(value):
+                saved=sum(item['saved_bytes'] for item in value['items'])
+                failures=len(value['errors'])+sum(len(item['errors']) for item in value['items'])
+                self.status.set(f"{tr('已无损节省 ')}{saved/1048576:.1f} MB · {tr('失败 ')}{failures}")
+            self.work(lambda:transfer_batch(folders,compress),done)
+        self.with_selection(action,None)
 
     def export_package(self):
         from session_archive import export_session,transfer_batch

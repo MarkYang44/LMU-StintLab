@@ -11,6 +11,14 @@ class Slice(Sequence):
         if isinstance(index,slice):return Slice(self.source,self.indices[index])
         return self.source[self.indices[index]]
 
+class Column(Sequence):
+    """Zero-copy column view for bisect and chronological lookup."""
+    def __init__(self,source,index=0,offset=0):self.source,self.index,self.offset=source,index,offset
+    def __len__(self):return len(self.source)
+    def __getitem__(self,index):
+        if isinstance(index,slice):return Slice(self,range(len(self))[index])
+        return self.source[index][self.index]-self.offset
+
 class DiskTable(Sequence):
     """Fixed-width float64 records; at most two 64 KiB pages retained in Python."""
     def __init__(self,rows,width,directory=None,nullable=False):

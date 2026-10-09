@@ -89,3 +89,5 @@
 !/src/guide/media/**
 
 **/desktop_registration.json
+**/storage_settings.json
+**/storage_compression.json

@@ -1,6 +1,7 @@
 """All eligible laps, reproducibility and genuine median-lap references."""
 import bisect
 import json
+from json_store import load as load_json
 import math
 from pathlib import Path
 import statistics
@@ -89,7 +90,7 @@ def analyze_session(folder):
     folder=Path(folder);meta=json.loads((folder/'session.json').read_text(encoding='utf-8'))
     if meta.get('status')=='recording':raise ValueError('请等本场记录结束后再分析')
     if meta.get('status')=='write_error':raise ValueError('该记录存在写盘错误，保留原 CSV 供检查，不生成可信参考')
-    native=json.loads((folder/'native_channels.json').read_text(encoding='utf-8')) if (folder/'native_channels.json').exists() else None
+    native=load_json(folder/'native_channels.json') if (folder/'native_channels.json').exists() else None
     from vehiclelab import load_recording,lap_telemetry
     vehicle_bundle=load_recording(folder)
     summaries=[];recent=[]

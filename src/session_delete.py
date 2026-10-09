@@ -13,6 +13,7 @@ def remove(root,key):
     if folder==root or not folder.is_relative_to(root):raise ValueError('记录路径无效')
     for path in (source,source.parent):
         if path.is_symlink() or path.is_junction():raise ValueError('记录路径无效')
+    if (folder/'.storage_compression.pending').exists():raise ValueError('该赛事正在压缩，请稍后重试')
     meta=json.loads((folder/'session.json').read_text(encoding='utf-8-sig'))
     if not isinstance(meta,dict):raise ValueError('比赛信息无效')
     if meta.get('status') in ('recording','write_error'):raise ValueError('请等记录完整保存后再操作')

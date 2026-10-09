@@ -42,6 +42,8 @@ def make_report(folder,isolated=None):
             from report_worker import ReportDeferred
             if isinstance(error,ReportDeferred):raise
             (folder/'race_images_error.txt').write_text(str(error),encoding='utf-8')
+        from session_compression import after_report
+        after_report(folder)
 
 
 def render_review(folder, fastest=None):

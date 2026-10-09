@@ -1,6 +1,7 @@
 """Focused Tk windows, shared by the existing HUD. Local operations only."""
 from i18n import tr,Label
 import json
+from json_store import load as load_json
 import os
 from pathlib import Path
 import tkinter as tk
@@ -132,7 +133,7 @@ def show_library(app,root,render_review,make_report):
             for v in values:
                 file=v['stable_file'] if kind=='stable' else v['fastest_file']
                 if not file:raise ValueError(v['track']+' 没有所选类型的参考圈')
-                records.append(json.loads((Path(v['folder'])/file).read_text(encoding='utf-8')))
+                records.append(load_json(Path(v['folder'])/file))
             path=root/'LibraryCompare.html';write_compare(path,ASSETS/'compare.html',records);return path
         background(work,lambda path:os.startfile(path))
     def save():

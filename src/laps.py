@@ -3,6 +3,7 @@ import bisect
 import csv
 import html
 import json
+from json_store import load as load_json
 import math
 from pathlib import Path
 import statistics
@@ -288,12 +289,12 @@ def library_laps(root, current=None):
             continue
     if current is None and summaries:
         newest = max(summaries,key=lambda pair:pair[1]['session'].get('started_utc',''))[0]
-        current = json.loads(newest.read_text(encoding='utf-8'))
+        current = load_json(newest)
     if current is None:
         return []
     compatible = [(path,v) for path,v in summaries if path.parent.name+':'+str(v['lap']['number'])!=current['id']
                   and all(v['session'].get(k)==current['session'].get(k) for k in ('track','vehicle'))]
-    previous = json.loads(min(compatible,key=lambda pair:pair[1]['lap']['time_s'])[0].read_text(encoding='utf-8')) if compatible else None
+    previous = load_json(min(compatible,key=lambda pair:pair[1]['lap']['time_s'])[0]) if compatible else None
     return [current,previous] if previous else [current]
 
 
@@ -322,7 +323,7 @@ def lap_record(folder,best,metadata=None,native=None,kind='fastest'):
                   data_columns=DATA_COLUMNS,data=comparison_data(best),reference_kind=kind)
     result['trajectory'] = trajectory_data(best,result['data'])
     from sessionlab import lap_conditions,actions
-    if native is None and (folder/'native_channels.json').exists():native=json.loads((folder/'native_channels.json').read_text(encoding='utf-8'))
+    if native is None and (folder/'native_channels.json').exists():native=load_json(folder/'native_channels.json')
     result['conditions']=lap_conditions(best['rows'],native,best['start_s'],native.get('event_offset_s',0) if native else 0)
     result['actions']=actions(best['rows'])
     from vehiclelab import lap_telemetry,load_recording
@@ -332,11 +333,12 @@ def lap_record(folder,best,metadata=None,native=None,kind='fastest'):
         result['native_context'] = dict(metadata=metadata.get('native_metadata',{}),source=metadata.get('native_source',{}),channels={})
         for channel,series in native['channels'].items():
             offset = native.get('event_offset_s',0) if series['event'] else 0
-            rows = series['data'];times = [r[0]-offset for r in rows]
+            from analysis_spool import Column,DiskTable
+            rows = series['data'];times = Column(rows,offset=offset)
             first = max(0,bisect.bisect_right(times,best['start_s'])-1)
             last = bisect.bisect_right(times,best['end_s'])
             result['native_context']['channels'][channel] = dict(unit=series['unit'],event=series['event'],
-                frequency_hz=series['frequency_hz'],data=[[round(r[0]-offset-best['start_s'],6),*r[1:]] for r in rows[first:last]])
+                frequency_hz=series['frequency_hz'],data=DiskTable(([round(r[0]-offset-best['start_s'],6),*r[1:]] for r in rows[first:last]),len(rows[0]),folder) if rows else [])
     return result
 
 
@@ -380,7 +382,7 @@ def export_selected_laps(folder,numbers,template=None):
                 'incomplete distance coverage':'距离覆盖不完整','timing reset':'计时重置',
                 'insufficient or nonmonotonic samples':'采样不足或时间倒退','distance moved backwards or reset':'距离倒退或重置'}.get(item.get('exclusion') if item else '',error or '记录中没有该圈')
             raise ValueError(f'第 {n} 圈不是可提取的完整圈：{reason}')
-    native=json.loads((folder/'native_channels.json').read_text(encoding='utf-8')) if (folder/'native_channels.json').exists() else None
+    native=load_json(folder/'native_channels.json') if (folder/'native_channels.json').exists() else None
     records=[lap_record(folder,selected[n],metadata,native,'selected') for n in numbers]
     output=folder/'SelectedLaps';output.mkdir(exist_ok=True);exports=[]
     for n,value in zip(numbers,records):
