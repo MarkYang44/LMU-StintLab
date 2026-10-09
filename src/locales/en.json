@@ -297,5 +297,7 @@
   "永久删除选中的赛事记录？": "Permanently delete the selected sessions?",
   "将从本机删除所选赛事的全部记录、圈文件与报告，无法恢复。": "All records, lap files and reports for these sessions will be permanently deleted from this computer. This cannot be undone.",
   "永久删除": "Delete permanently",
-  "部分赛事未能删除": "Some sessions could not be deleted"
+  "部分赛事未能删除": "Some sessions could not be deleted",
+  "系统内存紧张，报告等待可用内存；完整记录已保存": "Memory pressure: reports will resume when memory is available. The full recording is saved.",
+  "赛后报告处理失败；原记录已保留，请查看 report_worker.log": "Report processing failed. The original recording is preserved; see report_worker.log."
 }

@@ -8,7 +8,15 @@ from sessionlab import analyze_session
 
 
 @reporting.serialized
-def make_report(folder):
+def make_report(folder,isolated=None):
+    # Portable builds isolate large Python/native heaps; source callers can opt in.
+    import sys
+    from pathlib import Path
+    folder=Path(folder)
+    use_worker=getattr(sys,'frozen',False) if isolated is None else isolated
+    if use_worker:
+        from report_worker import run
+        return run(folder,ROOT)
     try:analyze_session(folder)
     except Exception as e:(folder/'analysis_error.txt').write_text(str(e),encoding='utf-8')
     try:endurance.analyze(folder)
@@ -31,6 +39,8 @@ def make_report(folder):
             from race_report import generate
             generate(folder)
         except Exception as error:
+            from report_worker import ReportDeferred
+            if isinstance(error,ReportDeferred):raise
             (folder/'race_images_error.txt').write_text(str(error),encoding='utf-8')
 
 

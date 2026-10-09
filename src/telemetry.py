@@ -73,6 +73,10 @@ class SharedReader:
             self.kernel.CloseHandle(self.handle)
             self.handle = None
             raise OSError('Cannot read LMU shared memory')
+        self.compare=ctypes.CDLL('msvcrt').memcmp
+        self.compare.argtypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_size_t];self.compare.restype=ctypes.c_int
+        self.snapshot=self.structure()
+        self.verification=self.structure()
         self.cached_sample = None
         self.cached_at = 0
         self.race_cache = None
@@ -84,10 +88,11 @@ class SharedReader:
             return self.cached_sample
         # Discard a snapshot if the producer changed it while it was copied.
         for _ in range(3):
-            a = ctypes.string_at(self.pointer, self.size)
-            b = ctypes.string_at(self.pointer, self.size)
-            if a == b:
-                data = self.structure.from_buffer_copy(a)
+            # Reuse two independent snapshots: full equality still detects tearing.
+            ctypes.memmove(ctypes.addressof(self.snapshot),self.pointer,self.size)
+            ctypes.memmove(ctypes.addressof(self.verification),self.pointer,self.size)
+            if self.compare(ctypes.addressof(self.snapshot),ctypes.addressof(self.verification),self.size)==0:
+                data = self.snapshot
                 sample = extract(data,getattr(self,'race_cache',None))
                 self.race_cache = sample.get('race_state') if sample else None
                 self.cached_sample = sample
@@ -109,6 +114,8 @@ class SharedReader:
         return None
 
     def close(self):
+        self.cached_sample=None;self.race_cache=None
+        self.snapshot=None;self.verification=None
         if getattr(self, 'pointer', None):
             self.kernel.UnmapViewOfFile(self.pointer)
             self.pointer = None

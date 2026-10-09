@@ -29,11 +29,19 @@ def __getattr__(name):
 
 
 def main():
+    if '--report-worker' in sys.argv:
+        index=sys.argv.index('--report-worker')
+        if index+1>=len(sys.argv):raise ValueError('Missing completed session directory')
+        from report_worker import entry
+        from report_worker import ReportDeferred,defer
+        try:entry(sys.argv[index+1])
+        except ReportDeferred as error:defer(sys.argv[index+1],error);raise SystemExit(75)
+        return
     if '--register-app' in sys.argv or '--unregister-app' in sys.argv:
         from windows_integration import register
         register('--unregister-app' in sys.argv,verify=True);return
     if '--version' in sys.argv:
-        print('LMU Stintrix 0.2.0');return
+        print('LMU Stintrix '+(ASSETS.parent.parent/'VERSION' if getattr(sys,'frozen',False) else ASSETS.parent/'VERSION').read_text(encoding='utf-8').strip());return
     if '--race-images' in sys.argv:
         index=sys.argv.index('--race-images')
         if index+1>=len(sys.argv):raise ValueError('--race-images 后需要已结束的赛事目录')

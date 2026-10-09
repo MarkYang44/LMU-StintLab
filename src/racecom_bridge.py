@@ -109,6 +109,8 @@ def render(folder,model,executable):
         # Finish both renders before replacing any existing image.
         sources=[('laps.xlsx','圈速单.png')] if adapt(model)['laps'] else []
         for source,name in [*sources,('race_log.txt','比赛日志.png')]:
+            from report_worker import can_report,ReportDeferred
+            if not can_report():raise ReportDeferred('系统内存紧张，报告等待可用内存；完整记录已保存')
             target=folder/(name+'.'+str(threading.get_ident())+'.pending');pending.append((target,folder/name))
             result=run([str(exe),str(inputs/source),str(target),'--light'],exe.parent)
             signature=b''

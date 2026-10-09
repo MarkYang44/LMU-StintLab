@@ -159,3 +159,33 @@ class NullableTable(NumericTable):
     def __getitem__(self,index):
         if isinstance(index,slice):return [self[i] for i in range(*index.indices(len(self)))]
         return tuple(None if math.isnan(x) else x for x in super().__getitem__(index))
+
+
+class PackedWindow(Sequence):
+    def __init__(self,values,width):self.values,self.width=values,width
+    def __len__(self):return len(self.values)//self.width
+    def __getitem__(self,index):
+        if isinstance(index,slice):return [self[i] for i in range(*index.indices(len(self)))]
+        if index<0:index+=len(self)
+        if not 0<=index<len(self):raise IndexError(index)
+        return tuple(self.values[index*self.width:(index+1)*self.width])
+
+def packed_window(history,cutoff):
+    if not isinstance(history,NumericRing):return window_rows(history,cutoff)
+    first=history.lower_bound(cutoff);count=len(history)-first;values=array('d')
+    if count:
+        start=((history._start+first)%history._capacity)*history.width
+        end=min(start+count*history.width,history._capacity*history.width)
+        values.frombytes(memoryview(history._data).cast('B')[start*8:end*8])
+        remaining=count*history.width-(end-start)
+        if remaining:values.frombytes(memoryview(history._data).cast('B')[:remaining*8])
+    return PackedWindow(values,history.width)
+
+
+def trace_lane(points,offset,lane):
+    if isinstance(points,PackedWindow):
+        data=points.values;width=points.width
+        for i in range(0,len(data),width):
+            yield data[i],data[i+offset+lane],data[i+offset+lane+3],data[i+offset+lane+6]
+    else:
+        for point in points:yield point[0],point[offset+lane],point[offset+lane+3],point[offset+lane+6]

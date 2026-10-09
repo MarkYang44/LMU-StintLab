@@ -297,7 +297,8 @@ def load_recording(folder):
                 last=t
                 if origin is None:origin=t-(number(r.get('time_s')) or 0)
                 yield [t,*[number(r.get(k)) for k in columns]]
-        data=NullableTable(records(),len(columns)+1)
+        from analysis_spool import DiskTable
+        data=DiskTable(records(),len(columns)+1,path.parent,nullable=True)
     meta=json.loads((Path(folder)/'session.json').read_text(encoding='utf-8'))
     return dict(version=1,columns=columns,data=data,record_hz=meta.get('vehicle_telemetry',{}).get('target_hz'),
         source=meta.get('source'),time_origin_s=origin or 0,profile=meta.get('vehicle_profile',DEFAULT_PROFILE),

@@ -29,6 +29,7 @@ class Recorder:
         self.meta = {}
         self.report_thread = None
         self.pending_reports = []
+        self.retry_at=0;self.retry_thread=None
         self.meta_lock = threading.RLock()
         self.meta_io_lock = threading.Lock()
         self.race_journal = None
@@ -158,9 +159,22 @@ class Recorder:
         else:(folder/'report_error.txt').write_text(error,encoding='utf-8')
         return folder
 
+    def retry_reports(self,now):
+        if now-self.retry_at<5:return
+        self.retry_at=now
+        if self.retry_thread and self.retry_thread.is_alive():return
+        from report_worker import pending,resume_pending
+        root=self.output.parent
+        if self.output.name not in ('Logs','DemoLogs','ImportedLogs','RecoveredLogs') or next(pending(root),None) is None:return
+        self.retry_thread=threading.Thread(target=resume_pending,args=(root,),daemon=False)
+        self.pending_reports=[t for t in self.pending_reports if t.is_alive()]+[self.retry_thread]
+        self.retry_thread.start()
+
     @staticmethod
     def _report(folder):
         try:
             make_report(folder)
         except Exception as error:
-            (folder / 'report_error.txt').write_text(str(error), encoding='utf-8')
+            from report_worker import ReportDeferred,defer
+            if isinstance(error,ReportDeferred):defer(folder,error)
+            else:(folder / 'report_error.txt').write_text(str(error), encoding='utf-8')

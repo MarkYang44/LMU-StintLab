@@ -146,6 +146,7 @@ class Engine:
         self.missed_cycles = 0
         while not self.stop.is_set():
             now = time.monotonic()
+            self.recorder.retry_reports(now)
             if config is not self.settings:
                 config = self.settings
                 sampler.configure(config, now)

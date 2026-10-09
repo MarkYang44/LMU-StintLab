@@ -54,6 +54,7 @@ class VehicleJSON:
 
 def json_chunks(value,open_object=False):
     from buffers import NumericTable
+    from analysis_spool import DiskTable
     if isinstance(value,JSONFile):
         with value.path.open('rb') as f:
             yield from iter(lambda:f.read(65536),b'')
@@ -65,11 +66,17 @@ def json_chunks(value,open_object=False):
             yield _encoder.encode(key).encode('utf-8');yield b':'
             yield from json_chunks(item)
         if not open_object:yield b'}'
-    elif isinstance(value,NumericTable):
+    elif isinstance(value,(NumericTable,DiskTable)):
         yield b'['
         for i,row in enumerate(value):
             if i:yield b','
             yield from json_chunks(row)
+        yield b']'
+    elif isinstance(value,(list,tuple)) and any(isinstance(v,(dict,list,tuple,NumericTable,DiskTable,JSONFile,VehicleJSON)) for v in value):
+        yield b'['
+        for i,item in enumerate(value):
+            if i:yield b','
+            yield from json_chunks(item)
         yield b']'
     else:
         # Coalesce the encoder's tiny numeric tokens before calling zlib.

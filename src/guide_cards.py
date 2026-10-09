@@ -13,6 +13,7 @@ class Picture(tk.Canvas):
         self.center=center;self.item=item;self.photo=None;self.size=None;self.job=None;self.error='';self.loading=None;self.revision=0
         self.pack(fill='x',pady=(0,px(parent,16)))
         self.bind('<Configure>',self.changed);self.bind('<Destroy>',self.dispose,add='+')
+        self.bind('<Unmap>',self.release,add='+');self.bind('<Map>',self.changed,add='+')
         self.command=self.register(self.view_changed)
         self.view_trace=center.scroll.tk.call('trace','add','execution',center.scroll._w,'leave',self.command)
 
@@ -23,14 +24,19 @@ class Picture(tk.Canvas):
             height=round(min(1200,width)*9/16)
             if int(self.cget('height'))!=height:self.configure(height=height)
         if self.job is None and self.winfo_exists():self.job=self.after(90,self.render)
-    def dispose(self,event):
-        if event.widget is not self:return
+    def release(self,event=None):
         if self.job:
             try:self.after_cancel(self.job)
             except tk.TclError:pass
+        self.job=None;self.revision+=1;self.loading=None
+        try:self.delete('image')
+        except tk.TclError:pass
+        self.photo=None;self.size=None
+    def dispose(self,event):
+        if event.widget is not self:return
+        self.release()
         try:self.tk.call('trace','remove','execution',self.center.scroll._w,'leave',self.command)
         except tk.TclError:pass
-        self.revision+=1;self.photo=None;self.size=None
 
     def render(self):
         if self.job:

@@ -501,6 +501,13 @@ class ControlCenter:
             self.work(work,lambda _:self.refresh())
 
     def tick(self):
+        import time
+        now=time.monotonic()
+        if not self.closing and now-getattr(self,'report_retry_at',0)>=5:
+            self.report_retry_at=now
+            from report_worker import pending,resume_pending
+            if not self.tasks.busy and next(pending(ROOT),None) is not None:
+                self.run_background(lambda:resume_pending(ROOT),lambda result,error:None)
         if self.closing:return
         if self.hud and not self.hud.root.winfo_exists():self.hud=None
         for done,result,error in self.tasks.completions():

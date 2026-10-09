@@ -8,6 +8,8 @@ from pathlib import Path
 import statistics
 import threading
 from buffers import CompactRow
+from array import array
+from analysis_spool import LapRows,DiskTable,median
 
 FORMAT = 'inputscope.fastest-lap'
 DATA_COLUMNS = ['distance_m','lap_time_s','throttle','brake','filtered_throttle','filtered_brake','speed_kmh']
@@ -86,7 +88,7 @@ def extract_best(csv_path,on_candidate=None,include_flagged=False,retain_best=Tr
         return None,[], 'No usable track distance'
     best = None
     candidates = []
-    group = []
+    group = LapRows(Path(csv_path).parent)
     key = None
     seen_boundary = False
 
@@ -99,18 +101,22 @@ def extract_best(csv_path,on_candidate=None,include_flagged=False,retain_best=Tr
         number = int(group[0]['lap'])
         checked = all('lap_invalidated' in r and 'in_pits' in r for r in group)
         reason = None
-        intervals = [b['session_time_s']-a['session_time_s'] for a,b in zip(group,group[1:])]
-        positive = [d for d in intervals if d>0]
-        cadence = statistics.median(positive) if positive else 0
+        positive=array('d');nonmonotonic=False
+        for a,b in zip(group,group[1:]):
+            dt=b['session_time_s']-a['session_time_s']
+            if dt>0:positive.append(dt)
+            else:nonmonotonic=True
+        largest=max(positive,default=0)
+        cadence = median(positive) if positive else 0
         threshold = min(2.5,max(1.5,cadence*3))
         tolerance = max(.05,min(1.5,cadence*1.5))
         if duration<=0 or end>next_row['session_time_s']+.1:
             reason = 'timing reset'
         elif not seen_boundary and (not timer or abs(group[0]['session_time_s']-start)>tolerance):
             reason = 'start of lap missing'
-        elif len(group)<3 or not positive or any(d<=0 for d in intervals):
+        elif len(group)<3 or not positive or nonmonotonic:
             reason = 'insufficient or nonmonotonic samples'
-        elif max(positive+[next_row['session_time_s']-group[-1]['session_time_s']])>threshold:
+        elif max(largest,next_row['session_time_s']-group[-1]['session_time_s'])>threshold:
             reason = 'telemetry gap'
         elif not include_flagged and any(r.get('lap_invalidated',0)>0 for r in group):
             reason = 'invalidated lap'
@@ -133,7 +139,7 @@ def extract_best(csv_path,on_candidate=None,include_flagged=False,retain_best=Tr
                     in_pits=any(r.get('in_pits',0)>0 for r in group))
         candidates.append(info)
         if reason is None:
-            value = dict(**info,start_s=start,end_s=end,rows=list(group),
+            value = dict(**info,start_s=start,end_s=end,rows=group,
                         next_row=dict(next_row),length_m=length,
                         timing_source='game_lap_start' if timer else 'lap_counter_estimate',
                         distance_source='game_track_length' if known_lengths else 'recorded_maximum_estimate',
@@ -144,8 +150,9 @@ def extract_best(csv_path,on_candidate=None,include_flagged=False,retain_best=Tr
     for row in read_rows(csv_path):
         next_key = lap_key(row)
         if group and next_key!=key:
+            group.seal()
             complete(row)
-            group = []
+            group = LapRows(Path(csv_path).parent)
             seen_boundary = True
         key = next_key
         group.append(row)
@@ -157,32 +164,27 @@ def extract_best(csv_path,on_candidate=None,include_flagged=False,retain_best=Tr
 def comparison_data(best):
     rows = best['rows']
     start,end,length = best['start_s'],best['end_s'],best['length_m']
-    knots = [(start,0)]
+    times=array('d',[start]);distances=array('d',[0])
     for r in rows[best['first_distance_index']:]:
-        t,d = r['session_time_s'],max(0,min(length,r['lap_distance_m']))
-        if start<t<end and d>knots[-1][1]+.01:
-            knots.append((t,d))
-    knots.append((end,length))
-    times = [t for t,_ in knots]
-    control_names = ('throttle','brake','filtered_throttle','filtered_brake','speed_kmh')
-
+        t,d=r['session_time_s'],max(0,min(length,r['lap_distance_m']))
+        if start<t<end and d>distances[-1]+.01:times.append(t);distances.append(d)
+    times.append(end);distances.append(length)
+    names=('throttle','brake','filtered_throttle','filtered_brake','speed_kmh')
     def boundary(t,a,b,d):
-        fraction = max(0,min(1,(t-a['session_time_s'])/max(1e-9,b['session_time_s']-a['session_time_s'])))
-        return [round(d,3),round(t-start,6),*[round(a[n]+fraction*(b[n]-a[n]),6) for n in control_names]]
+        f=max(0,min(1,(t-a['session_time_s'])/max(1e-9,b['session_time_s']-a['session_time_s'])))
+        return [round(d,3),round(t-start,6),*[round(a[n]+f*(b[n]-a[n]),6) for n in names]]
+    def records():
+        yield boundary(start,rows[0],rows[min(1,len(rows)-1)],0)
+        index=0
+        for row in rows:
+            t=row['session_time_s']
+            if not start<t<end:continue
+            index=min(max(index,bisect.bisect_right(times,t)-1),len(times)-2)
+            d=distances[index]+(distances[index+1]-distances[index])*(t-times[index])/(times[index+1]-times[index])
+            yield [round(d,3),round(t-start,6),*[round(row[n],6) for n in names]]
+        yield boundary(end,rows[-1],best['next_row'],length)
+    return DiskTable(records(),7,rows.directory if isinstance(rows,LapRows) else None)
 
-    data = [boundary(start,rows[0],rows[min(1,len(rows)-1)],0)]
-    index = 0
-    for row in rows:
-        t = row['session_time_s']
-        if not start<t<end:
-            continue
-        index = max(index,bisect.bisect_right(times,t)-1)
-        index = min(index,len(knots)-2)
-        a,b = knots[index:index+2]
-        d = a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0])
-        data.append([round(d,3),round(t-start,6),*[round(row[n],6) for n in control_names]])
-    data.append(boundary(end,rows[-1],best['next_row'],length))
-    return data
 
 
 def curve_svg(lap):

@@ -16,7 +16,7 @@ import endurance
 import vehiclelab
 from app_config import COLORS, INPUT_CHANNELS, ROOT
 from background import BackgroundTasks
-from buffers import NumericRing, window_rate, window_rows
+from buffers import trace_lane, packed_window, NumericRing, window_rate, window_rows
 from engine import Engine
 from hud_geometry import WheelDisplay, hud_layout, pedal_fill, reduce_trace, steering_angle
 from laps import library_laps, write_compare
@@ -680,9 +680,9 @@ class App:
         with self.engine.lock:
             trace_key = (id(self.engine),self.engine.plot_revision,self.engine.reference_revision,w,h,mode,window,channel)
             rebuild = trace_key != self.trace_key or now >= self.trace_expiry
-            points = window_rows(self.engine.plot_points, now-window) if rebuild else ()
+            points = packed_window(self.engine.plot_points, now-window) if rebuild else ()
             latest = self.engine.latest
-            reference_points = window_rows(self.engine.reference_points, now-window) if rebuild and self.engine.reference_enabled else ()
+            reference_points = packed_window(self.engine.reference_points, now-window) if rebuild and self.engine.reference_enabled else ()
             reference_latest = self.engine.reference_latest
             if hasattr(self,'diagnostics'):self.paint_sample=latest
         if rebuild:
@@ -708,21 +708,20 @@ class App:
                                fill=color,anchor='w',font=('Segoe UI',-round(21*s),'bold'))
             coords = []
             previous = None
-            for point in points:
-                if previous is not None and point[0] - previous > 3:
+            for stamp,current,low,high in trace_lane(points,point_offset,lane):
+                if previous is not None and stamp - previous > 3:
                     if len(coords) >= 4:
                         self.paint_trace(coords, lane, clean)
                     coords = []
-                x = x1 - (now - point[0]) / window * (x1 - x0)
-                low, high = point[point_offset+lane+3], point[point_offset+lane+6]
+                x = x1 - (now - stamp) / window * (x1 - x0)
                 height = (y1-y0)/(2 if lane==2 else 1)
                 # Sub-quarter-pixel ranges are visually indistinguishable. Larger
                 # ranges still emit both extrema, preserving brief pedal spikes.
-                displayed = (low,high) if (high-low)*height>=0.25 else (point[point_offset+lane],)
+                displayed = (low,high) if (high-low)*height>=0.25 else (current,)
                 for v in displayed:
                     fraction = (v + 1) / 2 if lane == 2 else v
                     coords.extend((x, y1 - fraction * (y1 - y0)))
-                previous = point[0]
+                previous = stamp
             if len(coords) >= 4:
                 self.paint_trace(coords, lane, clean)
         if rebuild:
