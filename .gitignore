@@ -67,6 +67,7 @@
 *.log
 *.gz
 *.zip
+*.7z
 *.exe
 *.dll
 *.pyd
@@ -89,5 +90,6 @@
 !/src/guide/media/**
 
 **/desktop_registration.json
+**/archive_settings.json
 **/storage_settings.json
 **/storage_compression.json

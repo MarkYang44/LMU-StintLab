@@ -49,6 +49,9 @@ if ($BuildTools) { $dependencyArgs += '--build' }
 & $venvPython (Join-Path $projectRoot 'tools\install_dependencies.py') @dependencyArgs
 if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed. Check your network, then rerun Setup.cmd.' }
 
+& $venvPython (Join-Path $projectRoot 'tools\install_7zip.py')
+if ($LASTEXITCODE -ne 0) { throw '7z dependency download failed; rerun Setup.cmd.' }
+
 $configFile = Join-Path $projectRoot 'local_settings.json'
 if (Test-Path -LiteralPath $configFile) {
     $config = Get-Content -LiteralPath $configFile -Raw | ConvertFrom-Json

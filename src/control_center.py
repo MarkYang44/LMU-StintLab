@@ -464,7 +464,16 @@ class ControlCenter:
             except (ValueError,OSError) as e:messagebox.showerror(tr('配置未保存'),str(e),parent=self.root)
         row=self.row(body);self.button(row,'选择生成器',choose,False,140);self.button(row,'保存配置',save,True,140)
         self.label(body,'racecom = 原版版式；native = Stintrix 兼容版式。\nGitHub 下载包不包含 RaceCom 程序、商标图片或个人记录。',9,T.MUTED).pack(anchor='w',pady=8)
-        body=self.card('赛事包 / ZIP','勾选多场或全选当前列表，一次导出；每场一个 ZIP，导入时校验并新建记录')
+        body=self.card('赛事包 / ZIP · 7z','每场一个包；默认快速导入，也可开启完整校验')
+        import archive_preferences
+        preferences=archive_preferences.load(ROOT)
+        self.archive_format=tk.StringVar(self.root,value='ZIP' if preferences['format']=='zip' else '7z')
+        self.archive_verify=tk.BooleanVar(self.root,value=preferences['verify'])
+        def save_archive():
+            archive_preferences.save(ROOT,self.archive_format.get().lower(),self.archive_verify.get())
+        self.choice(body,'导出格式',self.archive_format,['ZIP','7z'],save_archive)
+        Switch(body,'导入时完整校验',self.archive_verify,save_archive).pack(fill='x',pady=4)
+        self.label(body,'关闭时跳过 SHA-256 和已有记录比对，直接新建赛事；路径检查和解压 CRC 保留。',9,T.MUTED).pack(anchor='w',pady=4)
         self.sessions(body,True,True);row=self.row(body);self.button(row,'批量导出选中赛事',self.export_package,True,180);self.button(row,'导入赛事包',self.import_package,False,145)
         self.button(row,'导入官方遥测',self.import_native,False,155)
         body=self.card('无损节省磁盘空间','赛后透明压缩 CSV 与报告；文件名、完整采样与图片质量保持不变')
@@ -495,8 +504,10 @@ class ControlCenter:
         def action(items):
             directory=filedialog.askdirectory(parent=self.root,title=tr('选择赛事包导出目录'))
             if not directory:return
+            import archive_preferences
+            format=archive_preferences.load(ROOT)['format']
             keys=[item['key'] for item in items];self.exporting=True
-            self.status.set(f"{tr('正在导出 ')}{len(keys)}{tr(' 场赛事，每场一个 ZIP…')}")
+            self.status.set(f"{tr('正在导出 ')}{len(keys)} · {format.upper()}…")
             def done(result,error):
                 self.exporting=False
                 if error:self.status.set(tr('导出未完成：') + error);messagebox.showerror('Stintrix',error,parent=self.root);return
@@ -505,13 +516,22 @@ class ControlCenter:
                 if result['errors']:
                     details='\n'.join(v['item']+'：'+v['error'] for v in result['errors'][:10])
                     messagebox.showwarning(tr('部分赛事未导出'),details,parent=self.root)
-            self.run_background(lambda:transfer_batch(keys,lambda key:export_session(ROOT,key,Path(directory))),done)
+            self.run_background(lambda:transfer_batch(keys,lambda key:export_session(ROOT,key,Path(directory),format=format)),done)
         self.with_selection(action,None)
 
     def import_package(self):
         from session_archive import import_session
-        path=filedialog.askopenfilename(parent=self.root,title=tr('导入赛事包'),filetypes=[('赛事 ZIP','*.zip')])
-        if path:self.work(lambda:import_session(ROOT,path),lambda _:self.refresh())
+        from session_archive import transfer_batch
+        from archive_preferences import load
+        paths=filedialog.askopenfilenames(parent=self.root,title=tr('导入赛事包'),filetypes=[('Stintrix ZIP / 7z','*.zip *.7z')])
+        if paths:
+            verify=load(ROOT)['verify']
+            def done(value):
+                self.refresh()
+                mode=tr('完整校验') if verify else tr('快速导入')
+                self.status.set(f"{mode} · {tr('成功 ')}{len(value['items'])} · {tr('失败 ')}{len(value['errors'])}")
+                if value['errors']:messagebox.showwarning('Stintrix','\n'.join(Path(v['item']).name+'：'+v['error'] for v in value['errors'][:10]),parent=self.root)
+            self.work(lambda:transfer_batch(paths,lambda path:import_session(ROOT,path,verify=verify)),done)
 
     def import_native(self):
         from telemetry_import import import_recording

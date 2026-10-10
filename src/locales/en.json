@@ -305,5 +305,14 @@
   "赛后自动压缩": "Compress automatically after sessions",
   "压缩选中赛事": "Compress selected sessions",
   "已无损节省 ": "Losslessly saved ",
-  "失败 ": "Failed "
+  "失败 ": "Failed ",
+  "赛事包 / ZIP · 7z": "Session packages / ZIP · 7z",
+  "每场一个包；默认快速导入，也可开启完整校验": "One package per session; fast import by default, with optional full verification",
+  "导出格式": "Export format",
+  "导入时完整校验": "Verify content when importing",
+  "关闭时跳过 SHA-256 和已有记录比对，直接新建赛事；路径检查和解压 CRC 保留。": "Off: skip SHA-256 and existing-record comparison, and create a new session. Path checks and decompression CRC remain.",
+  "快速导入": "Fast import",
+  "完整校验": "Full verification",
+  "成功 ": "Succeeded ",
+  "ZIP / 7z · 默认快速导入 · 完整记录和备注保留": "ZIP / 7z · Fast import by default · Complete records and notes retained"
 }

@@ -19,3 +19,6 @@
 旧版赛道底图放在 `data/assets/tracks/catalog.json`，只在本机生成报告时优先读取；公开源码和 ZIP 使用 `src/tracks/catalog.json`，不会打包私有底图。重新安装、更新或构建时保留 `data/` 和 `local_settings.json`。旧版的三个启动入口 `Start Clean.cmd`、`Start Clean Controls.cmd`、`Start Demo.cmd` 在新版中继续可用。
 
 运行时不上传记录或调用外部 AI。联网仅发生在首次源码安装 / 构建依赖下载、你主动打开外部链接，以及 GitHub 的发布流程。环境检查可能显示数据目录；请勿将未脱敏检查输出作为公开 issue 附件。
+
+
+赛事包选项 data/archive_settings.json、ZIP / 7z 包、导入收据及工具下载缓存均只留本机；便携发布包中的 7zr.exe 是官方公开工具，不含个人记录。快速导入不执行内容 SHA256 核对，不将导入结果标记为完整校验通过；导入收据记录 verification=fast 或 full。

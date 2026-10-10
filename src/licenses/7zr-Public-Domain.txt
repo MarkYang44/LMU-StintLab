@@ -1,0 +1,8 @@
+7zr.exe (reduced 7-Zip console), version 26.04, 2026-10-05.
+Copyright Igor Pavlov. Public domain.
+The unmodified official binary reports: 7-Zip (r) 26.04 (x86) : Igor Pavlov : Public domain.
+It is part of the public-domain LZMA SDK, not the full LGPL 7-Zip distribution.
+Source and license information: https://www.7-zip.org/sdk.html
+Official source: https://github.com/ip7z/7zip
+Official binary: https://github.com/ip7z/7zip/releases/download/26.04/7zr.exe
+SHA256: 256feca8e274e5da655e2a284fabafd9f554365eb164862089dacd4e8276d282

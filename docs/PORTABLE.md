@@ -31,3 +31,8 @@
 已启用的入口在新版启动时会按当前登录用户检查并修复；检查在后台进行。若显示“Windows 尚未列出应用”，可稍后再次点击更新。入口识别状态保存在本机 `data/desktop_registration.json`，不参与发布。
 
 控制中心顶部 **EN / 中文** 可切换整个菜单语言，重启后保留；主题和语言分别保存到本机 `data/interface_settings.json`。赛道指南与车型图鉴随菜单语言切换，赛事记录、配置值和文件名不因语言切换而改变。
+
+
+图像与数据页可选择 ZIP / 7z 导出，并一次导入多个赛事包。默认快速导入不进行逐文件 SHA-256 核对，每次新建赛事；如需完整校验和重复记录识别，开启“导入时完整校验”。路径、大小上限和解压 CRC 检查保留。既有 ZIP 不需要重新打包。7z 精简工具随便携版包含，不需要额外安装。
+
+**Archive options:** Select ZIP or 7z for export. Fast import is the default and creates a new session each time. Turn on Verify content when importing for full SHA-256 verification and duplicate detection. Path checks and decompression CRC remain enabled. Legacy ZIP packages work without repacking.

@@ -156,27 +156,40 @@ def show_library(app,root,render_review,make_report):
         if state['busy']:status.set(tr('上一个任务仍在处理，请稍候'));return
         values=selected()
         if not values:status.set(tr('请选择一场或多场比赛；Ctrl / Shift 可多选'));return
-        destination=filedialog.askdirectory(title=tr('选择比赛包导出目录（每场一个 ZIP）'),parent=window)
+        destination=filedialog.askdirectory(title=tr('选择赛事包导出目录'),parent=window)
         if not destination:return
         from session_archive import export_session,transfer_batch
-        background(lambda:transfer_batch([v['key'] for v in values],lambda key:export_session(root,key,destination)),
+        format=archive_format.get().lower()
+        background(lambda:transfer_batch([v['key'] for v in values],lambda key:export_session(root,key,destination,format=format)),
                    lambda result:transferred(result,'导出'))
     def import_packages():
         if state['busy']:status.set(tr('上一个任务仍在处理，请稍候'));return
         packages=filedialog.askopenfilenames(title=tr('选择一个或多个 Stintrix 比赛包'),parent=window,
-                                            filetypes=[('Stintrix 比赛包','*.stintrix.zip'),('ZIP 文件','*.zip')])
+                                            filetypes=[('Stintrix ZIP / 7z','*.zip *.7z')])
         if not packages:return
         from session_archive import import_session,transfer_batch
-        background(lambda:transfer_batch(packages,lambda package:import_session(root,package)),
+        verify=archive_verify.get()
+        background(lambda:transfer_batch(packages,lambda package:import_session(root,package,verify=verify)),
                    lambda result:transferred(result,'导入'))
     def race_images(v):
         from race_report import generate
         folder=Path(v['folder']);generate(folder);return folder
+    import archive_preferences
+    preferences=archive_preferences.load(root)
+    archive_format=tk.StringVar(window,value='ZIP' if preferences['format']=='zip' else '7z')
+    archive_verify=tk.BooleanVar(window,value=preferences['verify'])
+    def save_archive():archive_preferences.save(root,archive_format.get().lower(),archive_verify.get())
+    options=tk.Frame(window,bg=T.BG);options.pack(fill='x',padx=15)
+    Label(options,text='导出格式',bg=T.BG,fg=T.FG).pack(side='left',padx=3)
+    select=Select(options,textvariable=archive_format,values=['ZIP','7z'],width=8);select.pack(side='left',padx=8)
+    select.bind('<<ComboboxSelected>>',lambda _:save_archive())
+    from control_widgets import Switch
+    Switch(options,'导入时完整校验',archive_verify,save_archive).pack(side='left',fill='x',expand=True)
     transferbar=tk.Frame(window,bg=T.BG);transferbar.pack(fill='x',padx=15)
     for text,command in [('导出比赛包（可多选）',export_packages),('导入比赛包（可多选）',import_packages)]:
         tk.Button(transferbar,text=tr(text),command=command).pack(side='left',padx=3,pady=3)
     tk.Button(transferbar,text=tr('圈速单 / 比赛日志'),command=lambda:action(race_images,os.startfile)).pack(side='left',padx=3,pady=3)
-    Label(transferbar,text='每场一个 ZIP · 包含备注和离线复盘 · 导入后自动加入记录列表',bg=T.BG,fg='#8fabc9').pack(side='left',padx=10)
+    Label(transferbar,text='ZIP / 7z · 默认快速导入 · 完整记录和备注保留',bg=T.BG,fg='#8fabc9').pack(side='left',padx=10)
     buttons=tk.Frame(window,bg=T.BG);buttons.pack(fill='x',padx=15)
     for text,command in [('刷新',refresh),('分析 / 完整复盘',lambda:action(analyze,lambda path:(os.startfile(path),refresh()))),('同场圈 A／B',same_session),('最快圈页',lambda:action(lambda v:Path(v['folder'])/'fastest_lap.html',os.startfile)),('多选对比',compare),('设为锁定参考',lambda:action(choose_reference,lock_reference)),('保存备注',save),('压缩备份',lambda:action(lambda v:compress_session(v['folder']),lambda v:status.set(f"{tr('已校验压缩备份：')}{v['compressed_bytes'] / 1048576:.2f}{tr(' MB；保留原 CSV')}"))),('恢复中断记录',lambda:action(recover,lambda path:refresh()))]:
         tk.Button(buttons,text=tr(text),command=command).pack(side='left',padx=3,pady=8)

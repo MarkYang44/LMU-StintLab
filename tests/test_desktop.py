@@ -141,7 +141,8 @@ class DesktopTests(unittest.TestCase):
                 center.populate();center.tree.selection_set(('0','1','2'));center.root.update()
                 self.assertIn('已选 3 场',center.selected_count.get())
                 captured=[]
-                def export(root,key,target):
+                def export(root,key,target,format='zip'):
+                    self.assertEqual(format,'zip')
                     if key=='Logs/1':raise ValueError('fixture corrupt record')
                     return dict(path=str(target/(key[-1]+'.zip')))
                 with patch('session_archive.export_session',side_effect=export) as worker:

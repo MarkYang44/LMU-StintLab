@@ -12,7 +12,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 
 **便携版（推荐）**：从 [Releases](https://github.com/MarkYang44/LMU-Stintrix/releases) 下载 `LMU-Stintrix-v*-windows-x64.zip`，完整解压到可写目录，双击 **`LMU-Stintrix.exe`**。不需要安装 Python；`Demo.cmd` 可在不开游戏时演示。不要只移动 EXE，保留 `_internal` 文件夹。
 
-**源码版**：点击 GitHub **Code → Download ZIP**，完整解压，双击 `Setup.cmd`，完成后双击 `Start.cmd`。首次配置需要联网：脚本查找 64 位 Python 3.13；没有时使用 winget 为当前用户安装官方 Python，然后创建独立 `.venv`、校验固定版本依赖并安装。没有 winget 时，请手动安装带 Tcl/Tk 的 [Python 3.13](https://www.python.org/downloads/windows/)，然后重试。
+**源码版**：点击 GitHub **Code → Download ZIP**，完整解压，双击 `Setup.cmd`，完成后双击 `Start.cmd`。首次配置需要联网：脚本查找 64 位 Python 3.13；没有时使用 winget 为当前用户安装官方 Python，然后创建独立 `.venv`、校验固定版本依赖并安装，同时下载校验约 0.6 MB 的官方 7zr 工具。没有 winget 时，请手动安装带 Tcl/Tk 的 [Python 3.13](https://www.python.org/downloads/windows/)，然后重试。
 
 `LMU-Stintrix.exe` 默认打开分类控制中心（源码启动脚本同样适用），点击 **启动 HUD** 后读取 LMU 的 `LMU_Data` 共享内存。**只自动记录排位赛和正赛；Practice / Warmup 保留实时 HUD，不写比赛文件。** 无需向游戏复制 DLL，也不修改游戏文件或现有 ApexLink / RaceCom 配置。LMU Stintrix 独立运行；不是 RaceCom 本体、ApexLink 或官方插件。
 
@@ -28,7 +28,7 @@ Local telemetry HUD, recorder and lap analysis for **Le Mans Ultimate** on Windo
 - 同车同赛道跨比赛参考圈、完整圈 A / 圈 B 选择与提取、距离对齐、差距分析和规则生成的驾驶建议。
 - 赛道轨迹播放、位置对比、缩放和拖拽；胎温 / 胎压 / 磨损、燃油 / 能量及耐力赛相关面板与日志分析。部分通道需要导入原生遥测文件。
 - 只读导入 LMU `.duckdb` 记录、会话库、恢复与压缩。不会上传遥测，也不会连接外部 AI 服务。
-- 会话库支持多选导出 / 导入比赛包：每场一个校验 ZIP，保留完整遥测、离线复盘、圈文件和备注，可手动上传网盘。
+- 会话库支持多选导出 / 导入比赛包：每场可选 ZIP 或 7z，保留完整遥测、离线复盘、圈文件和备注，可手动上传网盘。菜单默认快速导入，完整 SHA-256 校验可选；旧 ZIP 继续兼容。
 - 新记录文件夹、比赛包与会话库带 `Qualify / Race` 阶段标签；旧 Practice 记录保留且无需改名。
 
 游戏 HUD 建议使用窗口 / 无边框窗口模式。它是 Windows 置顶窗口；独占全屏可能不显示。HUD 标题栏菜单按钮打开控制中心，右键快捷菜单继续保留；拖动移动。快捷键与工作流见 [使用说明](docs/USAGE.md)。

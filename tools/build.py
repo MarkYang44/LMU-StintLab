@@ -20,7 +20,7 @@ def bundle_audit(folder):
     private={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','.venv','_local','_backup','_verification','racecomrenderer','_racecom','_report_history'}
     denied={'local_settings.json','settings.json','session.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json',
         'race_log.json','race_summary.json','race_images.json','race_events_checkpoint.json','race_images_error.txt','car_calibration.json',
-        'renderer_settings.json','image_generate_config.json','interface_settings.json','guide_settings.json','desktop_registration.json','storage_settings.json','storage_compression.json'}
+        'renderer_settings.json','image_generate_config.json','interface_settings.json','guide_settings.json','desktop_registration.json','storage_settings.json','storage_compression.json','archive_settings.json'}
     for file in Path(folder).rglob('*'):
         if not file.is_file():continue
         rel=file.relative_to(folder)
@@ -36,6 +36,9 @@ def main():
     if sys.platform!='win32' or sys.version_info[:2]!=(3,13) or struct.calcsize('P')!=8:
         raise SystemExit('Build requires Windows x64 and CPython 3.13. Run tools/Build.cmd.')
     subprocess.run([sys.executable,str(ROOT/'tools'/'audit_publication.py'),'--working-tree'],cwd=ROOT,check=True)
+    sys.path.insert(0,str(ROOT))
+    from tools.install_7zip import install
+    console=install()
     version=(ROOT/'VERSION').read_text(encoding='utf-8').strip()
     build_id=uuid.uuid4().hex[:12]
     work=ROOT/'_local'/'build'/build_id;stage=ROOT/'dist'/('stage-'+build_id)
@@ -60,6 +63,7 @@ def main():
         args.extend(['--add-data',str(brand/name)+';src/branding'])
     for image in (ROOT/'src/guide/media').rglob('*.webp'):
         args.extend(['--add-data',str(image)+';'+image.parent.relative_to(ROOT).as_posix()])
+    args.extend(['--add-data',str(console)+';src/tools'])
     args.append(str(ROOT/'src'/'inputscope.py'))
     subprocess.run(args,cwd=ROOT,check=True)
     bundle=stage/'LMU-Stintrix'

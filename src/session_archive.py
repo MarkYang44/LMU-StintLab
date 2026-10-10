@@ -1,4 +1,4 @@
-"""Streamed, verified single-session ZIP transfer; never overwrites a session."""
+"""Streamed ZIP / 7z sessions with optional content verification; no overwrites."""
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -9,6 +9,7 @@ import shutil
 import stat
 import tempfile
 import uuid
+from contextlib import contextmanager
 import zipfile
 from library import inventory,session_label
 from laps import safe_name
@@ -72,7 +73,9 @@ def _files(folder):
     return out
 
 
-def export_session(root,key,destination):
+def export_session(root,key,destination,format='zip'):
+    if format=='7z':return export_7z(root,key,destination)
+    if format!='zip':raise ValueError('请选择 ZIP 或 7z')
     root=Path(root).resolve();folder,meta=_session(root,key)
     destination=Path(destination).resolve()
     if destination.is_relative_to(folder):raise ValueError('导出目录不能位于这场比赛内部')
@@ -114,7 +117,7 @@ def export_session(root,key,destination):
         pending.unlink(missing_ok=True)
 
 
-def _validate(archive):
+def _validate(archive,verify=True):
     infos=archive.infolist();names={};total=0
     if len(infos)>MAX_FILES+1:raise ValueError('比赛包文件数量过多')
     for info in infos:
@@ -144,19 +147,20 @@ def _validate(archive):
                 or not re.fullmatch('[0-9a-f]{64}',str(entry.get('sha256','')))):
             raise ValueError('比赛包清单与文件不一致')
     if len(names)!=len(files)+1 or not {'inputs.csv','session.json'}.issubset(files):raise ValueError('比赛包缺少记录文件或包含未声明文件')
-    if manifest.get('archive_id')!=_identity(files,note):raise ValueError('比赛包清单校验失败')
+    if not re.fullmatch('[0-9a-f]{64}',str(manifest.get('archive_id',''))):raise ValueError('比赛包编号无效')
+    if verify and manifest.get('archive_id')!=_identity(files,note):raise ValueError('比赛包清单校验失败')
     return manifest
 
 
-def _verify_member(archive,name,entry,target=None):
-    h=hashlib.sha256();count=0
+def _verify_member(archive,name,entry,target=None,verify=True):
+    h=hashlib.sha256() if verify else None;count=0
     with archive.open(name) as source:
         for b in iter(lambda:source.read(CHUNK),b''):
             count+=len(b)
             if count>entry['bytes']:raise ValueError('比赛包文件大小超出清单')
-            h.update(b)
+            if h is not None:h.update(b)
             if target is not None:target.write(b)
-    if count!=entry['bytes'] or h.hexdigest()!=entry['sha256']:raise ValueError('比赛包文件校验失败：'+name)
+    if count!=entry['bytes'] or h is not None and h.hexdigest()!=entry['sha256']:raise ValueError('比赛包文件校验失败：'+name)
 
 
 def _matches(folder,manifest):
@@ -168,44 +172,45 @@ def _matches(folder,manifest):
     except OSError:return False
 
 
-def import_session(root,package):
+def import_session(root,package,verify=True):
     root=Path(root).resolve();collection=root/'ImportedLogs'
     if collection.is_symlink() or collection.is_junction() or not collection.resolve().is_relative_to(root):
         raise ValueError('导入目录不能指向数据目录之外')
     collection.mkdir(parents=True,exist_ok=True)
-    with zipfile.ZipFile(package) as archive:
-        manifest=_validate(archive)
-        # Stage the entire verified session first. Damaged packages leave no library entry.
+    with _reader(package,collection) as archive:
+        manifest=_validate(archive,verify=verify)
+        # Extract into staging first. Neither mode publishes partially extracted data.
         if shutil.disk_usage(collection).free<sum(e['bytes'] for e in manifest['files'].values())+16*CHUNK:
             raise OSError('可用磁盘空间不足以导入比赛包')
         with tempfile.TemporaryDirectory(prefix='.stintrix-import-',dir=collection) as temporary:
             stage=Path(temporary)/'session';stage.mkdir()
             for name,entry in manifest['files'].items():
                 path=stage/name;path.parent.mkdir(parents=True,exist_ok=True)
-                with path.open('xb') as target:_verify_member(archive,'session/'+name,entry,target)
+                with path.open('xb') as target:_verify_member(archive,'session/'+name,entry,target,verify=verify)
             if manifest['files']['session.json']['bytes']>MAX_MANIFEST:raise ValueError('比赛信息文件过大')
             meta=json.loads((stage/'session.json').read_text(encoding='utf-8-sig'))
             if not isinstance(meta,dict) or meta.get('status')=='recording':raise ValueError('比赛包不是已结束的记录')
             if any(not isinstance(meta.get(k,''),str) for k in ('track','vehicle','driver','started_utc','status')):
                 raise ValueError('比赛包的基本信息字段无效')
-            candidates=[]
-            try:
-                rel=_safe_path(manifest.get('original_key','').replace('\\','/'))
-                if len(rel.parts)==2 and rel.parts[0] in COLLECTIONS:
-                    original=(root/str(rel)).resolve()
-                    if original.is_relative_to(root):candidates.append(original)
-            except ValueError:pass
-            for receipt in collection.glob('*/_archive_receipt.json'):
+            if verify:
+                candidates=[]
                 try:
-                    if json.loads(receipt.read_text(encoding='utf-8')).get('archive_id')==manifest['archive_id']:candidates.append(receipt.parent)
-                except (OSError,ValueError):continue
-            notes={v['key']:dict(text=v['note'],traffic=v['traffic']) for v in inventory(root)}
-            for folder in candidates:
-                key=str(folder.relative_to(root))
-                if notes.get(key)==manifest['note'] and _matches(folder,manifest):
-                    return dict(status='skipped',folder=str(folder),package=str(package))
+                    rel=_safe_path(manifest.get('original_key','').replace('\\','/'))
+                    if len(rel.parts)==2 and rel.parts[0] in COLLECTIONS:
+                        original=(root/str(rel)).resolve()
+                        if original.is_relative_to(root):candidates.append(original)
+                except ValueError:pass
+                for receipt in collection.glob('*/_archive_receipt.json'):
+                    try:
+                        if json.loads(receipt.read_text(encoding='utf-8')).get('archive_id')==manifest['archive_id']:candidates.append(receipt.parent)
+                    except (OSError,ValueError):continue
+                notes={v['key']:dict(text=v['note'],traffic=v['traffic']) for v in inventory(root)}
+                for folder in candidates:
+                    key=str(folder.relative_to(root))
+                    if notes.get(key)==manifest['note'] and _matches(folder,manifest):
+                        return dict(status='skipped',folder=str(folder),package=str(package))
             (stage/'_archive_note.json').write_text(json.dumps(manifest['note'],ensure_ascii=False),encoding='utf-8')
-            receipt=dict(archive_id=manifest['archive_id'],imported_utc=datetime.now(timezone.utc).isoformat())
+            receipt=dict(archive_id=manifest['archive_id'],imported_utc=datetime.now(timezone.utc).isoformat(),verification='full' if verify else 'fast')
             (stage/'_archive_receipt.json').write_text(json.dumps(receipt),encoding='utf-8')
             folder=collection/(safe_name(manifest.get('session_name') or 'Session')+'_Imported_'+manifest['archive_id'][:12])
             if folder.exists():folder=folder.with_name(folder.name+'_'+uuid.uuid4().hex[:8])
@@ -222,3 +227,45 @@ def transfer_batch(values,operation,progress=None):
         except Exception as e:
             result['errors'].append(dict(item=str(value),error=str(e)))
     return result
+
+
+@contextmanager
+def _reader(package,collection):
+    with Path(package).open('rb') as source:magic=source.read(6)
+    if magic==b'7z\xbc\xaf\x27\x1c':
+        from sevenzip import Reader
+        with tempfile.TemporaryDirectory(prefix='.stintrix-7z-',dir=collection) as work:
+            yield Reader(package,work)
+    else:
+        with zipfile.ZipFile(package) as archive:yield archive
+
+
+def export_7z(root,key,destination):
+    from sevenzip import create,Reader
+    root=Path(root).resolve();folder,meta=_session(root,key);destination=Path(destination).resolve()
+    if destination.is_relative_to(folder):raise ValueError('导出目录不能位于这场比赛内部')
+    destination.mkdir(parents=True,exist_ok=True);files=_files(folder)
+    item=next(v for v in inventory(root) if v['key']==str(folder.relative_to(root)))
+    note=dict(text=item['note'],traffic=item['traffic']);entries={};stamps={}
+    for name,path,size in files:
+        stamp=path.stat();entries[name]=dict(bytes=size,sha256=_digest(path));stamps[name]=(stamp.st_size,stamp.st_mtime_ns)
+    manifest=dict(format=FORMAT,version=1,archive_id=_identity(entries,note),container_layout='flat',
+        exported_utc=datetime.now(timezone.utc).isoformat(),original_key=str(folder.relative_to(root)),
+        session_name=folder.name,files=entries,note=note,
+        summary={k:meta.get(k,'') for k in ('track','vehicle','driver','started_utc','status')})
+    # Place scratch beside the destination; no source copies or hard links.
+    with tempfile.TemporaryDirectory(prefix='.stintrix-export-',dir=destination) as temporary:
+        work=Path(temporary);pending=work/'session.7z'
+        create(pending,folder,entries,json.dumps(manifest,ensure_ascii=False,indent=2),work)
+        if [n for n,_,_ in _files(folder)]!=list(entries):raise OSError('记录文件列表发生变化，请稍后重试')
+        for name,path,_ in files:
+            stamp=path.stat()
+            if (stamp.st_size,stamp.st_mtime_ns)!=stamps[name]:raise OSError('记录在导出时发生变化，请稍后重试')
+        archive=Reader(pending,work);_validate(archive)
+        for name,entry in entries.items():_verify_member(archive,'session/'+name,entry)
+        label='_'.join((safe_name(meta.get('started_utc','')[:19]),session_label(meta.get('session')),
+            safe_name(meta.get('track','')),safe_name(meta.get('vehicle',''))))
+        target=destination/(label+'_'+manifest['archive_id'][:12]+'.stintrix.7z')
+        if target.exists():target=target.with_name(target.stem+'_'+uuid.uuid4().hex[:8]+'.7z')
+        pending.rename(target)
+    return dict(path=str(target),bytes=target.stat().st_size,source_bytes=sum(e['bytes'] for e in entries.values()))

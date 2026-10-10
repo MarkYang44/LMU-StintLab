@@ -13,8 +13,8 @@ ROOT_FILES={'.gitignore','.gitattributes','README.md','LICENSE','THIRD_PARTY_NOT
 PRIVATE_PARTS={'data','logs','demologs','importedlogs','recoveredlogs','selectedlaps','diagnostics','_local','_backup','_verification','__pycache__','.venv','vendor','runtime','racecomrenderer','_racecom','_report_history'}
 PRIVATE_NAMES={'local_settings.json','settings.json','reference_settings.json','vehicle_settings.json','endurance_settings.json','last_native_import.json','session.json','recording_checkpoint.json','vehicle_checkpoint.json',
     'race_log.json','race_summary.json','race_images.json','race_events_checkpoint.json','race_images_error.txt','car_calibration.json',
-    'renderer_settings.json','image_generate_config.json','interface_settings.json','guide_settings.json','desktop_registration.json','storage_settings.json','storage_compression.json'}
-DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.exe','.dll','.pyd','.pyc','.pdf','.png','.jpg','.svg'}
+    'renderer_settings.json','image_generate_config.json','interface_settings.json','guide_settings.json','desktop_registration.json','storage_settings.json','storage_compression.json','archive_settings.json'}
+DENIED_SUFFIXES={'.csv','.duckdb','.db','.log','.gz','.zip','.7z','.exe','.dll','.pyd','.pyc','.pdf','.png','.jpg','.svg'}
 SECRET_PATTERNS=[rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----',rb'gh[pousr]_[A-Za-z0-9]{30,}',rb'github_pat_[A-Za-z0-9_]{30,}',rb'AKIA[0-9A-Z]{16}',rb'sk-[A-Za-z0-9_-]{40,}']
 PUBLIC_ASSETS={'src/branding/stx-app.png': '8f1d9730f44ee12cc63136f31484cbc77a9ae7c8c0baa1f19718f0ba3bfc6896', 'src/branding/stx-menu.png': 'c55573b6ea082572ea7302ab5073a21369c84e68188cb186bea8351e3f8ca738', 'src/branding/stx-menu-light.png': '5bc03c16a0d037fb6bc09a12c9adf524b337180841fde3e8c0c8153fce374864'}
 sys.path.insert(0,str(ROOT))

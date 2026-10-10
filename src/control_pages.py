@@ -104,6 +104,9 @@ class PageDeck:
         self.job=self.owner.root.after(16,self.step)
     def dispose(self):
         self.cancel_request();self.cancel_build()
+        # Non-cached pages also own widget traces. Dispose those widgets before
+        # the control center releases their Tk variables.
+        if self.active is not None and self.active.frame.winfo_exists():self.active.frame.destroy()
         for page in self.pages.values():
             if page.frame.winfo_exists():page.frame.destroy()
         self.pages.clear();self.active=None;self.building=None;self.before={};self.owner=None;self.host=None

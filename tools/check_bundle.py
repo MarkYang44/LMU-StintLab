@@ -37,7 +37,9 @@ def main():
     modules=set()
     for name in archive.toc:
         if name.endswith('.pyz'):modules.update(archive.open_embedded_archive(name).toc)
-    assert {'library','laps','session_archive'}<=modules
+    assert {'library','laps','session_archive','sevenzip','archive_preferences'}<=modules
+    from sevenzip import SHA256
+    assert hashlib.sha256((bundle/'_internal/src/tools/7zr.exe').read_bytes()).hexdigest()==SHA256
     assert not any(name.split('.')[0] in {'doctor','release_smoke','tests','tools'} for name in modules)
     assert {'session_delete','control_delete','control_repaint','control_pages','control_fields','windows_integration','control_shell','control_motion','control_list','control_theme','branding','guidebook','control_guide','guide_library','guide_cards','PIL.ImageTk','PIL.WebPImagePlugin'}<=modules
     import pefile
